@@ -2,18 +2,34 @@
 
 ## Installing Boondock Edge
 
-Run the installer without arguments to install the default `latest` dashboard
-and API tags:
+Download the installer and its sample configuration from this repository:
 
 ```bash
-sudo GITHUB_TOKEN=your-token ./install.sh
+wget https://raw.githubusercontent.com/Boondock-Echo/Boondock-Edge-Dashboard/refs/heads/main/install.sh
+wget https://raw.githubusercontent.com/Boondock-Echo/Boondock-Edge-Dashboard/refs/heads/main/install.conf.sample
+```
+
+Rename the sample to `install.conf`, then edit it and set the values for your
+installation:
+
+```bash
+mv install.conf.sample install.conf
+nano install.conf
+```
+
+Make the installer executable and run it with `sudo` to install the default
+`latest` dashboard and API tags:
+
+```bash
+chmod +x install.sh
+sudo ./install.sh
 ```
 
 To install the `beta` tags for both the dashboard and API, pass the beta
 channel explicitly:
 
 ```bash
-sudo GITHUB_TOKEN=your-token ./install.sh beta
+sudo ./install.sh beta
 ```
 
 The beta option does not change the firmware release tags or refs for other
