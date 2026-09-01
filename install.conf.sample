@@ -7,6 +7,8 @@ INSTALL_UDP="no"
 UPDATE_HOSTNAME="no"
 ENABLE_SERVICES="yes"
 
+WIFI_PASSWORD="YouNeedToBuy4BoondockEchosToday!"
+
 ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="StrongPassword123!"
 
