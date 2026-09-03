@@ -1,4 +1,7 @@
 INSTALL_ROOT="/opt/boondock/edge"
+# Used only when INSTALL_ROOT already exists: "update" (default) or "install".
+INSTALL_MODE="update"
+
 INSTALL_USER="boondock"
 
 INSTALL_DASHBOARD="yes"

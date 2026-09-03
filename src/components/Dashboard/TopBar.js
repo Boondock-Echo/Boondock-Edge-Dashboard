@@ -105,9 +105,9 @@ const TopBar = ({
     toggleInactive: isDarkMode ? 'bg-gray-700' : 'bg-gray-200',
     inputBackground: isDarkMode ? 'bg-gray-800' : 'bg-gray-50',
     // Static colors for better visibility in dark mode
-    headerColor: isDarkMode ? '#ffffff' : '#1f2937', // White in dark, dark gray in light
-    iconColor: isDarkMode ? '#3b82f6' : '#2563eb', // Blue shades for icons
-    accentColor: isDarkMode ? '#60a5fa' : '#3b82f6', // Lighter blue for accents
+    headerColor: 'var(--ui-text)',
+    iconColor: 'var(--ui-accent)',
+    accentColor: 'var(--ui-accent)',
   };
 
 
@@ -193,9 +193,7 @@ const TopBar = ({
               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
                 isMultiSelectMode
                   ? "bg-primary text-on-primary"
-                  : isDarkMode
-                    ? "bg-blue-900/40 text-blue-200 hover:bg-blue-900/55"
-                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  : "bg-blue-900/40 text-blue-200 hover:bg-blue-900/55"
               } ${isMobile ? "px-2 py-1.5" : ""}`}
               title={isMultiSelectMode ? "Exit select" : "Select messages"}
             >
@@ -416,12 +414,12 @@ const TopBar = ({
                     className={`flex items-center justify-between p-2 md:p-3 rounded-lg border ${state ? 'border-opacity-50' : 'border-opacity-20'} transition-all duration-300`}
                     style={{ 
                       borderColor: state ? commonStyles.accentColor : commonStyles.borderColor,
-                      backgroundColor: state ? commonStyles.accentColor + '10' : (isDarkMode ? 'rgb(31 41 55)' : 'rgb(249 250 251)')
+                      backgroundColor: state ? 'rgb(var(--ui-accent-rgb) / 0.08)' : 'var(--ui-surface)'
                     }}
                   >
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className={`p-1 md:p-1.5 rounded-lg ${state ? '' : commonStyles.buttonBackground} transition-all duration-300`}
-                        style={{ backgroundColor: state ? commonStyles.accentColor + '30' : '' }}
+                        style={{ backgroundColor: state ? 'rgb(var(--ui-accent-rgb) / 0.18)' : '' }}
                       >
                         <Icon 
                           className="h-3.5 w-3.5 transition-all duration-300"
@@ -471,12 +469,12 @@ const TopBar = ({
                   className={`flex items-center justify-between p-2 md:p-3 rounded-lg border ${showFullTimestamps ? 'border-opacity-50' : 'border-opacity-20'} transition-all duration-300`}
                   style={{ 
                     borderColor: showFullTimestamps ? commonStyles.accentColor : commonStyles.borderColor,
-                    backgroundColor: showFullTimestamps ? commonStyles.accentColor + '10' : (isDarkMode ? 'rgb(31 41 55)' : 'rgb(249 250 251)')
+                    backgroundColor: showFullTimestamps ? 'rgb(var(--ui-accent-rgb) / 0.08)' : 'var(--ui-surface)'
                   }}
                 >
                   <div className="flex items-center gap-2 md:gap-3">
                     <div className={`p-1 md:p-1.5 rounded-lg ${showFullTimestamps ? '' : commonStyles.buttonBackground} transition-all duration-300`}
-                      style={{ backgroundColor: showFullTimestamps ? commonStyles.accentColor + '30' : '' }}
+                      style={{ backgroundColor: showFullTimestamps ? 'rgb(var(--ui-accent-rgb) / 0.18)' : '' }}
                     >
                       <Clock 
                         className="h-3.5 w-3.5 transition-all duration-300"
@@ -554,18 +552,18 @@ const TopBar = ({
                     ) : (
                       <Moon className="h-3.5 w-3.5" style={{ color: commonStyles.accentColor }} />
                     )}
-                    THEME
+                    APPEARANCE THEME
                   </label>
                   <div 
                     className={`flex items-center justify-between p-2 md:p-3 rounded-lg border ${isDarkMode ? 'border-opacity-50' : 'border-opacity-20'} transition-all duration-300`}
                     style={{ 
-                      borderColor: isDarkMode ? commonStyles.accentColor : commonStyles.borderColor,
-                      backgroundColor: isDarkMode ? commonStyles.accentColor + '10' : (isDarkMode ? 'rgb(31 41 55)' : 'rgb(249 250 251)')
+                      borderColor: 'var(--ui-border)',
+                      backgroundColor: isDarkMode ? 'rgb(var(--ui-accent-rgb) / 0.08)' : 'var(--ui-surface)'
                     }}
                   >
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className={`p-1 md:p-1.5 rounded-lg ${isDarkMode ? '' : commonStyles.buttonBackground} transition-all duration-300`}
-                        style={{ backgroundColor: isDarkMode ? commonStyles.accentColor + '30' : '' }}
+                        style={{ backgroundColor: isDarkMode ? 'rgb(var(--ui-accent-rgb) / 0.18)' : '' }}
                       >
                         {isDarkMode ? (
                           <Sun 
@@ -580,17 +578,18 @@ const TopBar = ({
                         )}
                       </div>
                       <span className={`text-xs font-semibold tracking-wide ${commonStyles.textColor} transition-colors duration-300`}>
-                        {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                        {isDarkMode ? 'Night Ops' : 'Ember Command'}
                       </span>
                     </div>
                     <button
                       onClick={toggleTheme}
                       className={`relative inline-flex h-4 md:h-5 w-8 md:w-9 items-center rounded-full transition-all duration-300 ease-out focus:outline-none ${
                         isDarkMode 
-                          ? 'bg-blue-600' 
+                          ? 'bg-primary'
                           : 'bg-gray-300'
                       }`}
                       aria-checked={isDarkMode}
+                      aria-label={`Switch to ${isDarkMode ? 'Ember Command' : 'Night Ops'}`}
                       role="switch"
                     >
                       <span 

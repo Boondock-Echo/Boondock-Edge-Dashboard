@@ -541,6 +541,9 @@ const App = () => {
 
   useEffect(() => {
     localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
+    const root = document.documentElement;
+    root.dataset.uiTheme = isDarkMode ? "night-ops" : "ember-command";
+    root.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
   // Update document title when branding changes

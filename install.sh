@@ -206,6 +206,23 @@ fi
 
 echo -e "${GREEN}Installation configuration${NC}"
 prompt_if_unset INSTALL_ROOT "Installation root directory" "/opt/boondock/edge"
+if [ -e "$INSTALL_ROOT" ]; then
+    prompt_if_unset INSTALL_MODE "Do you want to update or do an install?" "update"
+    case "${INSTALL_MODE,,}" in
+        update)
+            INSTALL_MODE="update"
+            ;;
+        install)
+            INSTALL_MODE="install"
+            ;;
+        *)
+            echo -e "${RED}Error: INSTALL_MODE must be update or install.${NC}" >&2
+            exit 1
+            ;;
+    esac
+else
+    INSTALL_MODE="install"
+fi
 prompt_if_unset INSTALL_USER "Linux user that should own and run Boondock Edge" "boondock"
 prompt_if_unset INSTALL_DASHBOARD "Install Boondock Edge Dashboard? (yes/no)" "yes"
 prompt_if_unset INSTALL_API "Install Boondock Edge API? (yes/no)" "yes"
@@ -213,7 +230,7 @@ prompt_if_unset INSTALL_API "Install Boondock Edge API? (yes/no)" "yes"
 prompt_if_unset UPDATE_HOSTNAME "Update the system hostname to boondock-edge? (yes/no)" "no"
 prompt_if_unset ENABLE_SERVICES "Enable installed systemd services at boot? (yes/no)" "yes"
 
-if _is_truthy "$INSTALL_API"; then
+if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = "install" ]; then
     if [ -z "${ADMIN_EMAIL:-}" ]; then
         if [ ! -t 0 ]; then
             echo -e "${RED}Error: ADMIN_EMAIL is not set and no interactive terminal is available.${NC}" >&2
@@ -329,7 +346,7 @@ validate_boolean INSTALL_API
 #validate_boolean INSTALL_UDP
 validate_boolean UPDATE_HOSTNAME
 validate_boolean ENABLE_SERVICES
-if _is_truthy "$INSTALL_API"; then
+if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = "install" ]; then
     validate_boolean CONFIGURE_RECORDERS
     case "$INBOX_VIEW" in
         continuous|paged) ;;
@@ -383,7 +400,19 @@ if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
     apt-get install -y curl
 fi
 
+echo -e "${GREEN}Stopping Boondock Edge services before installing files...${NC}"
+if systemctl list-unit-files "boondock-edge-api.service" --no-legend 2>/dev/null | grep -q '^boondock-edge-api.service'; then
+    systemctl stop "boondock-edge-api.service"
+    echo "✓ API service stopped"
+else
+    echo "✓ API service is not installed"
+fi
+
 echo -e "${GREEN}[1/8] Creating installation directory...${NC}"
+if [ "$INSTALL_MODE" = "install" ] && [ -e "$INSTALL_ROOT" ]; then
+    echo "Removing existing installation directory: $INSTALL_ROOT"
+    rm -rf -- "$INSTALL_ROOT"
+fi
 mkdir -p "$INSTALL_ROOT"
 echo "✓ Directory created: $INSTALL_ROOT"
 
@@ -483,36 +512,48 @@ echo -e "${GREEN}[7/8] Python virtual environment...${NC}"
 if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
     cd "$INSTALL_ROOT"
 
-    if [ -d "venv" ]; then
+    if [ "$INSTALL_MODE" = "install" ] && [ -d "venv" ]; then
         echo -e "${YELLOW}Warning: Virtual environment already exists. Removing old one...${NC}"
         rm -rf "venv"
     fi
 
-    if ! python3 -m venv "venv" &> /dev/null; then
+    if [ ! -x "venv/bin/python" ] && ! python3 -m venv "venv" &> /dev/null; then
         echo -e "${YELLOW}Python venv support is incomplete. Installing python3-venv...${NC}"
 
         apt-get update
         apt-get install -y python3-venv
     fi
 
-    if ! python3 -m venv "venv"; then
+    if [ ! -x "venv/bin/python" ] && ! python3 -m venv "venv"; then
         rm -rf "$VENV_TEST_DIR"
         echo -e "${RED}Error: Unable to create a Python virtual environment.${NC}"
         exit 1
     fi
 
-    echo "✓ Shared virtual environment created: venv"
+    if [ "$INSTALL_MODE" = "update" ]; then
+        echo "✓ Existing shared virtual environment retained: venv"
+    else
+        echo "✓ Shared virtual environment created: venv"
+    fi
 
     echo -e "${GREEN}[8/8] Installing Python dependencies...${NC}"
     source "$INSTALL_ROOT/venv/bin/activate"
     pip install --upgrade pip --quiet
 
     if [ -f "$API_DIR/requirements.txt" ]; then
-        pip install -r "$API_DIR/requirements.txt"
+        if [ "$INSTALL_MODE" = "update" ]; then
+            pip install --upgrade -r "$API_DIR/requirements.txt"
+        else
+            pip install -r "$API_DIR/requirements.txt"
+        fi
         echo "✓ Dependencies installed from $API_DIR/requirements.txt"
     elif [ -f "$UDP_DIR/requirements.txt" ]; then
         echo -e "${YELLOW}API requirements.txt not available. Using UDP requirements instead.${NC}"
-        pip install -r "$UDP_DIR/requirements.txt"
+        if [ "$INSTALL_MODE" = "update" ]; then
+            pip install --upgrade -r "$UDP_DIR/requirements.txt"
+        else
+            pip install -r "$UDP_DIR/requirements.txt"
+        fi
         echo "✓ Dependencies installed from $UDP_DIR/requirements.txt"
     else
         deactivate
@@ -590,13 +631,20 @@ chmod -R 755 "$INSTALL_ROOT"
 echo "✓ Ownership set to $INSTALL_USER:$INSTALL_USER with 755 permissions"
 
 if _is_truthy "$INSTALL_API"; then
-    SETUP_FILE="$INSTALL_ROOT/db/setup.json"
-    echo -e "${GREEN}Writing setup configuration...${NC}"
-    SELECTED_DEVICES="[]"
-    if _is_truthy "$CONFIGURE_RECORDERS"; then
-        SELECTED_DEVICES='["boondock_edge"]'
-    fi
-    cat > "$SETUP_FILE" <<EOF
+    if [ "$INSTALL_MODE" = "update" ]; then
+        echo -e "${GREEN}Updating application data...${NC}"
+        runuser -u "$INSTALL_USER" -- \
+            "$INSTALL_ROOT/venv/bin/python" \
+            "$API_DIR/manage.py" update
+        echo "✓ Application data updated"
+    else
+        SETUP_FILE="$INSTALL_ROOT/db/setup.json"
+        echo -e "${GREEN}Writing setup configuration...${NC}"
+        SELECTED_DEVICES="[]"
+        if _is_truthy "$CONFIGURE_RECORDERS"; then
+            SELECTED_DEVICES='["boondock_edge"]'
+        fi
+        cat > "$SETUP_FILE" <<EOF
 {
   "admin": {
     "email": "$ADMIN_EMAIL",
@@ -611,21 +659,22 @@ if _is_truthy "$INSTALL_API"; then
 }
 EOF
 
-    chown "$INSTALL_USER:$INSTALL_USER" "$SETUP_FILE"
-    chmod 600 "$SETUP_FILE"
-    trap 'rm -f -- "$SETUP_FILE"' EXIT
-    echo "✓ Setup configuration written to $SETUP_FILE"
+        chown "$INSTALL_USER:$INSTALL_USER" "$SETUP_FILE"
+        chmod 600 "$SETUP_FILE"
+        trap 'rm -f -- "$SETUP_FILE"' EXIT
+        echo "✓ Setup configuration written to $SETUP_FILE"
 
-    echo -e "${GREEN}Initializing application data...${NC}"
-    runuser -u "$INSTALL_USER" -- \
-        "$INSTALL_ROOT/venv/bin/python" \
-        "$API_DIR/manage.py" setup --config "$SETUP_FILE"
-    rm -f -- "$SETUP_FILE"
-    trap - EXIT
-    # Credentials are no longer needed in this installer process.
-    unset ADMIN_PASSWORD
+        echo -e "${GREEN}Initializing application data...${NC}"
+        runuser -u "$INSTALL_USER" -- \
+            "$INSTALL_ROOT/venv/bin/python" \
+            "$API_DIR/manage.py" setup --config "$SETUP_FILE"
+        rm -f -- "$SETUP_FILE"
+        trap - EXIT
+        # Credentials are no longer needed in this installer process.
+        unset ADMIN_PASSWORD
 
-    echo "✓ Application data initialized"
+        echo "✓ Application data initialized"
+    fi
 fi
 
 if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then

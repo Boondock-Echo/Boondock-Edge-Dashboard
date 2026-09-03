@@ -20,11 +20,11 @@ import {
 } from "../../utils/inboxViewWindow";
 
 const channelColors = {
-  0: "#f43f5e",
-  1: "#ff8b2d",
-  2: "#2d84ff",
-  3: "#34d399",
-  4: "#6b7280",
+  0: "var(--ui-accent)",
+  1: "var(--ui-warning)",
+  2: "var(--ui-muted)",
+  3: "var(--ui-success)",
+  4: "var(--ui-border)",
 };
 const ITEMS_PER_PAGE = 100;
 
@@ -872,7 +872,7 @@ const LiveCommunications = ({
   const [branding, setBranding] = useState({
     organizationName: 'Boondock Edge',
     tagline: 'Justice in Motion',
-    brandColors: { accent: '#ff2424', primary: '#0a58ff', secondary: '#b15990' },
+    brandColors: { accent: 'var(--ui-accent)', primary: 'var(--ui-accent)', secondary: 'var(--ui-muted)' },
     font: 'Poppins',
     assets: { logo: null, favicon: null, loader: null }
   });
@@ -936,9 +936,9 @@ const LiveCommunications = ({
           organizationName: data.organization_name || 'Boondock Edge',
           tagline: data.tagline || 'Justice in Motion',
           brandColors: {
-            accent: data.brand_colors?.accent || '#ff2424',
-            primary: data.brand_colors?.primary || '#0a58ff',
-            secondary: data.brand_colors?.secondary || '#b15990'
+            accent: data.brand_colors?.accent || 'var(--ui-accent)',
+            primary: data.brand_colors?.primary || 'var(--ui-accent)',
+            secondary: data.brand_colors?.secondary || 'var(--ui-muted)'
           },
           font: data.font || 'Poppins',
           assets: {

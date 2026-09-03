@@ -185,11 +185,7 @@ const ChannelItem = ({
       
       {/* Right: Stats and Controls */}
       <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-        <span className={`px-2 py-0.5 text-xs rounded-full ${
-          isDarkMode 
-            ? "bg-blue-900/50 text-blue-300" 
-            : "bg-blue-100 text-blue-700"
-        }`}>
+        <span className="px-2 py-0.5 text-xs rounded-full bg-blue-900/50 text-blue-300">
           {formattedCount}
         </span>
         

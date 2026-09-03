@@ -2,10 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Device-native command palettes. Keep these tokens on the root element so
+ * portals (toasts, dialogs, and menus) inherit the same colors as the app.
+ */
+html[data-ui-theme="night-ops"] {
+  --ui-background: #0d0b0a;
+  --ui-surface: #14110f;
+  --ui-panel: #191412;
+  --ui-border: #6a3d28;
+  --ui-accent: #f36d2d;
+  --ui-text: #fff1e8;
+  --ui-muted: #cfbaaa;
+  --ui-success: #8fae7e;
+  --ui-warning: #d6a85f;
+  --ui-danger: #c96b4b;
+  --ui-button-text: #2b140b;
+  --ui-background-rgb: 13 11 10;
+  --ui-surface-rgb: 20 17 15;
+  --ui-panel-rgb: 25 20 18;
+  --ui-border-rgb: 106 61 40;
+  --ui-accent-rgb: 243 109 45;
+  --ui-text-rgb: 255 241 232;
+  --ui-muted-rgb: 207 186 170;
+  --ui-neutral-50: 255 241 232;
+  --ui-neutral-100: 255 241 232;
+  --ui-neutral-200: 255 241 232;
+  --ui-neutral-300: 207 186 170;
+  --ui-neutral-400: 207 186 170;
+  --ui-neutral-500: 207 186 170;
+  --ui-neutral-600: 106 61 40;
+  --ui-neutral-700: 106 61 40;
+  --ui-neutral-800: 25 20 18;
+  --ui-neutral-900: 20 17 15;
+  --ui-neutral-950: 13 11 10;
+  color-scheme: dark;
+}
+
+html[data-ui-theme="ember-command"] {
+  --ui-background: #f5eee7;
+  --ui-surface: #fffaf5;
+  --ui-panel: #ffffff;
+  --ui-border: #c98962;
+  --ui-accent: #b84f1f;
+  --ui-text: #38251d;
+  --ui-muted: #785f52;
+  --ui-success: #5f7d52;
+  --ui-warning: #9a6014;
+  --ui-danger: #a84732;
+  --ui-button-text: #ffffff;
+  --ui-background-rgb: 245 238 231;
+  --ui-surface-rgb: 255 250 245;
+  --ui-panel-rgb: 255 255 255;
+  --ui-border-rgb: 201 137 98;
+  --ui-accent-rgb: 184 79 31;
+  --ui-text-rgb: 56 37 29;
+  --ui-muted-rgb: 120 95 82;
+  --ui-neutral-50: 255 250 245;
+  --ui-neutral-100: 245 238 231;
+  --ui-neutral-200: 233 213 199;
+  --ui-neutral-300: 201 137 98;
+  --ui-neutral-400: 120 95 82;
+  --ui-neutral-500: 120 95 82;
+  --ui-neutral-600: 120 95 82;
+  --ui-neutral-700: 56 37 29;
+  --ui-neutral-800: 56 37 29;
+  --ui-neutral-900: 56 37 29;
+  --ui-neutral-950: 56 37 29;
+  color-scheme: light;
+}
+
 @layer base {
   body {
     font-family: Inter, system-ui, sans-serif;
     @apply bg-surface text-on-surface antialiased;
+    transition: background-color 200ms ease, color 200ms ease;
   }
   h1, h2, h3, .font-headline {
     font-family: Manrope, system-ui, sans-serif;
@@ -29,7 +100,7 @@
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(var(--ui-panel-rgb) / 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -46,15 +117,15 @@
 /* Live / alert indicator (dashboard.html ledger) */
 @keyframes ledger-live-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(114, 0, 9, 0.55);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-danger) 55%, transparent);
     transform: scale(0.95);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(114, 0, 9, 0);
+    box-shadow: 0 0 0 10px transparent;
     transform: scale(1);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(114, 0, 9, 0);
+    box-shadow: 0 0 0 0 transparent;
     transform: scale(0.95);
   }
 }

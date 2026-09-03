@@ -202,11 +202,11 @@ const FullscreenMessages = ({
     theme: isDarkMode ? "dark" : "light",
     style: {
       borderRadius: "8px",
-      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+      boxShadow: "0 4px 6px rgb(var(--ui-text-rgb) / 0.1)",
       minWidth: "300px",
     },
     progressStyle: {
-      background: isDarkMode ? "#4B5563" : "#D1D5DB",
+      background: "var(--ui-muted)",
     },
   };
   const showToast = useCallback(
@@ -1426,8 +1426,9 @@ const FullscreenMessages = ({
       const centerY = height / 2;
 
       // Cache colors
-      const playedColor = isDarkMode ? '#60a5fa' : '#2563eb';
-      const unplayedColor = isDarkMode ? '#4b5563' : '#9ca3af';
+      const rootStyles = getComputedStyle(document.documentElement);
+      const playedColor = rootStyles.getPropertyValue('--ui-accent').trim();
+      const unplayedColor = rootStyles.getPropertyValue('--ui-muted').trim();
 
       // Create offscreen canvas for base waveform (drawn once, never cleared)
       const baseCanvas = document.createElement('canvas');
@@ -2662,11 +2663,7 @@ const FullscreenMessages = ({
                   Showing {messages.length} of {totalMessages} messages
                 </span>
                 {hasMoreMessages && (
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    isDarkMode 
-                      ? 'bg-blue-900/50 text-blue-300' 
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-blue-900/50 text-blue-300">
                     {totalMessages - messages.length} more available
                   </span>
                 )}
@@ -2711,18 +2708,12 @@ const FullscreenMessages = ({
       {showScrollToTop && (
         <button
           onClick={scrollToTop}
-          className={`fixed bottom-6 right-4 z-50 flex items-center justify-center shadow-lg transition-all duration-300 ${
+          className={`fixed bottom-6 right-4 z-50 flex items-center justify-center bg-primary text-on-primary shadow-lg transition-all duration-300 hover:brightness-110 ${
             newMessageCount > 0 
               ? 'rounded-full px-4 py-3' 
               : 'rounded-full w-12 h-12'
-          } ${
-            isDarkMode 
-              ? 'bg-blue-600 hover:bg-blue-500 text-white' 
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
           }`}
-          style={{
-            boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)'
-          }}
+          style={{ boxShadow: '0 4px 14px rgb(var(--ui-accent-rgb) / 0.35)' }}
           title={reverseSort ? "Scroll to newest messages (top)" : "Scroll to newest messages (bottom)"}
         >
           {newMessageCount > 0 ? (

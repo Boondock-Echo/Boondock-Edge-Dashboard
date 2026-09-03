@@ -14,9 +14,6 @@ const DEFAULT_EDGE_LOGO = `${process.env.PUBLIC_URL || ''}/boondock-edge-logo.pn
 /** Hero art — left column (`public/login-hero-art.png`), intrinsic 753×1024 px */
 const LOGIN_HERO_ART = `${process.env.PUBLIC_URL || ''}/art2.jpg`;
 
-/** Sentinel-style login panel (see `loginnew.html`) — primary blue for light-mode chrome */
-const SENTINEL_BLUE = '#0D47A1';
-
 /** Edge device product line — sign-in panel header */
 const EDGE_BRAND = {
   eyebrow: 'Edge Device',
@@ -26,13 +23,9 @@ const EDGE_BRAND = {
 
 /** Defaults aligned with docs/branding — API `/branding` overrides when present */
 const BRAND = {
-  action: '#F36D22',
-  secondary: '#0587C7',
-  navy: '#002942',
-  structureGray: '#202020',
-  white: '#FFFFFF',
-  critical: '#D42329',
-  live: '#03BBDF',
+  action: 'var(--ui-accent)',
+  secondary: 'var(--ui-accent)',
+  structureGray: 'var(--ui-panel)',
 };
 
 const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServerEndpoint }) => {
@@ -194,27 +187,29 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
     }
   };
 
-  const actionHex = branding.brandColors.accent || BRAND.action;
-  const secondaryHex = branding.brandColors.primary || BRAND.secondary;
+  // Authentication chrome always follows the device palette. Organization
+  // branding remains available for logos and names, but cannot reduce the
+  // contrast of controls or text.
+  const actionColor = 'var(--ui-accent)';
 
   if (!brandingLoaded) {
     return (
       <div
-        className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden bg-[#001a24]"
+        className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden bg-background text-on-surface"
         style={{ fontFamily: `${branding.font}, Inter, system-ui, sans-serif` }}
       >
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+              'linear-gradient(rgb(var(--ui-border-rgb) / 0.18) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--ui-border-rgb) / 0.18) 1px, transparent 1px)',
             backgroundSize: '48px 48px',
           }}
         />
         <div className="relative z-10 flex flex-col items-center gap-5 px-6">
           <div
             className="h-12 w-12 rounded-full border-[3px] border-t-transparent border-white/18 animate-spin"
-            style={{ borderLeftColor: BRAND.secondary, borderRightColor: BRAND.secondary }}
+            style={{ borderLeftColor: actionColor, borderRightColor: actionColor }}
           />
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/38">Loading</p>
         </div>
@@ -224,24 +219,21 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
 
   return (
     <main
-      className={`flex min-h-0 flex-col overflow-hidden font-body lg:flex-row lg:h-[100dvh] lg:max-h-[100dvh] ${isDarkMode ? 'dark min-h-[100dvh] bg-[#1a1a1a]' : 'min-h-[100dvh] bg-[#f0f2f5] text-on-surface'}`}
+      className={`flex min-h-[100dvh] flex-col overflow-hidden bg-background font-body text-on-surface lg:h-[100dvh] lg:max-h-[100dvh] lg:flex-row ${isDarkMode ? 'dark' : ''}`}
       style={{
         fontFamily: `${branding.font}, Inter, system-ui, sans-serif`,
-        '--login-action': actionHex,
-        '--login-secondary': secondaryHex,
-        '--login-live': BRAND.live,
+        '--login-action': actionColor,
       }}
     >
       {/* Mobile / tablet */}
       <header
-        className="flex shrink-0 items-center justify-between gap-3 border-b bg-[#002942] px-4 py-3.5 lg:hidden"
-        style={{ borderBottomColor: `${secondaryHex}55`, boxShadow: `inset 0 -1px 0 0 ${actionHex}66` }}
+        className="flex shrink-0 items-center justify-between gap-3 border-b border-outline bg-surface px-4 py-3.5 lg:hidden"
       >
         <div className="flex min-w-0 items-center gap-3.5">
           <div
             className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/[0.07] backdrop-blur-sm"
             style={{
-              boxShadow: `0 0 0 2px ${secondaryHex}99, inset 0 -3px 0 0 ${actionHex}`,
+              boxShadow: '0 0 0 2px rgb(var(--ui-border-rgb) / 0.7), inset 0 -3px 0 0 var(--ui-accent)',
             }}
           >
             {branding.assets.logo ? (
@@ -268,7 +260,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
 
       {/* Left: hero art — width follows intrinsic 753:1024 vs viewport height (cap 50vw); mobile strip matches aspect */}
       <section
-        className="relative flex w-full shrink-0 items-center justify-center overflow-hidden bg-[#0c141c] lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:w-[min(50vw,calc(100dvh*753/1024))] lg:flex-none"
+        className="relative flex w-full shrink-0 items-center justify-center overflow-hidden bg-background lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:w-[min(50vw,calc(100dvh*753/1024))] lg:flex-none"
         aria-hidden
       >
         <img
@@ -284,17 +276,13 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
       </section>
 
       {/* Right: loginnew.html-style panel — white canvas, centered max-w-md, absolute theme toggle */}
-      <section
-        className={`relative flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:h-full lg:min-h-0 lg:min-w-0 lg:border-l ${
-          isDarkMode ? 'border-white/10 bg-[#202020] text-white' : 'border-slate-100 bg-white text-slate-900'
-        }`}
-      >
+      <section className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden border-outline bg-surface text-on-surface lg:h-full lg:min-h-0 lg:min-w-0 lg:border-l">
         {!isDarkMode ? (
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.08]"
             aria-hidden
             style={{
-              boxShadow: 'inset 0 0 80px -20px rgba(13, 71, 161, 0.15)',
+              boxShadow: 'inset 0 0 80px -20px rgb(var(--ui-accent-rgb) / 0.15)',
             }}
           />
         ) : (
@@ -302,7 +290,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
             className="pointer-events-none absolute inset-0 opacity-[0.35]"
             aria-hidden
             style={{
-              background: `radial-gradient(ellipse at top left, ${secondaryHex}14 0%, transparent 55%)`,
+              background: 'radial-gradient(ellipse at top left, rgb(var(--ui-accent-rgb) / 0.08) 0%, transparent 55%)',
             }}
           />
         )}
@@ -314,7 +302,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 text-slate-400 transition-colors hover:text-[#0D47A1] dark:text-slate-400 dark:hover:text-white"
+            className="p-2 text-slate-500 transition-colors hover:text-primary"
             aria-label={isDarkMode ? 'Light mode' : 'Dark mode'}
           >
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -335,7 +323,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
 
             {error && (
               <div
-                className="mb-6 flex animate-fade-in items-center gap-2 rounded-[4px] border border-[#D42329]/45 bg-[#D42329]/10 px-3.5 py-3 text-sm text-[#7a1519] dark:border-[#D42329]/35 dark:bg-[#D42329]/14 dark:text-[#fecaca]"
+                className="mb-6 flex animate-fade-in items-center gap-2 rounded-[4px] border border-error bg-error/10 px-3.5 py-3 text-sm text-error"
                 role="alert"
               >
                 <span className="material-symbols-outlined text-lg">error</span>
@@ -353,8 +341,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
                 placeholder="you@department.gov"
                 autoComplete="username"
                 isDarkMode={isDarkMode}
-                accent={actionHex}
-                focusRing={SENTINEL_BLUE}
+                accent={actionColor}
               />
               <LabeledInput
                 label="Password"
@@ -365,8 +352,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
                 placeholder="••••••••••••"
                 autoComplete="current-password"
                 isDarkMode={isDarkMode}
-                accent={actionHex}
-                focusRing={SENTINEL_BLUE}
+                accent={actionColor}
                 trailing={
                   <button
                     type="button"
@@ -390,8 +376,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
                   placeholder="6-digit code"
                   autoComplete="one-time-code"
                   isDarkMode={isDarkMode}
-                  accent={actionHex}
-                  focusRing={SENTINEL_BLUE}
+                  accent={actionColor}
                 />
               )}
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -400,8 +385,8 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
                     type="checkbox"
                     checked={rememberDevice}
                     onChange={(e) => setRememberDevice(e.target.checked)}
-                    className="h-4 w-4 rounded-[4px] border-slate-300 text-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1] focus:ring-offset-0 dark:border-white/22 dark:bg-white/[0.06] dark:focus:ring-offset-[#202020]"
-                    style={{ accentColor: SENTINEL_BLUE }}
+                    className="h-4 w-4 rounded-[4px] border-outline bg-panel text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0"
+                    style={{ accentColor: actionColor }}
                   />
                   <span className="text-xs font-medium text-slate-500 dark:text-white/50">Remember this device</span>
                 </label>
@@ -413,19 +398,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`group flex w-full items-center justify-center gap-2 rounded-[4px] border border-transparent px-6 py-4 text-sm font-bold uppercase tracking-widest text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-[#202020] ${
-                    isDarkMode
-                      ? 'focus:ring-[color:var(--login-action)]'
-                      : `bg-[#0D47A1] hover:bg-blue-800 focus:ring-[#0D47A1] focus:ring-offset-white`
-                  }`}
-                  style={
-                    isDarkMode
-                      ? {
-                          backgroundColor: actionHex,
-                          boxShadow: `0 4px 14px -4px ${actionHex}66`,
-                        }
-                      : undefined
-                  }
+                  className="group flex w-full items-center justify-center gap-2 rounded-[4px] border border-transparent bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-on-primary shadow-sm transition-all hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isLoading ? (
                     branding.assets.loader ? (
@@ -481,25 +454,23 @@ function LabeledInput({
   autoComplete,
   isDarkMode,
   accent,
-  focusRing,
   trailing,
   inputMode
 }) {
   const uid = useId();
   const inputId = `${uid}-${label.replace(/\s+/g, '-').toLowerCase()}`;
-  const ring = focusRing || accent;
   return (
     <div className="space-y-1.5">
       <label htmlFor={inputId} className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/45">
         {label}
       </label>
       <div
-        className={`relative flex items-center rounded-[4px] border transition-shadow focus-within:ring-2 focus-within:ring-offset-0 dark:focus-within:ring-offset-[#202020] ${
+        className={`relative flex items-center rounded-[4px] border transition-shadow focus-within:ring-2 focus-within:ring-offset-0 ${
           isDarkMode
             ? 'border-white/[0.12] bg-white/[0.05] focus-within:border-white/20'
-            : 'border-slate-200 bg-slate-50 focus-within:border-[#0D47A1]'
+            : 'border-outline bg-panel focus-within:border-primary'
         }`}
-        style={{ '--tw-ring-color': ring }}
+        style={{ '--tw-ring-color': accent }}
       >
         <span className="material-symbols-outlined pointer-events-none absolute left-3 text-[18px] leading-none text-slate-400 dark:text-white/35">
           {icon}
