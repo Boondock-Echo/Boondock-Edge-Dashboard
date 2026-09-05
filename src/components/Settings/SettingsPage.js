@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
+import api from '../../utils/apiClient';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SummarySection from "./SummarySection";
 import TranscriptionEngine from "./TranscriptionEngine";
@@ -73,10 +73,9 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
   const toastTimeoutRef = useRef(null);
   const saveTimeoutRef = useRef({}); // Track debounce timers per field
   const lastSavedValueRef = useRef({}); // Track last saved value per field to avoid unnecessary saves
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   const { logout, user } = useAuth();
-  const { hasPermission, loading: permissionsLoading } = usePermissions(edgeServerEndpoint);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   // Define all sidebar items
   const allSidebarItems = [
     { id: 'summary', label: 'Summary' },
@@ -110,7 +109,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/users/${user.username}`);
+        const response = await api.get(`/users/${user.username}`);
         setUserRole(response.data[user.username]?.role || 'member'); // Default to member if role not found
       } catch (error) {
         logger.error('Error fetching user role:', error);
@@ -120,7 +119,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
     if (user?.username) {
       fetchUserRole();
     }
-  }, [user?.username, edgeServerEndpoint]);
+  }, [user?.username]);
 
   // Redirect if user doesn't have access_settings permission
   useEffect(() => {
@@ -291,7 +290,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
     saveTimeoutRef.current[saveKey] = setTimeout(async () => {
       try {
         if (fields.every((field) => lastSavedValueRef.current[field] === updates[field])) return;
-        await axios.put(`${edgeServerEndpoint}/settings`, updates);
+        await api.put(`/settings`, updates);
         fields.forEach((field) => {
           lastSavedValueRef.current[field] = updates[field];
         });
@@ -303,11 +302,11 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
         showToast('Error updating settings!', 'error');
       }
     }, 1000);
-  }, [edgeServerEndpoint, onSettingsChange, showToast]);
+  }, [onSettingsChange, showToast]);
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/settings`);
+      const response = await api.get(`/settings`);
       const settingsData = response.data;
       setGlobalSettings({
         global_target_language: settingsData.global_target_language ?? "english",
@@ -365,7 +364,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
     const keyword = newKeyword.trim();
     if (!keyword) return;
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/settings/keywords`, { keyword });
+      const response = await api.post(`/settings/keywords`, { keyword });
       setKeywords(response.data?.keywords || [...keywords, keyword]);
       setNewKeyword('');
       showToast('Keyword added successfully!');
@@ -377,7 +376,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
 
   const handleRemoveKeyword = async (keyword) => {
     try {
-      const response = await axios.delete(`${edgeServerEndpoint}/settings/keywords/${keyword}`);
+      const response = await api.delete(`/settings/keywords/${keyword}`);
       setKeywords(response.data?.keywords || keywords.filter(k => k !== keyword));
       showToast('Keyword removed successfully!');
     } catch (error) {
@@ -439,7 +438,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
       isDarkMode={isDarkMode}
       productName="Back to Dashboard"
       showBackToDashboardButton
-      edgeServerEndpoint={edgeServerEndpoint}
       sidebarOpen={isSidebarOpen}
       setSidebarOpen={setIsSidebarOpen}
       areaTitle=""
@@ -509,7 +507,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
             {activeSection === 'summary' && (
               <SummarySection
                 isDarkMode={isDarkMode}
-                edgeServerEndpoint={edgeServerEndpoint}
                 timezone={timezone}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
@@ -518,7 +515,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
             {activeSection === 'transcription-engine' && (
               <TranscriptionEngine
                 isDarkMode={isDarkMode}
-                edgeServerEndpoint={edgeServerEndpoint}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
               />
@@ -526,7 +522,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
             {activeSection === 'recorders' && (
               <ChannelsAndStationsSection
                 isDarkMode={isDarkMode}
-                edgeServerEndpoint={edgeServerEndpoint}
                 recordersEnabled={globalSettings.global_enable_edge_devices}
                 globalSettings={globalSettings}
               />
@@ -551,19 +546,16 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
                 handleAddKeyword={handleAddKeyword}
                 handleRemoveKeyword={handleRemoveKeyword}
                 isDarkMode={isDarkMode}
-                edgeServerEndpoint={edgeServerEndpoint}
               />
             )}
             {activeSection === 'user-management' && (
               <UserManagementSection
-                edgeServerEndpoint={edgeServerEndpoint}
                 isDarkMode={isDarkMode}
               />
             )}
             {activeSection === 'system' && (
               <SystemSection
                 isDarkMode={isDarkMode}
-                edgeServerEndpoint={edgeServerEndpoint}
                 showToast={showToast}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
@@ -582,23 +574,22 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
               />
             )}
             {activeSection === 'scanner' && (
-              <ScannerTable edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} />
+              <ScannerTable isDarkMode={isDarkMode} />
             )}
             {/* {activeSection === 'reports' && (
-              <ReportsComponent edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} />
+              <ReportsComponent isDarkMode={isDarkMode} />
             )} */}
             {activeSection === 'audio' && (
-              <AudioLevelVisualizer edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} />
+              <AudioLevelVisualizer isDarkMode={isDarkMode} />
             )}
             {activeSection === 'Logs' && (
-              <F1TerminalLogs edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} syncLogsTabToUrl />
+              <F1TerminalLogs isDarkMode={isDarkMode} syncLogsTabToUrl />
             )}
       </div>
       </CommandCenterShell>
       <BackupProgressModal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
-        edgeServerEndpoint={edgeServerEndpoint}
         isDarkMode={isDarkMode}
         globalSettings={globalSettings}
       />

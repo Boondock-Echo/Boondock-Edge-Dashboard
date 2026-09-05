@@ -31,7 +31,6 @@ const TopBar = ({
   setSelectedMessages,
   selectedMessages,
   toggleMultiSelectMode,
-  edgeServerEndpoint,
   userRole,
   showFullTimestamps,
   setShowFullTimestamps,
@@ -52,7 +51,7 @@ const TopBar = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasPermission } = usePermissions(edgeServerEndpoint);
+  const { hasPermission } = usePermissions();
   
   // Show settings button only if user has access_settings permission or is admin
   const canAccessSettings = user?.role === 'admin' || hasPermission('access_settings');
@@ -283,7 +282,6 @@ const TopBar = ({
             </button>
 
             <SystemClock
-              edgeServerEndpoint={edgeServerEndpoint}
               userRole={userRole}
               isDarkMode={isDarkMode}
               timeFormat={timeFormat}

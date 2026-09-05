@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect } from 'react';
 import { Upload, FileAudio, AlertCircle, CheckCircle, Loader2, X, Clock, Globe, Tag, Radio, Settings, Zap, Volume2, Calendar, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -27,8 +28,6 @@ const AudioUploader = ({ isDarkMode }) => {
     customDate: '',
     customTime: ''
   });
-
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   // Common timezones for selection
   const timezones = [
@@ -64,7 +63,7 @@ const AudioUploader = ({ isDarkMode }) => {
 
   const fetchChannels = async () => {
     try {
-      const response = await fetch(`${edgeServerEndpoint}/channels`);
+      const response = await apiFetch(`/channels`);
       if (response.ok) {
         const data = await response.json();
         setChannels(data);
@@ -83,7 +82,7 @@ const AudioUploader = ({ isDarkMode }) => {
 
   const fetchAvailableTags = async () => {
     try {
-      const response = await fetch(`${edgeServerEndpoint}/tags`);
+      const response = await apiFetch(`/tags`);
       if (response.ok) {
         const data = await response.json();
         setAvailableTags(data.map(tag => tag.name));
@@ -337,7 +336,7 @@ const AudioUploader = ({ isDarkMode }) => {
       formDataToSend.append('file', renamedFile);
 
       // Build URL with parameters
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ channel_id: selectedChannel });
       
       // Add custom timestamp if using custom datetime
       if (timezoneData.useCustomDateTime && timezoneData.customDate && timezoneData.customTime) {
@@ -353,10 +352,6 @@ const AudioUploader = ({ isDarkMode }) => {
       if (formData.audioLevel) params.append('a', formData.audioLevel);
       if (formData.initResponse) params.append('i', 'true');
       
-      if (params.toString()) {
-        url += '&' + params.toString();
-      }
-
       // Simulate progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -368,10 +363,11 @@ const AudioUploader = ({ isDarkMode }) => {
         });
       }, 200);
 
-      const response = await fetch(`${edgeServerEndpoint}/uploads?channel_id=${selectedChannel}`, {
-        method: 'POST',
-        body: formDataToSend
-      });
+      // TO-DO If we want to keep this update to /upload/audio
+      // const response = await apiFetch(`/uploads?${params.toString()}`, {
+      //   method: 'POST',
+      //   body: formDataToSend
+      // });
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -396,7 +392,7 @@ const AudioUploader = ({ isDarkMode }) => {
             console.log('Attempting to add tags to recording:', result.recording_id);
             const tagPromises = selectedTags.map(async (tag) => {
               console.log('Adding tag:', tag);
-              const response = await fetch(`${edgeServerEndpoint}/recordings_tag/${result.recording_id}/tags`, {
+              const response = await apiFetch(`/recordings_tag/${result.recording_id}/tags`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

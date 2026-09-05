@@ -1,7 +1,7 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyRound, Plus, Trash2, Copy, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import SettingsSectionHeader from './SettingsSectionHeader';
-import { getBearerAuthHeader } from '../../utils/apiBase';
 
 /**
  * Manage external REST API keys (admin only).
@@ -22,8 +22,6 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
   const [createdKey, setCreatedKey] = useState(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
-
   const isAdmin = (user?.role || '').toLowerCase() === 'admin';
 
   const toast = useCallback(
@@ -33,17 +31,9 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
     [showToast]
   );
 
-  const authHeaders = useCallback(
-    () => ({
-      Accept: 'application/json',
-      ...getBearerAuthHeader(),
-    }),
-    []
-  );
-
   const loadScopes = useCallback(async () => {
     try {
-      const res = await fetch(`${edgeServerEndpoint}/v1/scopes`, { headers: authHeaders() });
+      const res = await apiFetch(`/v1/scopes`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.detail || data.error || data.title || `HTTP ${res.status}`);
@@ -71,13 +61,13 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
       setSelectedScopes(['transcriptions:read']);
       console.warn('Could not load scope catalog:', err.message);
     }
-  }, [authHeaders]);
+  }, []);
 
   const loadKeys = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${edgeServerEndpoint}/v1/api-keys`, { headers: authHeaders() });
+      const res = await apiFetch(`/v1/api-keys`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const detail = data.detail || data.error || data.title || `HTTP ${res.status}`;
@@ -90,7 +80,7 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -151,11 +141,10 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
       };
       if (neverExpires) body.never_expires = true;
 
-      const res = await fetch(`${edgeServerEndpoint}/v1/api-keys`, {
+      const res = await apiFetch(`/v1/api-keys`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders(),
         },
         body: JSON.stringify(body),
       });
@@ -181,9 +170,8 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
       return;
     }
     try {
-      const res = await fetch(`${edgeServerEndpoint}/v1/api-keys/${encodeURIComponent(keyId)}`, {
+      const res = await apiFetch(`/v1/api-keys/${encodeURIComponent(keyId)}`, {
         method: 'DELETE',
-        headers: authHeaders(),
       });
       if (!res.ok && res.status !== 204) {
         const data = await res.json().catch(() => ({}));

@@ -635,7 +635,7 @@ if _is_truthy "$INSTALL_API"; then
         echo -e "${GREEN}Updating application data...${NC}"
         runuser -u "$INSTALL_USER" -- \
             "$INSTALL_ROOT/venv/bin/python" \
-            "$API_DIR/manage.py" update
+            "$API_DIR/manage.py" upgrade
         echo "✓ Application data updated"
     else
         SETUP_FILE="$INSTALL_ROOT/db/setup.json"

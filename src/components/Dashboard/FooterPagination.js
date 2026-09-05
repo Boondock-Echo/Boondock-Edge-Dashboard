@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { useAuth } from '../AuthContext';
 
 const FooterPagination = ({
@@ -13,7 +13,6 @@ const FooterPagination = ({
   recordsPerPage,
   setRecordsPerPage,
   isMobile,
-  edgeServerEndpoint,
   reverseSort,
   inboxServerHasMore = false,
   /** Real total rows on the server for the current time window (or null if not yet known). */
@@ -46,7 +45,7 @@ const FooterPagination = ({
     if (!user?.username) return;
     
     try {
-      await axios.post(`${edgeServerEndpoint}/pagination-preferences/${user.username}`, {
+      await api.post(`/pagination-preferences/${user.username}`, {
         recordsPerPage: newRecordsPerPage,
         currentPage: newCurrentPage,
         reverseSort: reverseSort

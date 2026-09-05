@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { Clock as ClockIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import logger from '../../utils/logger';
@@ -117,7 +117,7 @@ const TIMEZONES = [
   { value: "Africa/Nairobi", label: "Kenya Time (EAT)" },
 ];
 
-const SystemClock = ({ edgeServerEndpoint, userRole, isDarkMode, timeFormat: timeFormatProp = '24h', timezone, setTimezone }) => {
+const SystemClock = ({ userRole, isDarkMode, timeFormat: timeFormatProp = '24h', timezone, setTimezone }) => {
   const [displayTime, setDisplayTime] = useState('--:--:--');
   const [serverTimeOffset, setServerTimeOffset] = useState(null); // Offset in milliseconds
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -130,14 +130,8 @@ const SystemClock = ({ edgeServerEndpoint, userRole, isDarkMode, timeFormat: tim
   // Fetch server UTC time and calculate offset
   const fetchServerTime = useCallback(async () => {
     // TO-DO Returning 404 from the API fix on API before re-enabling
-    // if (!edgeServerEndpoint) {
-    //   // No endpoint, use local time
-    //   setServerTimeOffset(null);
-    //   return;
-    // }
-
     // try {
-    //   const response = await axios.get(`${edgeServerEndpoint}/system-time`);
+    //   const response = await api.get(`/system-time`);
     //   const data = response.data;
       
     //   // Check if system_time exists and is valid
@@ -172,7 +166,7 @@ const SystemClock = ({ edgeServerEndpoint, userRole, isDarkMode, timeFormat: tim
     //   }
     //   setServerTimeOffset(null);
     // }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // Initialize: fetch server time on mount
   useEffect(() => {
@@ -210,16 +204,15 @@ const SystemClock = ({ edgeServerEndpoint, userRole, isDarkMode, timeFormat: tim
 
   // Fetch current timezone from settings
   const fetchCurrentTimezone = useCallback(async () => {
-    if (!edgeServerEndpoint) return;
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/settings`);
+      const response = await api.get(`/settings`);
       if (response.data && response.data.global_timezone) {
         setPendingTimezone(response.data.global_timezone);
       }
     } catch (error) {
       logger.error('Failed to fetch timezone:', error);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const openModal = async () => {
     if (!isAdmin) return;
@@ -256,11 +249,11 @@ const SystemClock = ({ edgeServerEndpoint, userRole, isDarkMode, timeFormat: tim
     // try {
     //   // Update system time
     //   const timePayload = { datetime: pendingDateTime };
-    //   await axios.post(`${edgeServerEndpoint}/system-time`, timePayload);
+    //   await api.post(`/system-time`, timePayload);
       
     //   // Update timezone if it changed
     //   if (pendingTimezone !== timezone) {
-    //     await axios.put(`${edgeServerEndpoint}/settings`, {
+    //     await api.put(`/settings`, {
     //       global_timezone: pendingTimezone
     //     });
     //     // Update parent component's timezone state if setter is provided

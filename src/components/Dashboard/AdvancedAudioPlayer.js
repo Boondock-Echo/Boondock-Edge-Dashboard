@@ -1,8 +1,8 @@
+import { api, apiFetch } from '../../utils/apiClient';
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronLeft, X, RotateCcw, Scissors, Save, Download, Plus, History, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 import WaveSurfer from "wavesurfer.js";
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from "axios";
 import ContentEditable from "react-contenteditable";
 
 
@@ -57,7 +57,6 @@ const ProfessionalAudioEditor = ({
 
   
   const urlMessageId = queryParams.get("messageId");
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
   const audioRef = useRef(new Audio());
   const audioContextRef = useRef(null);
   const wavesurferRef = useRef(null);
@@ -80,8 +79,9 @@ const ProfessionalAudioEditor = ({
   const [transcriptionText, setTranscriptionText] = useState(navigationMessage?.message || "");
   const [waveformKey, setWaveformKey] = useState(0); // Force re-render of waveform
   const navigate = useNavigate();
-  const [audioUrl, setAudioUrl] = useState(navigationMessage?.url ? `${edgeServerEndpoint}/${navigationMessage.url}` : "");
-  const [initialAudioUrl, setInitialAudioUrl] = useState(navigationMessage?.url ? `${edgeServerEndpoint}/${navigationMessage.url}` : "");
+  // TO-DO Why do we need to variables?
+  const [audioUrl, setAudioUrl] = useState(navigationMessage?.url || "");
+  const [initialAudioUrl, setInitialAudioUrl] = useState(navigationMessage?.url || "");
 
   const [loading, setLoading] = useState(true);
   
@@ -158,33 +158,35 @@ const showToast = useCallback((message, type = 'success') => {
       return;
     }
 
-    const fetchAudioUrl = async () => {
-      setIsLoading(true);
-      try {
-        const response = await axios.get(`${edgeServerEndpoint}/audio_url/${effectiveMessageId}`, {
-          timeout: 10000
-        });
-        if (!isMounted.current) return;
-        if (response.data?.download_url) {
-         setInitialAudioUrl(`${edgeServerEndpoint}${response.data.download_url}`);
-         setAudioUrl(`${edgeServerEndpoint}${response.data.download_url}`);
-        // console.log("Fetched audio URL:", response.data.download_url);
-          setError(null);
-        } else {
-          setError('No audio file found for this message ID');
-        }
-      } catch (error) {
-        if (!isMounted.current) return;
-        setError(`Failed to fetch audio URL: ${error.message}`);
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    };
+    // Commented out because it doesn't work with apiUrl
+    // TO-DO: Handle fallback better -- maybe pass in the inbox in arg instead of state.
+    // const fetchAudioUrl = async () => {
+    //   setIsLoading(true);
+    //   try {
+    //     const response = await api.get(`/audio_url/${effectiveMessageId}`, {
+    //       timeout: 10000
+    //     });
+    //     if (!isMounted.current) return;
+    //     if (response.data?.download_url) {
+    //      setInitialAudioUrl(response.data.download_url);
+    //      setAudioUrl(response.data.download_url);
+    //     // console.log("Fetched audio URL:", response.data.download_url);
+    //       setError(null);
+    //     } else {
+    //       setError('No audio file found for this message ID');
+    //     }
+    //   } catch (error) {
+    //     if (!isMounted.current) return;
+    //     setError(`Failed to fetch audio URL: ${error.message}`);
+    //   } finally {
+    //     if (isMounted.current) {
+    //       setIsLoading(false);
+    //     }
+    //   }
+    // };
 
-    fetchAudioUrl();
-  }, [messageId, urlMessageId, edgeServerEndpoint, navigationMessage?.url]);
+    // fetchAudioUrl();
+  }, [messageId, urlMessageId, navigationMessage?.url]);
 
 
 
@@ -389,22 +391,23 @@ useEffect(() => {
   const effectiveMessageId = messageId || urlMessageId;
   if (!effectiveMessageId || navigationMessage?.channelName) return;
 
-  const fetchChannel = async () => {
-    try {
-      const res = await axios.get(`${edgeServerEndpoint}/channel_by_message/${effectiveMessageId}`);
-      if (res.data && res.data.name) {
-        setChannelName(res.data.name);
-      } else {
-        setChannelName("Unknown");
-      }
-    } catch (err) {
-      console.error("Failed to fetch channel data:", err);
-      setChannelName("Unknown");
-    }
-  };
+  // TO-DO Same as fetchAudio
+  // const fetchChannel = async () => {
+  //   try {
+  //     const res = await api.get(`/channel_by_message/${effectiveMessageId}`);
+  //     if (res.data && res.data.name) {
+  //       setChannelName(res.data.name);
+  //     } else {
+  //       setChannelName("Unknown");
+  //     }
+  //   } catch (err) {
+  //     console.error("Failed to fetch channel data:", err);
+  //     setChannelName("Unknown");
+  //   }
+  // };
 
-  fetchChannel();
-}, [messageId, urlMessageId, edgeServerEndpoint, navigationMessage?.channelName]);
+  // fetchChannel();
+}, [messageId, urlMessageId, navigationMessage?.channelName]);
 
 
   // Format time function
@@ -494,31 +497,32 @@ const formatActualTime = useCallback((timeOffset) => {
     const effectiveMessageId = messageId || urlMessageId;
     if (!effectiveMessageId || transcriptionText) return;
 
-    const fetchTranscription = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${edgeServerEndpoint}/transcribe_save/${effectiveMessageId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch transcription: ${response.statusText}`);
-        }
-        const result = await response.json();
-        console.log("Fetched transcription:", result);
+    // TO-DO Same as FetchAudio
+    // const fetchTranscription = async () => {
+    //   setIsLoading(true);
+    //   try {
+    //     const response = await apiFetch(`/transcribe_save/${effectiveMessageId}`);
+    //     if (!response.ok) {
+    //       throw new Error(`Failed to fetch transcription: ${response.statusText}`);
+    //     }
+    //     const result = await response.json();
+    //     console.log("Fetched transcription:", result);
 
-        if (result.transcription) {
-          setTranscriptionText(result.transcription);
-        } else {
-          setTranscriptionText("No transcription found for this message ID.");
-        }
-      } catch (error) {
-        console.error("Error fetching transcription:", error);
-        setTranscriptionText(`Error: Failed to fetch transcription - ${error.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    //     if (result.transcription) {
+    //       setTranscriptionText(result.transcription);
+    //     } else {
+    //       setTranscriptionText("No transcription found for this message ID.");
+    //     }
+    //   } catch (error) {
+    //     console.error("Error fetching transcription:", error);
+    //     setTranscriptionText(`Error: Failed to fetch transcription - ${error.message}`);
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    // };
 
-    fetchTranscription();
-  }, [messageId, urlMessageId, transcriptionText, edgeServerEndpoint]);
+    // fetchTranscription();
+  }, [messageId, urlMessageId, transcriptionText]);
 
   // Reinitialize WaveSurfer when waveformKey changes or audio changes
   const initializeWaveSurfer = useCallback(() => {
@@ -718,7 +722,7 @@ const formatActualTime = useCallback((timeOffset) => {
     async (url) => {
       try {
         setIsLoading(true);
-        const response = await fetch(url, { mode: "cors" });
+        const response = await apiFetch(url, { mode: "cors" });
         if (!response.ok) throw new Error("Failed to fetch audio");
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
@@ -804,15 +808,16 @@ const formatActualTime = useCallback((timeOffset) => {
   }, [currentTime, processedAudioBuffer, isProcessing, showToast]);
 
 const handledownloadaudio = async () => {
+  // TO-DO Doubt if this works -- why do we need this?
   try {
     showToast('Starting download...', 'info');
-    const res = await axios.get(`${edgeServerEndpoint}/audio_url/${messageId || urlMessageId}?time_format=${timeFormat}`);
+    const res = await api.get(`/audio_url/${messageId || urlMessageId}?time_format=${timeFormat}`);
     let downloadUrl = res.data.download_url; // e.g., "/recordings/channel_3/audio_20250707_120747.wav"
 
     if (downloadUrl) {
       // Prepend the correct API base URL if downloadUrl is relative
       if (downloadUrl.startsWith('/')) {
-        downloadUrl = `${edgeServerEndpoint}${downloadUrl}`;
+        downloadUrl = new URL(downloadUrl, window.location.origin).href;
       }
       const fullDownloadUrl = new URL(downloadUrl, window.location.origin).href; // Ensure valid absolute URL
       console.log(fullDownloadUrl);
@@ -838,8 +843,6 @@ const handledownloadaudio = async () => {
 };
 
 
-
-
   // Reload page
   const handleReload = useCallback(() => {
     showToast('Page reloaded successfully', 'info');
@@ -860,8 +863,9 @@ const handledownloadaudio = async () => {
       showToast('Starting transcription...', 'info');
 
       try {
+        // TO-DO why are we calling audio for transription
         console.log('Fetching audio from:', audioUrl);
-        const response = await fetch( audioUrl, { mode: 'cors' });
+        const response = await apiFetch( audioUrl, { mode: 'cors' });
         if (!response.ok) {
           throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
         }
@@ -885,8 +889,7 @@ const handledownloadaudio = async () => {
         }
 
         // console.log('Sending transcription request to: http://localhost:3999/transcribe');
-        const transcribeResponse = await fetch(`${edgeServerEndpoint}/transcribe`, {
-
+        const transcribeResponse = await apiFetch('/transcribe', {
           method: 'POST',
           body: formData,
         });
@@ -972,7 +975,7 @@ const handledownloadaudio = async () => {
 
     setIsLoadingHistory(true);
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recording/${effectiveMessageId}/history`);
+      const response = await api.get(`/recording/${effectiveMessageId}/history`);
       setHistoryVersions(response.data.history || []);
       
       // Store timezone info if available
@@ -985,7 +988,7 @@ const handledownloadaudio = async () => {
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [messageId, urlMessageId, edgeServerEndpoint]);
+  }, [messageId, urlMessageId]);
 
   const revertToVersion = useCallback(async (versionNumber) => {
     const effectiveMessageId = messageId || urlMessageId;
@@ -995,7 +998,7 @@ const handledownloadaudio = async () => {
     showToast('Reverting to version...', 'info');
     
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recording/${effectiveMessageId}/history/${versionNumber}/revert`);
+      const response = await api.post(`/recording/${effectiveMessageId}/history/${versionNumber}/revert`);
       
       if (response.data.data && response.data.data.transcription) {
         setTranscriptionText(response.data.data.transcription);
@@ -1007,9 +1010,9 @@ const handledownloadaudio = async () => {
         
         // Force reload the audio by updating the audio URL
         try {
-          const audioResponse = await axios.get(`${edgeServerEndpoint}/audio_url/${effectiveMessageId}`);
+          const audioResponse = await api.get(`/audio_url/${effectiveMessageId}`);
           if (audioResponse.data?.download_url) {
-            const fullAudioUrl = `${edgeServerEndpoint}${audioResponse.data.download_url}`;
+            const fullAudioUrl = audioResponse.data.download_url;
             setAudioUrl(fullAudioUrl);
             setInitialAudioUrl(fullAudioUrl);
             
@@ -1039,14 +1042,14 @@ const handledownloadaudio = async () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [messageId, urlMessageId, edgeServerEndpoint, fetchHistory, showToast, reloadAudioAfterRevert]);
+  }, [messageId, urlMessageId, fetchHistory, showToast, reloadAudioAfterRevert]);
 
   const deleteVersion = useCallback(async (versionNumber) => {
     const effectiveMessageId = messageId || urlMessageId;
     if (!effectiveMessageId) return;
 
     try {
-      await axios.delete(`${edgeServerEndpoint}/recording/${effectiveMessageId}/history/${versionNumber}`);
+      await api.delete(`/recording/${effectiveMessageId}/history/${versionNumber}`);
       await fetchHistory(); // Refresh history
       showToast('Version deleted successfully', 'success');
     } catch (error) {
@@ -1057,7 +1060,7 @@ const handledownloadaudio = async () => {
         showToast(`Failed to delete version: ${error.message}`, 'error');
       }
     }
-  }, [messageId, urlMessageId, edgeServerEndpoint, fetchHistory, showToast]);
+  }, [messageId, urlMessageId, fetchHistory, showToast]);
 
   // Save transcription and cropped audio
   const handleSaveTranscription = useCallback(async () => {
@@ -1098,7 +1101,7 @@ const handledownloadaudio = async () => {
         formData.append("channelId", channelId || "");
 
         try {
-          const originalResponse = await fetch(initialAudioUrl);
+          const originalResponse = await apiFetch(initialAudioUrl);
           const originalBlob = await originalResponse.blob();
           let backupAudioName = safeAudioName.replace(/\.wav$/i, "_bakp.wav");
           
@@ -1124,7 +1127,7 @@ const handledownloadaudio = async () => {
         }
       }
 
-      const response = await fetch(`${edgeServerEndpoint}/transcribe_save/${effectiveMessageId}`, {
+      const response = await apiFetch(`/transcribe_save/${effectiveMessageId}`, {
         method: "POST",
         body: formData,
       });
@@ -1155,7 +1158,7 @@ const handledownloadaudio = async () => {
       setProcessProgress(100);
       setTimeout(() => setProcessProgress(0), 1000);
     }
-  }, [transcriptionText, messageId, urlMessageId, isProcessing, isLoading, edgeServerEndpoint, croppedAudioWav, audioUrl, initialAudioUrl, parseAudioUrl, fetchHistory]);
+  }, [transcriptionText, messageId, urlMessageId, isProcessing, isLoading, croppedAudioWav, audioUrl, initialAudioUrl, parseAudioUrl, fetchHistory]);
 
   // Save current state to undo stack
   const saveToUndoStack = (text) => {
@@ -1233,7 +1236,7 @@ const handledownloadaudio = async () => {
 
 
 
- const [undoStack, setUndoStack] = useState([]);
+const [undoStack, setUndoStack] = useState([]);
 const [redoStack, setRedoStack] = useState([]);
 
 // History management state

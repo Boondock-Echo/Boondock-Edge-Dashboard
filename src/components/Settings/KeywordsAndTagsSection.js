@@ -15,9 +15,7 @@ const KeywordsAndTagsSection = ({
   setNewKeyword,
   handleAddKeyword,
   handleRemoveKeyword,
-  isDarkMode,
-  edgeServerEndpoint
-}) => {
+  isDarkMode}) => {
   const [activeTab, setActiveTab] = useState('keywords');
   const card = settingsMainCardClass(isDarkMode);
 
@@ -64,7 +62,6 @@ const KeywordsAndTagsSection = ({
         )}
         {activeTab === 'tags' && (
           <SimpleTagManager
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
           />
         )}

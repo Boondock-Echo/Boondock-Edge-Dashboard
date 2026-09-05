@@ -4,12 +4,11 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Loader2, Copy, Check } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 
 const InlineDocumentation = ({ 
   filename, 
   isDarkMode,
-  edgeServerEndpoint,
   title 
 }) => {
   const [content, setContent] = useState('');
@@ -37,8 +36,8 @@ const InlineDocumentation = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        `${edgeServerEndpoint}/docs/${filename}`,
+      const response = await api.get(
+        `/docs/${filename}`,
         {
           responseType: 'text',
           headers: {

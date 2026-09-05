@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import {
   Usb,
   RefreshCw,
@@ -10,7 +10,7 @@ import {
   Volume2,
 } from 'lucide-react';
 
-const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
+const USBRecorders = ({ isDarkMode, globalSettings }) => {
   const [loading, setLoading] = useState(true);
   const [devices, setDevices] = useState([]);
   const [recorders, setRecorders] = useState([]);
@@ -19,7 +19,6 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
   const [sounddeviceAvailable, setSounddeviceAvailable] = useState(true);
   const [busyDeviceId, setBusyDeviceId] = useState(null);
 
-  const apiBase = (edgeServerEndpoint || '').replace(/\/$/, '');
 
   const fetchUsbState = useCallback(async (showLoader = true) => {
     if (showLoader) {
@@ -29,7 +28,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
 
     try {
       // Fetch available USB audio devices
-      const devicesRes = await axios.get(`${apiBase}/usb-recorders/devices`);
+      const devicesRes = await api.get(`/usb-recorders/devices`);
       const devData = devicesRes.data || {};
       setDevices(Array.isArray(devData.devices) ? devData.devices : []);
       setSounddeviceAvailable(
@@ -39,7 +38,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
       );
 
       // Fetch existing recorder configurations
-      const recordersRes = await axios.get(`${apiBase}/usb-recorders`);
+      const recordersRes = await api.get(`/usb-recorders`);
       const recData = recordersRes.data || {};
       setRecorders(Array.isArray(recData.recorders) ? recData.recorders : []);
       setError(null);
@@ -53,16 +52,11 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [apiBase]);
+  }, []);
 
   useEffect(() => {
-    if (!apiBase) {
-      setError('Edge server endpoint is not configured.');
-      setLoading(false);
-      return;
-    }
     fetchUsbState(true);
-  }, [apiBase, fetchUsbState]);
+  }, [fetchUsbState]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -72,7 +66,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
   const handleCreateRecorder = async (deviceId) => {
     try {
       setBusyDeviceId(deviceId);
-      await axios.post(`${apiBase}/usb-recorders`, {
+      await api.post(`/usb-recorders`, {
         device_id: deviceId,
       });
       await fetchUsbState(false);
@@ -90,7 +84,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
   const handleStart = async (deviceId) => {
     try {
       setBusyDeviceId(deviceId);
-      await axios.post(`${apiBase}/usb-recorders/${deviceId}/start`);
+      await api.post(`/usb-recorders/${deviceId}/start`);
       await fetchUsbState(false);
     } catch (err) {
       console.error('Failed to start USB recorder:', err);
@@ -106,7 +100,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
   const handleStop = async (deviceId) => {
     try {
       setBusyDeviceId(deviceId);
-      await axios.post(`${apiBase}/usb-recorders/${deviceId}/stop`);
+      await api.post(`/usb-recorders/${deviceId}/stop`);
       await fetchUsbState(false);
     } catch (err) {
       console.error('Failed to stop USB recorder:', err);
@@ -130,7 +124,7 @@ const USBRecorders = ({ edgeServerEndpoint, isDarkMode, globalSettings }) => {
 
     try {
       setBusyDeviceId(deviceId);
-      await axios.delete(`${apiBase}/usb-recorders/${deviceId}`);
+      await api.delete(`/usb-recorders/${deviceId}`);
       await fetchUsbState(false);
     } catch (err) {
       console.error('Failed to delete USB recorder:', err);

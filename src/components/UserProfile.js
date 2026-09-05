@@ -1,9 +1,10 @@
+import api from '../utils/apiClient';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { User, Shield, Smartphone, Clock, Trash2, Check, X, ArrowLeft, Key, Unlock } from 'lucide-react';
 
-const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
+const UserProfile = ({ isDarkMode }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [mfaStatus, setMfaStatus] = useState({ mfa_enabled: false, has_secret: false });
@@ -26,33 +27,13 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
 
   const fetchProfileData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-
-      // Fetch MFA status
-      const mfaResponse = await fetch(`${edgeServerEndpoint}/mfa/status`, { headers });
-      if (mfaResponse.ok) {
-        const mfaData = await mfaResponse.json();
-        setMfaStatus(mfaData);
-        // If MFA is enforced but not enabled, show reminder
-        if (mfaData.mfa_enforced && !mfaData.mfa_enabled) {
-          const dismissed = sessionStorage.getItem('mfa_reminder_dismissed');
-          if (!dismissed) {
-            // Could trigger reminder here if needed
-          }
-        }
-      }
-
-      // Fetch devices and login history
-      const devicesResponse = await fetch(`${edgeServerEndpoint}/users/${user?.username}/devices`, { headers });
-      if (devicesResponse.ok) {
-        const devicesData = await devicesResponse.json();
-        setDevices(devicesData.devices || []);
-        setLoginHistory(devicesData.login_history || []);
-      }
+      const [{ data: mfaData }, { data: devicesData }] = await Promise.all([
+        api.get('/mfa/status'),
+        api.get(`/users/${user?.username}/devices`),
+      ]);
+      setMfaStatus(mfaData);
+      setDevices(devicesData.devices || []);
+      setLoginHistory(devicesData.login_history || []);
     } catch (err) {
       console.error('Error fetching profile data:', err);
       setError('Failed to load profile data');
@@ -64,25 +45,11 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
   const handleMfaSetup = async () => {
     try {
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/mfa/setup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMfaSetup(data);
-        setShowMfaSetup(true);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to setup MFA');
-      }
+      const { data } = await api.post('/mfa/setup');
+      setMfaSetup(data);
+      setShowMfaSetup(true);
     } catch (err) {
-      setError('Failed to setup MFA');
+      setError(err.response?.data?.error || 'Failed to setup MFA');
       console.error('MFA setup error:', err);
     }
   };
@@ -96,29 +63,15 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
     try {
       setVerifying(true);
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/mfa/verify-setup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ totp_code: totpCode })
-      });
-
-      if (response.ok) {
-        setSuccess('MFA enabled successfully!');
-        setShowMfaSetup(false);
-        setMfaSetup(null);
-        setTotpCode('');
-        fetchProfileData();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Invalid code. Please try again.');
-      }
+      await api.post('/mfa/verify-setup', { totp_code: totpCode });
+      setSuccess('MFA enabled successfully!');
+      setShowMfaSetup(false);
+      setMfaSetup(null);
+      setTotpCode('');
+      fetchProfileData();
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to verify MFA setup');
+      setError(err.response?.data?.error || 'Failed to verify MFA setup');
       console.error('MFA verify error:', err);
     } finally {
       setVerifying(false);
@@ -130,7 +83,6 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
       setError('Password is required');
       return;
     }
-
     if (mfaStatus.mfa_enabled && !disableTotp) {
       setError('TOTP code is required to disable MFA');
       return;
@@ -139,31 +91,17 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
     try {
       setDisabling(true);
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/mfa/disable`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          password: disablePassword,
-          totp_code: disableTotp
-        })
+      await api.post('/mfa/disable', {
+        password: disablePassword,
+        totp_code: disableTotp,
       });
-
-      if (response.ok) {
-        setSuccess('MFA disabled successfully');
-        setDisablePassword('');
-        setDisableTotp('');
-        fetchProfileData();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to disable MFA');
-      }
+      setSuccess('MFA disabled successfully');
+      setDisablePassword('');
+      setDisableTotp('');
+      fetchProfileData();
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to disable MFA');
+      setError(err.response?.data?.error || 'Failed to disable MFA');
       console.error('MFA disable error:', err);
     } finally {
       setDisabling(false);
@@ -174,25 +112,12 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
     if (!window.confirm('Are you sure you want to remove this device?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/users/${user?.username}/devices/${deviceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setSuccess('Device removed successfully');
-        fetchProfileData();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to remove device');
-      }
+      await api.delete(`/users/${user?.username}/devices/${deviceId}`);
+      setSuccess('Device removed successfully');
+      fetchProfileData();
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to remove device');
+      setError(err.response?.data?.error || 'Failed to remove device');
       console.error('Remove device error:', err);
     }
   };
@@ -466,4 +391,3 @@ const UserProfile = ({ isDarkMode, edgeServerEndpoint }) => {
 };
 
 export default UserProfile;
-

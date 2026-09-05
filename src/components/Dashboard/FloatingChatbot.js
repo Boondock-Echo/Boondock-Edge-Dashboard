@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import apiFetch from '../../utils/apiClient';
+import { useState, useEffect, useRef } from 'react';
 import { Send, X, Bot, User, ChevronDown, ChevronUp, Minimize2, Maximize2, Move, HelpCircle, Settings } from 'lucide-react';
 
 const EnhancedDraggableBot = ({ 
   isDarkMode = false, 
-  edgeServerEndpoint = 'https://boondock-edge.local:4000/api', 
   branding = {
     organizationName: 'Assistant',
     brandColors: {
@@ -264,7 +264,7 @@ const EnhancedDraggableBot = ({
       
       // Uncomment for actual API implementation
       /*
-      const response = await fetch(`${edgeServerEndpoint}/chatbot`, {
+      const response = await apiFetch(`/chatbot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

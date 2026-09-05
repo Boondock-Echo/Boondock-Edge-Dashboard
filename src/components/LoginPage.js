@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import api from '../utils/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Sun, Moon, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -28,7 +29,7 @@ const BRAND = {
   structureGray: 'var(--ui-panel)',
 };
 
-const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServerEndpoint }) => {
+const LoginPage = ({ isDarkMode, toggleTheme }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
@@ -39,7 +40,6 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
   const [rememberDevice, setRememberDevice] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  const edgeServerEndpoint = propEdgeServerEndpoint || process.env.REACT_APP_EDGE_SERVER_ENDPOINT;
 
   const [branding, setBranding] = useState({
     organizationName: '',
@@ -68,13 +68,11 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
   }, []);
 
   useEffect(() => {
-    if (brandingFetchedRef.current || !edgeServerEndpoint) return;
+    if (brandingFetchedRef.current) return;
     let isMounted = true;
     const fetchBrandingData = async () => {
       try {
-        const response = await fetch(`${edgeServerEndpoint}/branding`);
-        if (!response.ok) throw new Error('Failed to fetch branding data');
-        const data = await response.json();
+        const { data } = await api.get('/branding');
         if (isMounted) {
           setBranding({
             organizationName: data.organization_name ?? '',
@@ -106,7 +104,7 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
     return () => {
       isMounted = false;
     };
-  }, [edgeServerEndpoint]);
+  }, []);
 
   useEffect(() => {
     if (!brandingLoaded) return;
@@ -149,39 +147,36 @@ const LoginPage = ({ isDarkMode, toggleTheme, edgeServerEndpoint: propEdgeServer
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`${edgeServerEndpoint}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: username,
-          password,
-          totp_code: mfaRequired ? totpCode : undefined
-        })
+      const { data } = await api.post('/auth/login', {
+        email: username,
+        password,
+        totp_code: mfaRequired ? totpCode : undefined,
       });
-      const data = await response.json();
-      if (response.ok) {
-        persistRemember();
-        login({
-          username: data.user.email,
-          token: data.token,
-          name: data.user.name,
-          role: data.user.role
-        });
-        if (data.show_mfa_reminder) {
-          sessionStorage.removeItem('mfa_reminder_dismissed');
-        }
-        navigate('/');
-      } else if (data.mfa_required) {
+      persistRemember();
+      // TO-DO Pass user not fields
+      login({
+        username: data.user.email,
+        token: data.token,
+        name: data.user.name,
+        role: data.user.role
+      });
+      if (data.show_mfa_reminder) {
+        sessionStorage.removeItem('mfa_reminder_dismissed');
+      }
+      navigate('/');
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.mfa_required) {
         setMfaRequired(true);
         setError('Please enter your MFA code');
-      } else {
-        setError(data.error || 'Invalid Credentials');
+      } else if (err.response) {
+        setError(data?.error || 'Invalid Credentials');
         setMfaRequired(false);
         setTotpCode('');
+      } else {
+        setError('Network error. Please try again.');
+        console.error('Login error:', err);
       }
-    } catch (err) {
-      setError('Network error. Please try again.');
-      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }

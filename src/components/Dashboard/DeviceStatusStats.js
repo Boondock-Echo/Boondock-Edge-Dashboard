@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Activity, 
@@ -14,7 +15,7 @@ import {
   List,
 } from 'lucide-react';
 
-const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, onClose }) => {
+const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
   const [healthStats, setHealthStats] = useState(null);
   const [visualState, setVisualState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,6 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
   const [cloudEvents, setCloudEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  const base = edgeServerEndpoint || '';
 
   const fetchDeviceStats = async (showSpinner = false) => {
     if (!mac) return;
@@ -42,8 +42,8 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
       setError(null);
       
       const [healthResponse, visualResponse] = await Promise.all([
-        fetch(`${base}/health/devices/${encodeURIComponent(mac)}?current=true`).catch(() => null),
-        fetch(`${base}/v1/channel-visual-states/${encodeURIComponent(mac)}`).catch(() => null)
+        apiFetch(`/health/devices/${encodeURIComponent(mac)}?current=true`).catch(() => null),
+        apiFetch(`/v1/channel-visual-states/${encodeURIComponent(mac)}`).catch(() => null)
       ]);
 
       if (healthResponse && healthResponse.ok) {
@@ -73,7 +73,7 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
     if (!mac) return;
     setLogFilesLoading(true);
     try {
-      const r = await fetch(`${base}/v1/devices/${encodeURIComponent(mac)}/logs/files`);
+      const r = await apiFetch(`/v1/devices/${encodeURIComponent(mac)}/logs/files`);
       const data = r.ok ? await r.json() : { files: [] };
       setLogFiles(data.files || []);
     } catch {
@@ -81,15 +81,15 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
     } finally {
       setLogFilesLoading(false);
     }
-  }, [mac, base]);
+  }, [mac]);
 
   const fetchLogContent = async (path) => {
     if (!mac || !path) return;
     setLogContentLoading(true);
     setLogContent('');
     try {
-      const r = await fetch(
-        `${base}/v1/devices/${encodeURIComponent(mac)}/logs/content?path=${encodeURIComponent(path)}`
+      const r = await apiFetch(
+        `/v1/devices/${encodeURIComponent(mac)}/logs/content?path=${encodeURIComponent(path)}`
       );
       const data = r.ok ? await r.json() : {};
       setLogContent(data.content || (r.ok ? '' : `Error: ${r.status}`));
@@ -108,8 +108,8 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
     if (!mac) return;
     setEventsLoading(true);
     try {
-      const r = await fetch(
-        `${base}/v1/devices/${encodeURIComponent(mac)}/events?limit=150`
+      const r = await apiFetch(
+        `/v1/devices/${encodeURIComponent(mac)}/events?limit=150`
       );
       const data = r.ok ? await r.json() : { events: [] };
       setCloudEvents(data.events || []);
@@ -118,7 +118,7 @@ const DeviceStatusStats = ({ mac, channelName, edgeServerEndpoint, isDarkMode, o
     } finally {
       setEventsLoading(false);
     }
-  }, [mac, base]);
+  }, [mac]);
 
   useEffect(() => {
     fetchDeviceStats(true);

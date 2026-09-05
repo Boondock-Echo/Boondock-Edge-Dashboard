@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/apiClient';
 import {
   ArrowLeft,
   Tag,
@@ -29,9 +29,6 @@ const PALETTE = [
 ];
 
 const palette = (i) => PALETTE[i % PALETTE.length];
-
-const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
-
 
 /* ─────────────────────────────────────────────
    Sub-components
@@ -182,7 +179,7 @@ const ReleasePage = ({ isDarkMode: isDarkModeProp }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${edgeServerEndpoint}/release-notes`);
+      const { data } = await api.get(`/release-notes`);
       setReleases(data.releases || []);
     } catch (err) {
       setError('Could not load release notes. Please try again.');

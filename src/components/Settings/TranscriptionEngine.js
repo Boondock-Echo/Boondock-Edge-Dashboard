@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { 
   Loader, 
   Clock, 
@@ -27,7 +27,6 @@ import {
 
 const TranscriptionEngine = ({
   isDarkMode,
-  edgeServerEndpoint = '/api',
   globalSettings,
   handleGlobalChange,
 }) => {
@@ -57,11 +56,11 @@ const TranscriptionEngine = ({
       logsParams.append('limit', pagination.per_page);
       
       const [statusResponse, logsResponse] = await Promise.all([
-        axios.get(`${edgeServerEndpoint}/queue/status`).catch(err => {
+        api.get(`/queue/status`).catch(err => {
           console.error('Error fetching queue status:', err);
           return { data: null };
         }),
-        axios.get(`${edgeServerEndpoint}/queue/logs?${logsParams.toString()}`).catch(err => {
+        api.get(`/queue/logs?${logsParams.toString()}`).catch(err => {
           console.error('Error fetching queue logs:', err);
           return { data: { tasks: [], pagination: {} } };
         })
@@ -94,13 +93,13 @@ const TranscriptionEngine = ({
       return () => clearInterval(interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, statusFilter, dateFilter, pagination.page, edgeServerEndpoint]);
+  }, [autoRefresh, statusFilter, dateFilter, pagination.page]);
 
   const handleStartStopQueue = async () => {
-    const url = queueStatus?.is_running ? `${edgeServerEndpoint}/queue/stop` : `${edgeServerEndpoint}/queue/start`;
+    const url = queueStatus?.is_running ? '/queue/stop' : '/queue/start';
     setQueueActionLoading(true);
     try {
-      await axios.post(url);
+      await api.post(url);
       await fetchQueueData();
     } catch (err) {
       console.error('Queue start/stop failed:', err);
@@ -161,7 +160,7 @@ const TranscriptionEngine = ({
         return;
       }
 
-      const response = await axios.post(`${edgeServerEndpoint}/queue/kill/${filename}`);
+      const response = await api.post(`/queue/kill/${filename}`);
       
       if (response.data.message) {
         // Refresh data after kill
@@ -176,7 +175,7 @@ const TranscriptionEngine = ({
 
   const handleRequeue = async (filename) => {
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/queue/requeue/${filename}`);
+      const response = await api.post(`/queue/requeue/${filename}`);
       
       if (response.data.message) {
         // Refresh data after requeue
@@ -196,7 +195,7 @@ const TranscriptionEngine = ({
       if (statusFilter) purgeParams.append('status', statusFilter);
       if (dateFilter) purgeParams.append('date_filter', dateFilter);
 
-      const response = await axios.post(`${edgeServerEndpoint}/queue/purge?${purgeParams.toString()}`);
+      const response = await api.post(`/queue/purge?${purgeParams.toString()}`);
       
       if (response.data.purged_count !== undefined) {
         alert(`Purged ${response.data.purged_count} tasks`);
@@ -339,7 +338,6 @@ const TranscriptionEngine = ({
             globalSettings={globalSettings}
             handleGlobalChange={handleGlobalChange}
             isDarkMode={isDarkMode}
-            edgeServerEndpoint={edgeServerEndpoint}
           />
         </div>
       )}

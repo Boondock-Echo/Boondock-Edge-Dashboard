@@ -1,10 +1,11 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import { X, AlertCircle, AlertTriangle, Info, WifiOff } from 'lucide-react';
 
 
 
-const NotificationBanner = ({ edgeServerEndpoint, isDarkMode }) => {
+const NotificationBanner = ({ isDarkMode }) => {
 
   const [visibleNotification, setVisibleNotification] = useState(null);
 
@@ -16,7 +17,7 @@ const NotificationBanner = ({ edgeServerEndpoint, isDarkMode }) => {
 
     try {
 
-      const response = await fetch(`${edgeServerEndpoint}/notifications`);
+      const response = await apiFetch(`/notifications`);
 
       if (!response.ok) throw new Error('Failed to fetch notifications');
 
@@ -66,7 +67,7 @@ const NotificationBanner = ({ edgeServerEndpoint, isDarkMode }) => {
 
     }
 
-  }, [edgeServerEndpoint]);
+  }, []);
 
 
 
@@ -88,7 +89,7 @@ const NotificationBanner = ({ edgeServerEndpoint, isDarkMode }) => {
 
     try {
 
-      const response = await fetch(`${edgeServerEndpoint}/notifications/${notificationId}`, {
+      const response = await apiFetch(`/notifications/${notificationId}`, {
 
         method: 'DELETE'
 

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '../../utils/apiClient';
 
 /**
 
@@ -19,38 +19,6 @@ import axios from 'axios';
  * Flow: Web Interface → Backend Flask Server → Local GPIO Service (localhost:8000)
 
  */
-
-
-/**
-
- * Create axios instance for GPIO API (via backend)
-
- * All requests go to the backend Flask server, which then proxies to the GPIO service
-
- */
-
-const createGpioClient = () => {
-
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
-
-  return axios.create({
-
-    baseURL: edgeServerEndpoint, // Backend Flask server URL, NOT GPIO service URL
-
-    timeout: 10000, // Longer timeout since it goes through backend
-
-    headers: {
-
-      'Accept': 'application/json',
-
-      'Content-Type': 'application/json',
-
-    },
-
-  });
-
-};
-
 
 
 /**
@@ -119,9 +87,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get('/gpio/pattern');
+      const response = await api.get('/gpio/pattern');
 
       return response.data;
 
@@ -149,9 +115,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/pattern/${pattern}`);
+      const response = await api.post(`/gpio/pattern/${pattern}`);
 
       return response.data;
 
@@ -177,9 +141,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post('/gpio/stop');
+      const response = await api.post('/gpio/stop');
 
       return response.data;
 
@@ -205,9 +167,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get('/gpio/led/gpio');
+      const response = await api.get('/gpio/led/gpio');
 
       return response.data;
 
@@ -235,9 +195,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/led/gpio/${gpio}`);
+      const response = await api.post(`/gpio/led/gpio/${gpio}`);
 
       return response.data;
 
@@ -263,9 +221,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get('/gpio/led/enabled');
+      const response = await api.get('/gpio/led/enabled');
 
       return response.data;
 
@@ -291,9 +247,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get('/gpio/led/mode');
+      const response = await api.get('/gpio/led/mode');
 
       return response.data.mode;
 
@@ -321,9 +275,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/led/mode/${mode}`);
+      const response = await api.post(`/gpio/led/mode/${mode}`);
 
       return response.data;
 
@@ -351,9 +303,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/led/enabled/${enabled}`);
+      const response = await api.post(`/gpio/led/enabled/${enabled}`);
 
       return response.data;
 
@@ -387,9 +337,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get('/gpio/relays');
+      const response = await api.get('/gpio/relays');
 
       return response.data.relays || {};
 
@@ -417,9 +365,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get(`/gpio/relays/${name}`);
+      const response = await api.get(`/gpio/relays/${name}`);
 
       return response.data.relay;
 
@@ -451,9 +397,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post('/gpio/relays', { name, gpio, normal_state: normalState });
+      const response = await api.post('/gpio/relays', { name, gpio, normal_state: normalState });
 
       return response.data;
 
@@ -481,9 +425,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.delete(`/gpio/relays/${name}`);
+      const response = await api.delete(`/gpio/relays/${name}`);
 
       return response.data;
 
@@ -513,9 +455,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/relays/${name}/${action}`);
+      const response = await api.post(`/gpio/relays/${name}/${action}`);
 
       return response.data;
 
@@ -543,9 +483,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.get(`/gpio/relays/${name}/normal_state`);
+      const response = await api.get(`/gpio/relays/${name}/normal_state`);
 
       return response.data.normal_state;
 
@@ -575,9 +513,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/relays/${name}/normal_state/${normalState}`);
+      const response = await api.post(`/gpio/relays/${name}/normal_state/${normalState}`);
 
       return response.data;
 
@@ -607,9 +543,7 @@ export const gpioService = {
 
     try {
 
-      const client = createGpioClient();
-
-      const response = await client.post(`/gpio/relays/${name}/gpio/${gpio}`);
+      const response = await api.post(`/gpio/relays/${name}/gpio/${gpio}`);
 
       return response.data;
 
@@ -1066,6 +1000,5 @@ export const ledStatusManager = new LEDStatusManager();
 
 
 export default gpioService;
-
 
 

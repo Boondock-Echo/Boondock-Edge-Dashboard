@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect } from "react";
 import { X, Save, Volume2, Clock, MinusCircle, PlusCircle, Settings } from "lucide-react";
 import { toast } from 'react-toastify';
@@ -16,14 +17,13 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
   });
   const [initialSettings, setInitialSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   useEffect(() => {
     if (channel && channel.id) {
       // Fetch full channel data to ensure we have speaker_enabled and speaker_volume
       const fetchChannelData = async () => {
         try {
-          const response = await fetch(`${edgeServerEndpoint}/channel/${channel.id}`);
+          const response = await apiFetch(`/channel/${channel.id}`);
           if (response.ok) {
             const fullChannel = await response.json();
             const newSettings = {
@@ -223,7 +223,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
     const commands = buildSerialCommands(changedSettings);
     if (commands.length === 0) return;
     try {
-      await fetch('${edgeServerEndpoint}/recorders/monitor/send-by-mac', {
+      await apiFetch('/recorders/monitor/send-by-mac', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mac: channel.mac, commands })

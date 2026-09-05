@@ -26,7 +26,6 @@ const TABS = [
 
 const SystemSection = ({
   isDarkMode,
-  edgeServerEndpoint,
   showToast,
   globalSettings,
   handleGlobalChange,
@@ -76,7 +75,6 @@ const SystemSection = ({
       reverseSort={reverseSort}
       setReverseSort={setReverseSort}
       user={user}
-      edgeServerEndpoint={edgeServerEndpoint}
       activeSection="hotspot-configuration"
       omitHotspotSectionHeader
       showToast={showToast}
@@ -97,7 +95,6 @@ const SystemSection = ({
             reverseSort={reverseSort}
             setReverseSort={setReverseSort}
             user={user}
-            edgeServerEndpoint={edgeServerEndpoint}
             activeSection="display-language"
           />
         );
@@ -112,7 +109,6 @@ const SystemSection = ({
             globalSettings={globalSettings}
             handleGlobalChange={handleGlobalChange}
             isDarkMode={isDarkMode}
-            edgeServerEndpoint={edgeServerEndpoint}
           />
         );
       case 'api-keys':
@@ -125,13 +121,11 @@ const SystemSection = ({
         return (
           <div className="space-y-10">
             <Maintenance
-              edgeServerEndpoint={edgeServerEndpoint}
               isDarkMode={isDarkMode}
               showToast={showToast}
             />
             <BackupRestore
               isDarkMode={isDarkMode}
-              edgeServerEndpoint={edgeServerEndpoint}
               showToast={showToast}
               globalSettings={globalSettings}
               handleGlobalChange={handleGlobalChange}
@@ -142,7 +136,6 @@ const SystemSection = ({
       case 'danger-zone':
         return (
           <DangerZone
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
             showToast={showToast}
           />

@@ -132,7 +132,7 @@ const SIDEBAR_NAV = [
   { id: "activity-summary", label: "Activity", icon: "monitoring" },
 ];
 
-export default function LicenseSubscriptionPage({ isDarkMode, edgeServerEndpoint }) {
+export default function LicenseSubscriptionPage({ isDarkMode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [onDemandEnabled, setOnDemandEnabled] = useState(DEMO_LICENSE.onDemandDefault);
@@ -210,7 +210,6 @@ export default function LicenseSubscriptionPage({ isDarkMode, edgeServerEndpoint
   return (
     <CommandCenterShell
       isDarkMode={isDarkMode}
-      edgeServerEndpoint={edgeServerEndpoint}
       sidebarOpen={sidebarOpen}
       setSidebarOpen={setSidebarOpen}
       areaTitle="Operations"

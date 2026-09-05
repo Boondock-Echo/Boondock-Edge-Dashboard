@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect } from 'react';
 import { Zap, PlusCircle, ToggleLeft, EyeOff, Copy } from 'lucide-react';
 import SettingsSectionHeader from './SettingsSectionHeader';
@@ -80,13 +81,12 @@ const HallucinationsSection = ({ isDarkMode, globalSettings = {}, handleGlobalCh
   const [isRegex, setIsRegex] = useState(false);
   const [isWildcard, setIsWildcard] = useState(false);
   const [error, setError] = useState(null);
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   // Fetch existing hallucinations on component mount
   useEffect(() => {
     const fetchHallucinations = async () => {
       try {
-        const response = await fetch(`${edgeServerEndpoint}/hallucinations`);
+        const response = await apiFetch(`/hallucinations`);
         if (!response.ok) {
           throw new Error('Failed to fetch hallucinations');
         }
@@ -98,7 +98,7 @@ const HallucinationsSection = ({ isDarkMode, globalSettings = {}, handleGlobalCh
       }
     };
     fetchHallucinations();
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const handleAddHallucination = async () => {
     if (!newHallucination.trim()) return;
@@ -110,7 +110,7 @@ const HallucinationsSection = ({ isDarkMode, globalSettings = {}, handleGlobalCh
     };
 
     try {
-      const response = await fetch(`${edgeServerEndpoint}/hallucinations`, {
+      const response = await apiFetch(`/hallucinations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +135,7 @@ const HallucinationsSection = ({ isDarkMode, globalSettings = {}, handleGlobalCh
 
   const handleRemoveHallucination = async (hallucinationToRemove) => {
     try {
-      const response = await fetch(`${edgeServerEndpoint}/hallucinations/${hallucinationToRemove.id}`, {
+      const response = await apiFetch(`/hallucinations/${hallucinationToRemove.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -16,7 +16,6 @@ import {
 
 const ChannelsAndStationsSection = ({
   isDarkMode,
-  edgeServerEndpoint = '/api',
   recordersEnabled,
   globalSettings,
 }) => {
@@ -127,14 +126,12 @@ const ChannelsAndStationsSection = ({
 
         {activeTab === 'recorders' && (
           <RecorderDevices
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
             enabled={recordersEnabled}
           />
         )}
         {activeTab === 'usb-recorders' && (
           <USBRecorders
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
             globalSettings={globalSettings}
           />
@@ -142,17 +139,15 @@ const ChannelsAndStationsSection = ({
         {activeTab === 'channels' && (
           <ChannelSettings
             isDarkMode={isDarkMode}
-            edgeServerEndpoint={edgeServerEndpoint}
           />
         )}
         {activeTab === 'stations' && (
           <FrequencyManagement
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
           />
         )}
         {activeTab === 'health' && (
-          <Health edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} />
+          <Health isDarkMode={isDarkMode} />
         )}
       </div>
     </SettingsSectionWidth>

@@ -220,6 +220,21 @@ editing the database manually.
 
 ## Security and support
 
+### HTTP client policy
+
+The dashboard uses the browser-native Fetch API for HTTP requests. Its
+advantages are no client dependency, standard `Request`/`Response` objects,
+native streaming, and cancellation through `AbortController`. Authentication,
+base URLs, timeouts, JSON decoding, and non-success response handling can all be
+implemented in the shared Fetch client; none of those capabilities requires an
+additional HTTP library.
+
+Use `api` from `src/utils/apiClient.js` for JSON API calls. It provides the
+project's normalized `data` and HTTP-error contract. Use `apiFetch` from the same
+module only when code needs the native browser `Response`, such as media, blob,
+or streaming reads. Both entry points share the API prefix, bearer token,
+timeout, and unauthorized-session handling. Do not call `window.fetch` directly.
+
 - Keep the Edge host and its system packages patched.
 - Restrict dashboard access to trusted networks and users.
 - Do not commit `install.conf`, backups, credentials, recordings, or customer data.

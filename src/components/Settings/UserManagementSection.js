@@ -10,9 +10,7 @@ import {
 } from './SettingsSectionLayout';
 
 const UserManagementSection = ({
-  isDarkMode,
-  edgeServerEndpoint
-}) => {
+  isDarkMode}) => {
   const [activeTab, setActiveTab] = useState('users');
   const card = settingsMainCardClass(isDarkMode);
 
@@ -49,14 +47,12 @@ const UserManagementSection = ({
 
         {activeTab === 'users' && (
           <UserManagement
-            edgeServerEndpoint={edgeServerEndpoint}
             isDarkMode={isDarkMode}
           />
         )}
         {activeTab === 'profiles' && (
           <ProfileManagement
             isDarkMode={isDarkMode}
-            edgeServerEndpoint={edgeServerEndpoint}
           />
         )}
       </div>

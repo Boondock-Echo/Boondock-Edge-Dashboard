@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import { useState, useEffect } from 'react';
 import { Radio, RadioTower, Volume2, Globe2, Tag,
   User2, Settings2, Plus, ExternalLink } from 'lucide-react';
@@ -6,7 +7,7 @@ import ChannelCreateModal from './ChannelCreateModal';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
+const ChannelSettings = ({ isDarkMode = false }) => {
   // =========================================================================
   // State Management
   // =========================================================================
@@ -37,7 +38,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
   // =========================================================================
   const fetchChannels = async () => {
     try {
-      const response = await fetch(`${edgeServerEndpoint}/channels`);
+      const response = await apiFetch(`/channels`);
       if (!response.ok) throw new Error('Failed to fetch channels');
       
       const data = await response.json();
@@ -74,7 +75,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
   const fetchFrequencies = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${edgeServerEndpoint}/frequencies`);
+      const response = await apiFetch(`/frequencies`);
       if (!response.ok) throw new Error('Failed to fetch frequencies');
       const data = await response.json();
       setFrequencies(data);
@@ -121,7 +122,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
     );
 
     try {
-      const response = await fetch(`${edgeServerEndpoint}/channel/${id}`, {
+      const response = await apiFetch(`/channel/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +184,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
     
     setIsSaving(true);
     try {
-      const response = await fetch(`${edgeServerEndpoint}/channel/${channelId}`, {
+      const response = await apiFetch(`/channel/${channelId}`, {
         method: 'DELETE',
       });
 
@@ -220,7 +221,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
         )
       );
 
-      const response = await fetch(`${edgeServerEndpoint}/channel/${channelId}`, {
+      const response = await apiFetch(`/channel/${channelId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...channel, status: newStatus }),
@@ -254,7 +255,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
         )
       );
 
-      const response = await fetch(`${edgeServerEndpoint}/channel/${channelId}/resume`, {
+      const response = await apiFetch(`/channel/${channelId}/resume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -533,7 +534,7 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
       }
     };
     loadData();
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // =========================================================================
   // Main Render
@@ -612,7 +613,6 @@ const ChannelSettings = ({ edgeServerEndpoint, isDarkMode = false }) => {
           onChannelCreated={handleCreateChannel}
           frequencies={frequencies}
           isDarkMode={isDarkMode}
-          edgeServerEndpoint={edgeServerEndpoint}
           isSaving={isSaving}
         />
       )}

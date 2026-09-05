@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CalendarCheck, Database, MessageSquare, ChevronLeft, ChevronRight, Radio } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
@@ -61,7 +61,6 @@ const ErrorDisplay = ({ error, onRetry, isDarkMode }) => (
 );
 
 const F1TerminalLogs = ({
-  edgeServerEndpoint = '/api',
   isDarkMode = true,
   timezone,
   timeFormat,
@@ -151,7 +150,7 @@ const F1TerminalLogs = ({
       setError(null);
 
       // No limit param = server returns all logs for the date so EVENTS (and other tabs) show everything.
-      const response = await axios.get(`${edgeServerEndpoint}/logs${date ? `?date=${date}` : ''}`, {
+      const response = await api.get(`/logs${date ? `?date=${date}` : ''}`, {
         timeout: 60000,
         headers: {
           'Accept': 'application/json',
@@ -175,9 +174,7 @@ const F1TerminalLogs = ({
     } catch (err) {
       let errorMessage = 'Failed to fetch logs';
       
-      if (!edgeServerEndpoint) {
-        errorMessage = 'Server endpoint not configured. Please configure the server endpoint first.';
-      } else if (err.response) {
+      if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
         errorMessage = `Server error: ${status} - ${data?.error || data?.message || JSON.stringify(data) || 'Unknown error'}`;
@@ -242,11 +239,7 @@ const F1TerminalLogs = ({
 
   const fetchDeviceLogs = async (date = currentDate) => {
     try {
-      if (!edgeServerEndpoint) {
-        return;
-      }
-
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/logs${date ? `?date=${date}` : ''}`, {
+      const response = await api.get(`/recorders/logs${date ? `?date=${date}` : ''}`, {
         timeout: 10000,
         headers: {
           'Accept': 'application/json',
@@ -278,13 +271,11 @@ const F1TerminalLogs = ({
   }, [selectedType]);
 
   useEffect(() => {
-    if (edgeServerEndpoint) {
-      fetchLogs(currentDate);
-      fetchDeviceLogs(currentDate);
-    }
+    fetchLogs(currentDate);
+    fetchDeviceLogs(currentDate);
     
     let interval;
-    if (autoRefresh && edgeServerEndpoint) {
+    if (autoRefresh) {
       interval = setInterval(() => {
         fetchLogs(currentDate);
         fetchDeviceLogs(currentDate);
@@ -296,7 +287,7 @@ const F1TerminalLogs = ({
         clearInterval(interval);
       }
     };
-  }, [autoRefresh, edgeServerEndpoint, currentDate]);
+  }, [autoRefresh, currentDate]);
 
   // Keep selected device port in sync with available ports (unfiltered set)
   useEffect(() => {

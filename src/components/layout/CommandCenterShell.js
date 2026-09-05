@@ -9,7 +9,6 @@ import { usePermissions } from "../hooks/usePermissions";
  */
 export default function CommandCenterShell({
   isDarkMode,
-  edgeServerEndpoint,
   sidebar,
   sidebarOpen,
   setSidebarOpen,
@@ -27,7 +26,7 @@ export default function CommandCenterShell({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasPermission } = usePermissions(edgeServerEndpoint || "");
+  const { hasPermission } = usePermissions();
   const canAccessSettings =
     user?.role === "admin" || hasPermission("access_settings");
 

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search, Play, Pause, 
@@ -624,7 +625,6 @@ const IncidentReportsUI = ({
   const { user } = useAuth();
   const [settingsTimezone, setSettingsTimezone] = useState(null);
   const [channelsById, setChannelsById] = useState({});
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
   const isCompact = densityMode === 'compact';
 
   // THEME CLASSES
@@ -757,12 +757,12 @@ const IncidentReportsUI = ({
       try {
         // fetch timezone settings first (best-effort)
         try {
-          const settingsResp = await fetch(`${edgeServerEndpoint}/settings`).catch(() => null);
+          const settingsResp = await apiFetch(`/settings`).catch(() => null);
           let settingsData = null;
           if (settingsResp && settingsResp.ok) {
             settingsData = await settingsResp.json();
           } else {
-            const fallbackResp = await fetch(`${edgeServerEndpoint}/settings`).catch(() => null);
+            const fallbackResp = await apiFetch(`/settings`).catch(() => null);
             if (fallbackResp && fallbackResp.ok) settingsData = await fallbackResp.json();
           }
           const tz = settingsData?.global_timezone;
@@ -777,7 +777,7 @@ const IncidentReportsUI = ({
 
         // fetch channels for id->name mapping (best-effort)
         try {
-          const chResp = await fetch(`${edgeServerEndpoint}/channels`).catch(() => null);
+          const chResp = await apiFetch(`/channels`).catch(() => null);
           if (chResp && chResp.ok) {
             const chData = await chResp.json();
             const map = (Array.isArray(chData) ? chData : []).reduce((acc, ch) => {
@@ -790,7 +790,7 @@ const IncidentReportsUI = ({
           }
         } catch {}
 
-        const resp = await fetch(`${edgeServerEndpoint}/incident-reports`);
+        const resp = await apiFetch(`/incident-reports`);
         if (!resp.ok) throw new Error('Failed to fetch incident reports');
         const data = await resp.json();
 
@@ -827,7 +827,7 @@ const IncidentReportsUI = ({
       }
     };
     fetchReports();
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // SEARCH FILTER
   const filteredReports = reports.filter(r =>
@@ -977,7 +977,7 @@ const IncidentReportsUI = ({
     try {
       await Promise.all(report.audios.map(async a => {
         try {
-          const res = await fetch(a.url);
+          const res = await apiFetch(a.url);
           if (!res.ok) throw new Error(`Failed to fetch ${a.filename}`);
           const blob = await res.blob();
           zip.file(`audio/${a.filename}`, blob);
@@ -1014,7 +1014,7 @@ const IncidentReportsUI = ({
     if (!report) return;
     setExportingPdf(true);
     try {
-      const branding = await fetchBrandingForPdf(edgeServerEndpoint);
+      const branding = await fetchBrandingForPdf();
       const blob = await buildIncidentReportPdfBlob(report, {
         user,
         timeFormat,
@@ -1057,7 +1057,7 @@ const IncidentReportsUI = ({
       setReports(updatedReports);
       setSelectedIncident(updatedIncident);
       
-      const response = await fetch(`${edgeServerEndpoint}/incident-reports/${updatedIncident.id}`, {
+      const response = await apiFetch(`/incident-reports/${updatedIncident.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

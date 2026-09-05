@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { Cpu, RefreshCw, Usb, AlertCircle, Edit3, Save as SaveIcon, Power, Upload, Trash2, Zap, Package, Mic,
   UploadCloud, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
@@ -26,7 +26,7 @@ function getSystemHealthBlock(serialPort) {
   return serialPort?.health?.system?.data || null;
 }
 
-const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
+const RecorderDevices = ({ isDarkMode, enabled }) => {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,7 +85,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     const tasks = ports.map(async (port) => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/recorders/config`, { 
+        const response = await api.get(`/recorders/config`, { 
           params: { port },
           // Suppress error responses (404 is expected when no config exists)
           validateStatus: () => true
@@ -137,25 +137,25 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       });
       return base;
     });
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchAllSerialPorts = useCallback(async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/serial-ports`);
+      const response = await api.get(`/recorders/serial-ports`);
       setAllSerialPorts(response.data?.ports || []);
     } catch (err) {
       console.error('Failed to fetch serial ports:', err);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchFirmwares = useCallback(async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/firmware`);
+      const response = await api.get(`/recorders/firmware`);
       setFirmwares(response.data?.firmwares || []);
     } catch (err) {
       console.error('Failed to fetch firmwares:', err);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchDevices = useCallback(async (showLoader = true) => {
     if (!enabled) {
@@ -172,7 +172,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     }
 
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/devices`);
+      const response = await api.get(`/recorders/devices`);
       const deviceList = response.data?.devices || [];
       setDevices(deviceList);
       await loadConfigsForPorts(deviceList.map((device) => device.port), true);
@@ -183,23 +183,23 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [edgeServerEndpoint, enabled, loadConfigsForPorts]);
+  }, [enabled, loadConfigsForPorts]);
 
 
   const fetchChannels = useCallback(async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/channels`);
+      const response = await api.get(`/channels`);
       const channelList = response.data?.channels || response.data || [];
       setChannels(Array.isArray(channelList) ? channelList : []);
     } catch (err) {
       console.debug('Failed to fetch channels:', err);
       setChannels([]);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchGlobalSettings = useCallback(async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/settings`);
+      const response = await api.get(`/settings`);
       const settings = response.data || {};
       // Map backend field names to frontend field names
       // Note: host_password may be masked as '***' - we'll handle that in validation
@@ -215,14 +215,14 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       console.debug('Failed to fetch global settings:', err);
       setGlobalSettings({});
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchRebootCounts = useCallback(async () => {
     if (!enabled) {
       return;
     }
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/reboot-counts`);
+      const response = await api.get(`/recorders/reboot-counts`);
       const counts = response.data?.reboot_counts || [];
       const countsMap = {};
       counts.forEach(item => {
@@ -235,14 +235,14 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       console.debug('Failed to fetch reboot counts:', err);
       setRebootCounts({});
     }
-  }, [edgeServerEndpoint, enabled]);
+  }, [enabled]);
 
   const fetchSerialData = useCallback(async (port) => {
     if (!enabled || !port) {
       return;
     }
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/serial-data`, {
+      const response = await api.get(`/recorders/serial-data`, {
         params: { port },
         validateStatus: () => true
       });
@@ -265,7 +265,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } catch (err) {
       // Silent fail - serial data might not be available
     }
-  }, [edgeServerEndpoint, enabled]);
+  }, [enabled]);
 
   const fetchRebootHistory = useCallback(async (port, macAddress) => {
     if (!enabled || !port) {
@@ -273,7 +273,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     }
     try {
       const params = macAddress ? { mac: macAddress, limit: 5 } : { port: port, limit: 5 };
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/reboot-history`, { params });
+      const response = await api.get(`/recorders/reboot-history`, { params });
       const reboots = response.data?.reboots || [];
       setRebootHistory(prev => ({
         ...prev,
@@ -286,7 +286,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
         [port]: []
       }));
     }
-  }, [edgeServerEndpoint, enabled]);
+  }, [enabled]);
 
   // Calculate timezone offset in hours (for autoconfig command)
   const getTimezoneOffsetHours = useCallback((timezone) => {
@@ -318,7 +318,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       return;
     }
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/monitor/messages`, {
+      const response = await api.get(`/recorders/monitor/messages`, {
         params: { limit: 100 }
       });
       const messages = response.data?.messages || [];
@@ -510,14 +510,14 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       // Silently fail - monitoring might not be active
       console.debug('Failed to fetch monitor messages:', err);
     }
-  }, [edgeServerEndpoint, enabled]);
+  }, [enabled]);
 
   const fetchMonitorStatus = useCallback(async () => {
     if (!enabled) {
       return;
     }
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/monitor/status`);
+      const response = await api.get(`/recorders/monitor/status`);
       const statusList = response.data?.devices || [];
       const monitored = statusList
         .filter(d => d.monitor_flag && d.monitoring_active)
@@ -531,7 +531,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } catch (err) {
       console.debug('Failed to fetch monitor status:', err);
     }
-  }, [edgeServerEndpoint, enabled, selectedPorts.length]);
+  }, [enabled, selectedPorts.length]);
 
   // Default selected ports to all devices so Send is available even if monitor/status hasn't returned active ports yet
   useEffect(() => {
@@ -551,7 +551,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     setSendingCommand(true);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/send`, {
+      const response = await api.post(`/recorders/monitor/send`, {
         command: commandInput.trim(),
         ports: selectedPorts
       });
@@ -575,7 +575,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } finally {
       setSendingCommand(false);
     }
-  }, [edgeServerEndpoint, commandInput, selectedPorts]);
+  }, [commandInput, selectedPorts]);
 
   const handleReset = useCallback(async () => {
     if (monitoredPorts.length === 0) {
@@ -585,7 +585,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     setResetting(true);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/reset`);
+      const response = await api.post(`/recorders/monitor/reset`);
       const successCount = response.data?.success_count || 0;
       const totalCount = response.data?.total_count || 0;
       
@@ -600,7 +600,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } finally {
       setResetting(false);
     }
-  }, [edgeServerEndpoint, monitoredPorts.length]);
+  }, [monitoredPorts.length]);
 
   const handleCliMode = useCallback(async () => {
     if (selectedPorts.length === 0) {
@@ -614,7 +614,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     setSendingCommand(true);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/send`, {
+      const response = await api.post(`/recorders/monitor/send`, {
         command: command,
         ports: selectedPorts
       });
@@ -644,7 +644,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } finally {
       setSendingCommand(false);
     }
-  }, [edgeServerEndpoint, selectedPorts, cliModeEnabled]);
+  }, [selectedPorts, cliModeEnabled]);
 
   const handleAutoConfig = useCallback(async () => {
     if (selectedPorts.length === 0) {
@@ -679,7 +679,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     setSendingCommand(true);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/autoconfig`, {
+      const response = await api.post(`/recorders/monitor/autoconfig`, {
         ports: selectedPorts,
         host_ssid: hostSsid,
         host_password: hostPassword,
@@ -712,7 +712,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } finally {
       setSendingCommand(false);
     }
-  }, [edgeServerEndpoint, selectedPorts, globalSettings]);
+  }, [selectedPorts, globalSettings]);
 
   const handleReboot = useCallback(async () => {
     if (selectedPorts.length === 0) {
@@ -722,7 +722,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
     setSendingCommand(true);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/send`, {
+      const response = await api.post(`/recorders/monitor/send`, {
         command: 'reboot',
         ports: selectedPorts
       });
@@ -741,7 +741,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } finally {
       setSendingCommand(false);
     }
-  }, [edgeServerEndpoint, selectedPorts]);
+  }, [selectedPorts]);
 
   const handleRefreshDeviceData = useCallback(async () => {
     if (selectedPorts.length === 0) {
@@ -752,7 +752,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     setSendingCommand(true);
     try {
       // Send "config ?" command first
-      await axios.post(`${edgeServerEndpoint}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: 'config ?',
         ports: selectedPorts
       });
@@ -762,7 +762,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       // Wait 5 seconds then send "health ?" command
       setTimeout(async () => {
         try {
-          const response = await axios.post(`${edgeServerEndpoint}/recorders/monitor/send`, {
+          const response = await api.post(`/recorders/monitor/send`, {
             command: 'health ?',
             ports: selectedPorts
           });
@@ -787,7 +787,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       setNotification({ type: 'error', text: message });
       setSendingCommand(false);
     }
-  }, [edgeServerEndpoint, selectedPorts]);
+  }, [selectedPorts]);
 
   useEffect(() => {
     if (!enabled) {
@@ -835,7 +835,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     setRefreshing(true);
     setError(null);
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/refresh`);
+      const response = await api.post(`/recorders/refresh`);
       const deviceList = response.data?.devices || [];
       setDevices(deviceList);
       await loadConfigsForPorts(deviceList.map((device) => device.port), true);
@@ -877,7 +877,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
         formData.append(fileType, firmwareUploadModal.files[fileType]);
       });
 
-      await axios.post(`${edgeServerEndpoint}/recorders/firmware`, formData, {
+      await api.post(`/recorders/firmware`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -896,7 +896,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     }
 
     try {
-      const response = await axios.delete(`${edgeServerEndpoint}/recorders/devices/${encodeURIComponent(port)}`);
+      const response = await api.delete(`/recorders/devices/${encodeURIComponent(port)}`);
       if (response.data?.success) {
         setNotification({ type: 'success', message: response.data.message || `Recorder on port ${port} deleted successfully.` });
         // Refresh the device list
@@ -916,7 +916,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     }
 
     try {
-      await axios.delete(`${edgeServerEndpoint}/recorders/firmware/${firmwareId}`);
+      await api.delete(`/recorders/firmware/${firmwareId}`);
       setNotification({ type: 'success', text: 'Firmware deleted successfully.' });
       await fetchFirmwares();
     } catch (err) {
@@ -945,7 +945,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     setFirmwareEditModal((prev) => ({ ...prev, saving: true, error: null }));
 
     try {
-      await axios.put(`${edgeServerEndpoint}/recorders/firmware/${firmwareEditModal.firmware.id}`, {
+      await api.put(`/recorders/firmware/${firmwareEditModal.firmware.id}`, {
         name: firmwareEditModal.name.trim(),
         description: firmwareEditModal.description.trim()
       });
@@ -962,7 +962,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     if (!port) return;
 
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/flash/progress`, {
+      const response = await api.get(`/recorders/flash/progress`, {
         params: { port }
       });
       const progress = response.data || {};
@@ -985,7 +985,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     } catch (err) {
       console.error('Failed to poll flash progress:', err);
     }
-  }, [edgeServerEndpoint, clearDeviceBusyState]);
+  }, [clearDeviceBusyState]);
 
   const startProgressPolling = useCallback((port) => {
     // Clear any existing timer
@@ -1020,7 +1020,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
     setDeviceBusyState(flashModal.port, 'flash');
 
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/recorders/flash`, {
+      const response = await api.post(`/recorders/flash`, {
         port: flashModal.port,
         firmware_id: flashModal.firmwareId
       });
@@ -1054,7 +1054,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
 
   const fetchStoredConfig = useCallback(async (port) => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recorders/config`, { params: { port } });
+      const response = await api.get(`/recorders/config`, { params: { port } });
       const config = response.data?.config;
       if (config !== null && config !== undefined) {
         setConfigByPort((prev) => ({ ...prev, [port]: config }));
@@ -1075,7 +1075,7 @@ const RecorderDevices = ({ edgeServerEndpoint, isDarkMode, enabled }) => {
       }
       throw err;
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
 
   const containerClasses = isDarkMode

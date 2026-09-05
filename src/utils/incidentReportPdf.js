@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -147,13 +148,11 @@ function fitLogoToMmBox(nw, nh, maxWmm, maxHmm) {
 
 /**
  * Loads organization name and logo from GET /branding (same source as Global → Branding).
- * @param {string} edgeServerEndpoint
  * @returns {Promise<{ organizationName: string | null, logoDataUrl: string | null }>}
  */
-export async function fetchBrandingForPdf(edgeServerEndpoint) {
-  if (!edgeServerEndpoint) return { organizationName: null, logoDataUrl: null };
+export async function fetchBrandingForPdf() {
   try {
-    const resp = await fetch(`${edgeServerEndpoint.replace(/\/$/, '')}/branding`);
+    const resp = await apiFetch(`/branding`);
     if (!resp.ok) return { organizationName: null, logoDataUrl: null };
     const data = await resp.json();
     const organizationName = (data.organization_name && String(data.organization_name).trim()) || null;

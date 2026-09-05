@@ -5,7 +5,7 @@ import ChannelItem from "./ChannelItem";
 import KeywordsSection from "./KeywordsSection";
 import SidebarFooter from "./SidebarFooter";
 import ChannelSettingsModal from "./ChannelSettingsModal";
-import axios from "axios";
+import api from '../../utils/apiClient';
 
 const TeamsSidebar = ({
   isDarkMode,
@@ -21,7 +21,6 @@ const TeamsSidebar = ({
   setSearchQuery,
   keywordCounts,
   channelMessageCounts,
-  API_BASE_URL,
   isMobile,
   closeSidebar,
   onDocumentationClick
@@ -79,7 +78,7 @@ const TeamsSidebar = ({
   const handleSave = async (channelId, updatedChannel) => {
     setIsSaving(true);
     try {
-      const response = await axios.put(`${API_BASE_URL}/channel/${channelId}`, updatedChannel);
+      const response = await api.put(`/channel/${channelId}`, updatedChannel);
       if (response.data) {
         setChannels((prevChannels) => ({
           ...prevChannels,
@@ -107,7 +106,6 @@ const TeamsSidebar = ({
         toggleTheme={toggleTheme}
         isMobile={isMobile}
         closeSidebar={closeSidebar}
-        edgeServerEndpoint={API_BASE_URL}
       />
       <SidebarSearch 
         searchQuery={searchQuery} 

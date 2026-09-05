@@ -1,3 +1,4 @@
+import { API_BASE_URL } from './utils/apiClient';
 import React, { useEffect, useState, useMemo, useRef, useCallback, Component } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import LiveCommunications from "./components/Dashboard/LiveCommunications";
@@ -12,9 +13,9 @@ import ReleasePage from "./components/ReleasePage";
 import VersionPage from "./components/Version/VersionPage";
 import LicenseSubscriptionPage from "./components/Licensing/LicenseSubscriptionPage";
 // import FloatingDocumentationIcon from "./components/Documentation/FloatingDocumentationIcon"; // Hidden from apps
-import axios from "axios";
+import api from './utils/apiClient';
 import "./App.css";
-import { AuthProvider } from './components/AuthContext';
+import { useAuth } from './components/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import LoginPage from './components/LoginPage';
 import { ToastContainer } from 'react-toastify';
@@ -349,22 +350,24 @@ const sortMessagesByTime = (messages) => {
 };
 
 // Function to process and order messages from API response
-const processMessagesFromAPI = (apiData, timezone, edgeServerEndpoint) => {
+const processMessagesFromAPI = (apiData, timezone) => {
   if (!Array.isArray(apiData)) return [];
   
-  const processedMessages = apiData.map(item => ({
-    channel: item.channel_id.toString(),
-    team: `Channel ${item.channel_id}`,
-    // The recording filename is the source of truth for when audio began.
-    time: getRecordingTimestampFromFilename(item.filename, item.timestamp),
-    timezone: timezone,
-    status: item.hasOwnProperty("status") ? item.status : "new",
-    id: item.id,
-    url: `${item.filename.replace(/\\/g, '/')}`,
-    message: item.transcription || "No transcription available",
-    duration: item.duration,
-    isNew: true,
-  }));
+  const processedMessages = apiData.map(item => {
+    return {
+      channel: item.channel_id.toString(),
+      team: `Channel ${item.channel_id}`,
+      // The recording filename is the source of truth for when audio began.
+      time: getRecordingTimestampFromFilename(item.filename, item.timestamp),
+      timezone,
+      status: item.hasOwnProperty("status") ? item.status : "new",
+      id: item.id,
+      url: `${API_BASE_URL}${item.filename}`,
+      message: item.transcription || "No transcription available",
+      duration: item.duration,
+      isNew: true,
+    };
+  });
   
   // Sort messages by time (latest to oldest)
   return sortMessagesByTime(processedMessages);
@@ -429,15 +432,15 @@ function inboxMessagesFingerprint(msgs) {
 }
 
 const App = () => {
+  const { user } = useAuth();
   const [channels, setChannels] = useState({});
   const [messages, setMessages] = useState([]);
   const messagesRef = useRef([]);
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
-  /** When inbox time preset / custom range changes in localStorage, replace inbox from a fresh fetch (not only the periodic newest slice). */
+  /** When inbox time preset / custom range changes in localStorage, replace inbox from a fresh apiFetch(not only the periodic newest slice). */
   const inboxPrefsFingerprintRef = useRef(null);
-  const initializedEndpointRef = useRef(null);
   /** Server keyset cursor for “load older” chunks (updated on full replace + each older fetch; not overwritten by periodic newest-only polls). */
   const inboxKeysetRef = useRef({
     prefsFp: '',
@@ -451,14 +454,8 @@ const App = () => {
   const [keywords, setKeywords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [showServerErrorModal, setShowServerErrorModal] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
-  const [endpointInput, setEndpointInput] = useState("");
-  const [validationStatus, setValidationStatus] = useState("pending");
-  const [edgeServerEndpoint, setEdgeServerEndpoint] = useState(
-    localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api'
-  );
   
   // Add cache debugging to window object for development (LOW-02: inside useEffect)
   useEffect(() => {
@@ -521,7 +518,7 @@ const App = () => {
   // Fetch branding data and update document title
   const fetchBrandingData = async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/branding`);
+      const response = await api.get('/branding');
       const brandingData = response.data;
       setBranding(brandingData);
       
@@ -564,61 +561,12 @@ const App = () => {
     }));
   }, [messages, timezone, timeFormat]);
 
-  const loadCachedData = () => {
-    const cachedChannels = getCachedData(CACHE_KEYS.CHANNELS);
-    const cachedMessages = getCachedData(CACHE_KEYS.MESSAGES);
-    const cachedKeywords = getCachedData(CACHE_KEYS.KEYWORDS);
-    const cachedTimezone = getCachedData(CACHE_KEYS.TIMEZONE);
-    const cachedTimeFormat = getCachedData(CACHE_KEYS.TIME_FORMAT);
-
-    if (cachedChannels) {
-      logger.debug(`Loaded ${Object.keys(cachedChannels).length} channels from cache`);
-      setChannels(cachedChannels);
-    }
-    if (cachedMessages) {
-      // Ensure cached messages are properly ordered (latest to oldest)
-      const orderedMessages = sortMessagesByTime(cachedMessages);
-      logger.debug(`Loaded ${orderedMessages.length} messages from cache (ordered latest to oldest)`);
-      setMessages(orderedMessages);
-    }
-    if (cachedKeywords) {
-      logger.debug(`Loaded ${cachedKeywords.length} keywords from cache`);
-      setKeywords(cachedKeywords);
-    }
-    if (cachedTimezone && validateTimezone(cachedTimezone)) {
-      setTimezoneWithLogging(cachedTimezone);
-    }
-    if (cachedTimeFormat) {
-      setTimeFormatWithLogging(cachedTimeFormat);
-    }
-  };
-
-  const isCacheValid = () => {
-    const lastFetch = getCachedData(CACHE_KEYS.LAST_FETCH);
-    return lastFetch && (Date.now() - lastFetch < CACHE_DURATION);
-  };
-
   // Check if there's any cached data available
   const hasCachedData = () => {
     const cachedMessages = getCachedData(CACHE_KEYS.MESSAGES);
     const cachedChannels = getCachedData(CACHE_KEYS.CHANNELS);
     // Return true if we have at least messages or channels cached
     return (cachedMessages && cachedMessages.length > 0) || (cachedChannels && Object.keys(cachedChannels).length > 0);
-  };
-
-  // Endpoint validation
-  // TO-DO Is this needed
-  const validateEndpoint = async (url) => {
-    try {
-      const response = await axios.get(`${url}${API_ENDPOINTS.MESSAGES_INBOX}`, {
-        params: { limit: 1 },
-        timeout: 5000,
-      });
-      return response.status === 200;
-    } catch (error) {
-      logger.error("Endpoint validation error:", error);
-      return false;
-    }
   };
 
   // Clear all cache
@@ -643,41 +591,16 @@ const App = () => {
     }
   };
 
-  const handleEndpointSubmit = async () => {
-    setValidationStatus("validating");
-    setError(null);
-    
-    try {
-      new URL(endpointInput);
-      const isValid = await validateEndpoint(endpointInput);
-      
-      if (isValid) {
-        setEdgeServerEndpoint(endpointInput);
-        localStorage.setItem("EDGE_SERVER_ENDPOINT", endpointInput);
-        setShowModal(false);
-        setValidationStatus("pending");
-      } else {
-        throw new Error("Please check your server is running or not");
-      }
-    } catch (error) {
-      setValidationStatus("failed");
-      setError(error.message);
-    }
-  };
-
   // Initial load
   useEffect(() => {
-    if (initializedEndpointRef.current === edgeServerEndpoint) return;
-    initializedEndpointRef.current = edgeServerEndpoint;
+    if (!user) {
+      setMessages([]);
+      setChannels({});
+      setKeywords([]);
+      return;
+    }
 
     const initialize = async () => {
-      if (!edgeServerEndpoint) {
-        setShowModal(true);
-        return;
-      }
-
-      // Load cached data first for immediate rendering
-      loadCachedData();
       setLoading(true);
 
       try {
@@ -689,29 +612,21 @@ const App = () => {
         setShowServerErrorModal(false); // Hide error modal if initialization succeeds
       } catch (error) {
         logger.error("Initialization error:", error);
-        if (!hasCachedData()) {
-          setShowServerErrorModal(true);
-        }
-        // Only show error if we don't have any cached data to fall back on
-        if (!getCachedData(CACHE_KEYS.MESSAGES)) {
-          setError("Failed to initialize application");
-        } else {
-          logger.warn("Using cached data due to fetch error:", error);
-        }
+        setShowServerErrorModal(true);
+        setError("Failed to initialize application");
       } finally {
         setLoading(false);
       }
     };
 
     initialize();
-  }, [edgeServerEndpoint]);
+  }, [user]);
 
   const fetchInboxTotal = useCallback(async () => {
-    if (!edgeServerEndpoint) return;
     try {
       const inboxPrefs = readInboxViewWindowPrefs();
       const sinceTimestamp = resolveInboxSinceTimestamp(inboxPrefs);
-      const res = await axios.get(`${edgeServerEndpoint}${API_ENDPOINTS.MESSAGES_INBOX_COUNT}`, {
+      const res = await api.get(API_ENDPOINTS.MESSAGES_INBOX_COUNT, {
         params: { ...(sinceTimestamp ? { since_timestamp: sinceTimestamp } : {}) },
       });
       const total = Number(res.data?.total);
@@ -719,10 +634,9 @@ const App = () => {
     } catch (err) {
       logger.warn('Inbox total fetch failed:', err);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchOlderInboxChunk = useCallback(async () => {
-    if (!edgeServerEndpoint) return false;
     const k = inboxKeysetRef.current;
     if (!k.has_more || k.next_before_timestamp == null) {
       setInboxServerHasMore(false);
@@ -744,7 +658,7 @@ const App = () => {
         ...(k.next_before_id != null ? { before_id: k.next_before_id } : {}),
         ...(sinceTimestamp ? { since_timestamp: sinceTimestamp } : {}),
       };
-      const res = await axios.get(`${edgeServerEndpoint}${API_ENDPOINTS.MESSAGES_INBOX_RANGE}`, { params });
+      const res = await api.get(API_ENDPOINTS.MESSAGES_INBOX_RANGE, { params });
       const { rows, meta } = parseInboxPayload(res.data);
       if (!Array.isArray(rows) || rows.length === 0) {
         inboxKeysetRef.current = { ...k, has_more: false };
@@ -752,7 +666,7 @@ const App = () => {
         return false;
       }
 
-      const processed = processMessagesFromAPI(rows, timezone, edgeServerEndpoint);
+      const processed = processMessagesFromAPI(rows, timezone);
       setMessages((prev) => mergeMessagesById(prev, processed, maxCap));
 
       const next = {
@@ -768,7 +682,7 @@ const App = () => {
       logger.error('Older inbox fetch failed:', error);
       return false;
     }
-  }, [edgeServerEndpoint, timezone]);
+  }, [timezone]);
 
   // Data fetching. Channels and settings are static unless explicitly refreshed;
   // the five-second update only needs the inbox.
@@ -790,8 +704,8 @@ const App = () => {
 
       const [channelsRes, keywordsRes] = includeStaticData
         ? await Promise.all([
-            axios.get(`${edgeServerEndpoint}${API_ENDPOINTS.CHANNELS}`),
-            axios.get(`${edgeServerEndpoint}${API_ENDPOINTS.SETTINGS}`),
+            api.get(API_ENDPOINTS.CHANNELS),
+            api.get(API_ENDPOINTS.SETTINGS),
           ])
         : [null, null];
 
@@ -815,7 +729,7 @@ const App = () => {
           : INITIAL_INBOX_FETCH_LIMIT
         : plan.periodicLimit;
 
-      const messagesRes = await axios.get(`${edgeServerEndpoint}${API_ENDPOINTS.MESSAGES_INBOX}`, {
+      const messagesRes = await api.get(API_ENDPOINTS.MESSAGES_INBOX, {
         params: {
           limit: inboxLimit,
           ...(sinceTimestamp ? { since_timestamp: sinceTimestamp } : {}),
@@ -882,7 +796,7 @@ const App = () => {
       }, {});
 
       // Process new inbox window rows and merge into current in-memory list.
-      const fetchedWindow = processMessagesFromAPI(inboxRows, timezone, edgeServerEndpoint);
+      const fetchedWindow = processMessagesFromAPI(inboxRows, timezone);
 
       // Only update state if data has actually changed to prevent unnecessary re-renders
       if (channelsData) setChannels(prevChannels => {
@@ -984,7 +898,6 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (!edgeServerEndpoint) return;
     const onViewChanged = () => {
       // View change forces a replace fetch + count refresh.
       inboxPrefsFingerprintRef.current = null;
@@ -994,7 +907,7 @@ const App = () => {
     // TO-DO Look at how often is INBOX_VIEW_CHANGED_EVENT
     window.addEventListener(INBOX_VIEW_CHANGED_EVENT, onViewChanged);
     return () => window.removeEventListener(INBOX_VIEW_CHANGED_EVENT, onViewChanged);
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // Inbox success/failure is the server health signal used by the periodic update below.
 
@@ -1003,7 +916,6 @@ const App = () => {
 
   // Periodic updates
   useEffect(() => {
-    if (!edgeServerEndpoint) return;
 
     const updateInterval = setInterval(async () => {
       // Skip update if audio is currently playing to prevent screen flicker
@@ -1047,7 +959,7 @@ const App = () => {
     }, 5000);
 
     return () => clearInterval(updateInterval);
-  }, [edgeServerEndpoint, areFiltersActive]);
+  }, [areFiltersActive]);
 
   if (loading && !Object.keys(channels).length) {
     return (
@@ -1059,64 +971,6 @@ const App = () => {
 
   return (
     <>
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className={`w-full max-w-md p-6 mx-4 rounded-lg shadow-xl transition-colors duration-300 ${
-            isDarkMode ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="mb-4">
-              <h2 className={`text-xl font-semibold transition-colors duration-300 ${
-                isDarkMode ? 'text-white' : 'text-gray-800'
-              }`}>
-                {validationStatus === "failed" 
-                  ? "Connection Failed" 
-                  : "Enter Edge Server Endpoint"}
-              </h2>
-              <p className={`mt-2 text-sm transition-colors duration-300 ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}>
-                {validationStatus === "failed"
-                  ? "Please check your server is running or not"
-                  : "Please provide the URL for your Edge Server endpoint to continue."}
-              </p>
-              {error && (
-                <p className="mt-2 text-sm text-red-500">{error}</p>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <input
-                type="url"
-                placeholder="https://your-server.com"
-                value={endpointInput}
-                onChange={(e) => setEndpointInput(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300 ${
-                  validationStatus === "failed" 
-                    ? "border-red-500" 
-                    : isDarkMode 
-                      ? "border-gray-600 bg-gray-700 text-white placeholder-gray-400" 
-                      : "border-gray-300 bg-white text-gray-900"
-                }`}
-              />
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={handleEndpointSubmit}
-                disabled={validationStatus === "validating"}
-                className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-blue-400"
-              >
-                {validationStatus === "validating" 
-                  ? "Connecting..." 
-                  : validationStatus === "failed"
-                  ? "Try Again"
-                  : "Connect to Server"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showServerErrorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
           <div className={`w-full max-w-md mx-4 rounded-xl shadow-2xl border overflow-hidden transition-colors duration-300 ${
@@ -1239,105 +1093,81 @@ const App = () => {
         </div>
       )}
 
-      <AuthProvider>
-        <ErrorBoundary>
+      <ErrorBoundary>
         <Router>
           <Routes>
             <Route path="/login" element={
-              <LoginPage 
-                toggleTheme={toggleTheme} 
-                isDarkMode={isDarkMode} 
-                setIsDarkMode={setIsDarkMode}   
-                edgeServerEndpoint={edgeServerEndpoint}  
+              <LoginPage
+                toggleTheme={toggleTheme}
+                isDarkMode={isDarkMode}
+                setIsDarkMode={setIsDarkMode}
               />
             } />
-            <Route path="/" element={
-              <PrivateRoute>
-                <LiveCommunications
-                  timezone={timezone}
-                  timeFormat={timeFormat}
-                  isDarkMode={isDarkMode}
-                  edgeServerEndpoint={edgeServerEndpoint}
-                  setMessages={setMessages}
-                  setIsDarkMode={setIsDarkMode}
-                  toggleTheme={toggleTheme}
-                  channels={channels} 
-                  messages={processedMessages}
-                  keywords={keywords}
-                  reverseSort={reverseSort}
-                  setReverseSort={setReverseSort}
-                  onFiltersActiveChange={setAreFiltersActive}
-                  inboxServerHasMore={inboxServerHasMore}
-                  inboxServerTotal={inboxServerTotal}
-                  onFetchOlderInbox={fetchOlderInboxChunk}
-                />
-              </PrivateRoute>
-            } />
-            <Route path="/settings" element={
-              <PrivateRoute>
-                <SettingsPage 
-                  isDarkMode={isDarkMode} 
-                  timezone={timezone} 
-                  timeFormat={timeFormat}
-                  setTimeFormat={setTimeFormatWithLogging}
-                  reverseSort={reverseSort} 
-                  setReverseSort={setReverseSort}
-                  onSettingsChange={() => fetchAllData()}
-                />
-              </PrivateRoute>
-            } />
-            <Route path="/users" element={
-              <PrivateRoute>
-                <UserManagement isDarkMode={isDarkMode} />
-              </PrivateRoute>
-            } />
-            <Route path="/profile" element={
-              <PrivateRoute>
-                <UserProfile 
-                  isDarkMode={isDarkMode} 
-                  edgeServerEndpoint={edgeServerEndpoint}
-                />
-              </PrivateRoute>
-            } />
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={
+                  <LiveCommunications
+                    timezone={timezone}
+                    timeFormat={timeFormat}
+                    isDarkMode={isDarkMode}
+                    setMessages={setMessages}
+                    setIsDarkMode={setIsDarkMode}
+                    toggleTheme={toggleTheme}
+                    channels={channels}
+                    messages={processedMessages}
+                    keywords={keywords}
+                    reverseSort={reverseSort}
+                    setReverseSort={setReverseSort}
+                    onFiltersActiveChange={setAreFiltersActive}
+                    inboxServerHasMore={inboxServerHasMore}
+                    inboxServerTotal={inboxServerTotal}
+                    onFetchOlderInbox={fetchOlderInboxChunk}
+                  />
+              } />
+              <Route path="/settings" element={
+                  <SettingsPage
+                    isDarkMode={isDarkMode}
+                    timezone={timezone}
+                    timeFormat={timeFormat}
+                    setTimeFormat={setTimeFormatWithLogging}
+                    reverseSort={reverseSort}
+                    setReverseSort={setReverseSort}
+                    onSettingsChange={() => fetchAllData()}
+                  />
+              } />
+              <Route path="/users" element={
+                  <UserManagement isDarkMode={isDarkMode} />
+              } />
+              <Route path="/profile" element={
+                  <UserProfile
+                    isDarkMode={isDarkMode}
+                  />
+              } />
 
-            <Route path="/advanced-player" element={
-              <PrivateRoute>
-                <AdvancedAudioPlayer isDarkMode={isDarkMode} timeFormat={timeFormat} />
-              </PrivateRoute>
-            } />
-            <Route path="/logs" element={
-              <PrivateRoute>
-                <LogsPage edgeServerEndpoint={edgeServerEndpoint} timezone={timezone} timeFormat={timeFormat} />
-              </PrivateRoute>
-            } />
-            <Route path="/report" element={
-              <PrivateRoute>
-                <ReportPage isDarkMode={isDarkMode} timeFormat={timeFormat} />
-              </PrivateRoute>
-            } />
-            <Route path="/user-guide" element={
-              <PrivateRoute>
-                <UserGuidePage isDarkMode={isDarkMode} />
-              </PrivateRoute>
-            } />
-            <Route path="/release" element={
-              <PrivateRoute>
-                <ReleasePage isDarkMode={isDarkMode} />
-              </PrivateRoute>
-            } />
-            <Route path="/version" element={
-              <PrivateRoute>
-                <VersionPage isDarkMode={isDarkMode} />
-              </PrivateRoute>
-            } />
-            <Route path="/license" element={
-              <PrivateRoute>
-                <LicenseSubscriptionPage isDarkMode={isDarkMode} edgeServerEndpoint={edgeServerEndpoint} />
-              </PrivateRoute>
-            } />
+              <Route path="/advanced-player" element={
+                  <AdvancedAudioPlayer isDarkMode={isDarkMode} timeFormat={timeFormat} />
+              } />
+              <Route path="/logs" element={
+                  <LogsPage timezone={timezone} timeFormat={timeFormat} />
+              } />
+              <Route path="/report" element={
+                  <ReportPage isDarkMode={isDarkMode} timeFormat={timeFormat} />
+              } />
+              <Route path="/user-guide" element={
+                  <UserGuidePage isDarkMode={isDarkMode} />
+              } />
+              <Route path="/release" element={
+                  <ReleasePage isDarkMode={isDarkMode} />
+              } />
+              <Route path="/version" element={
+                  <VersionPage isDarkMode={isDarkMode} />
+              } />
+              <Route path="/license" element={
+                  <LicenseSubscriptionPage isDarkMode={isDarkMode} />
+              } />
+            </Route>
           </Routes>
         </Router>
-        <ToastContainer 
+        <ToastContainer
           position="top-right"
           autoClose={3000}
           hideProgressBar={false}
@@ -1350,8 +1180,7 @@ const App = () => {
           limit={3}
           enableMultiContainer={false}
         />
-        </ErrorBoundary>
-      </AuthProvider>
+      </ErrorBoundary>
     </>
   );
 };

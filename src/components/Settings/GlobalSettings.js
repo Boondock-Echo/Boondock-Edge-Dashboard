@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import {
   Globe,
   DatabaseZap,
@@ -351,7 +351,6 @@ const GlobalSettings = ({
   reverseSort = false,
   setReverseSort = () => {},
   user = null,
-  edgeServerEndpoint = "",
   activeSection = null, // Optional: 'display-language', 'device-management', 'transcription-services', 'hotspot-configuration'
   omitHotspotSectionHeader = false,
   showToast = null,
@@ -446,11 +445,10 @@ const GlobalSettings = ({
   const inboxViewMode = globalSettings.global_inbox_view_mode || 'pagination'; // 'pagination' or 'continuous'
   const inboxRecordsPerPage = Number(globalSettings.global_inbox_records_per_page) || 10;
   const fetchHotspotStatus = async () => {
-    if (!edgeServerEndpoint) return;
     setHotspotLoading(true);
     setHotspotError('');
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/hotspot/status`);
+      const response = await api.get(`/hotspot/status`);
       setHotspotStatus(response.data || null);
     } catch (error) {
       console.error('Failed to fetch hotspot status:', error);
@@ -463,7 +461,7 @@ const GlobalSettings = ({
 
   useEffect(() => {
     fetchHotspotStatus();
-  }, [edgeServerEndpoint]);
+  }, []);
 
   useEffect(() => {
     if (!hotspotManualSave || hotspotDirty) return;
@@ -536,7 +534,6 @@ const GlobalSettings = ({
   ]);
 
   const handleSaveHotspotConfiguration = async () => {
-    if (!edgeServerEndpoint) return;
     const ssid = (hotspotDraft.host_ssid || '').trim();
     const password = (hotspotDraft.host_password || '').trim();
     const hostIp = (hotspotDraft.host_ip || '').trim();
@@ -548,7 +545,7 @@ const GlobalSettings = ({
     setHotspotSaveLoading(true);
     setHotspotError('');
     try {
-      await axios.put(`${edgeServerEndpoint}/settings`, {
+      await api.put(`/settings`, {
         host_ssid: ssid,
         host_password: password,
         host_ip: hostIp,
@@ -573,11 +570,10 @@ const GlobalSettings = ({
   };
 
   const handleStartHotspot = async () => {
-    if (!edgeServerEndpoint) return;
     setHotspotActionLoading(true);
     setHotspotError('');
     try {
-      await axios.post(`${edgeServerEndpoint}/hotspot/start`, {
+      await api.post(`/hotspot/start`, {
         ssid: hotspotConfig.host_ssid,
         password: hotspotConfig.host_password,
       });
@@ -591,11 +587,10 @@ const GlobalSettings = ({
   };
 
   const handleStopHotspot = async () => {
-    if (!edgeServerEndpoint) return;
     setHotspotActionLoading(true);
     setHotspotError('');
     try {
-      await axios.post(`${edgeServerEndpoint}/hotspot/stop`);
+      await api.post(`/hotspot/stop`);
       await fetchHotspotStatus();
     } catch (error) {
       console.error('Failed to stop hotspot:', error);
@@ -632,17 +627,16 @@ const GlobalSettings = ({
 
   // Fetch channels when transcription services section is active
   useEffect(() => {
-    if (showTranscriptionServices && edgeServerEndpoint) {
+    if (showTranscriptionServices) {
       fetchChannels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showTranscriptionServices, edgeServerEndpoint]);
+  }, [showTranscriptionServices]);
 
   const fetchChannels = async () => {
-    if (!edgeServerEndpoint) return;
     setChannelsLoading(true);
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/channels`);
+      const response = await api.get(`/channels`);
       if (response.data) {
         // Ensure auto_transcribe defaults to true if not present
         const channelsWithDefaults = response.data.map(channel => ({
@@ -659,9 +653,8 @@ const GlobalSettings = ({
   };
 
   const handleChannelAutoTranscribeChange = async (channelId, enabled) => {
-    if (!edgeServerEndpoint) return;
     try {
-      const response = await axios.put(`${edgeServerEndpoint}/channel/${channelId}`, {
+      const response = await api.put(`/channel/${channelId}`, {
         auto_transcribe: enabled
       });
       if (response.status === 200) {
@@ -928,10 +921,10 @@ const GlobalSettings = ({
               checked={reverseSort}
               onChange={(checked) => {
                 setReverseSort(checked);
-                if (user?.username && edgeServerEndpoint) {
+                if (user?.username) {
                   const saveReverseSortPreference = async (newReverseSort) => {
                     try {
-                      await axios.post(`${edgeServerEndpoint}/pagination-preferences/${user.username}`, {
+                      await api.post(`/pagination-preferences/${user.username}`, {
                         recordsPerPage: 20,
                         currentPage: 1,
                         reverseSort: newReverseSort

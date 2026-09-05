@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { X, Settings2, Mic, Wifi, FileText, Sliders, RefreshCw } from 'lucide-react';
 
 const DeviceSettingsModal = ({ 
   isOpen, 
   onClose, 
   devicePort, 
-  edgeServerEndpoint, 
   isDarkMode,
   monitorMessages = [],
   deviceStatus = {},
@@ -73,7 +72,6 @@ const DeviceSettingsModal = ({
     rtcEnabled: ''
   });
 
-  const apiBase = (edgeServerEndpoint || '').replace(/\/$/, '');
   const responseTimeoutRef = useRef(null);
   const lastCommandRef = useRef(null);
 
@@ -359,7 +357,7 @@ const DeviceSettingsModal = ({
 
     const interval = setInterval(checkForResponse, 500);
     return () => clearInterval(interval);
-  }, [isOpen, devicePort, monitorMessages, apiBase]);
+  }, [isOpen, devicePort, monitorMessages]);
 
   // Initialize settings from device status/config when modal opens
   useEffect(() => {
@@ -478,7 +476,7 @@ const DeviceSettingsModal = ({
       }, 10000); // 10 second timeout for export
 
       // Send export command
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: 'export',
         ports: [devicePort]
       });
@@ -519,7 +517,7 @@ const DeviceSettingsModal = ({
       }, 5000);
 
       // Send command via monitor endpoint
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: command,
         ports: [devicePort]
       });
@@ -614,7 +612,7 @@ const DeviceSettingsModal = ({
 
       // Send import command
       lastCommandRef.current = importCommand;
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: importCommand,
         ports: [devicePort]
       });
@@ -750,7 +748,7 @@ const DeviceSettingsModal = ({
       // Send import command
       const importCommand = `import ${JSON.stringify(jsonPayload)}`;
       lastCommandRef.current = importCommand;
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: importCommand,
         ports: [devicePort]
       });
@@ -810,7 +808,7 @@ const DeviceSettingsModal = ({
 
       // Send import command
       lastCommandRef.current = importCommand;
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: importCommand,
         ports: [devicePort]
       });
@@ -869,7 +867,7 @@ const DeviceSettingsModal = ({
       // Send import command
       const importCommand = `import ${JSON.stringify(jsonPayload)}`;
       lastCommandRef.current = importCommand;
-      await axios.post(`${apiBase}/recorders/monitor/send`, {
+      await api.post(`/recorders/monitor/send`, {
         command: importCommand,
         ports: [devicePort]
       });

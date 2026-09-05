@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import { useEffect, useState } from 'react';
 import { RadioTower, X, Volume2, User2, Tag, ActivitySquare, Languages, Network,
   Radio, Trash2, Speaker } from 'lucide-react';
@@ -26,7 +27,7 @@ const ChannelEditModal = ({
     if (tempChannel?.audio_stream_enabled) {
       const fetchAvailablePorts = async () => {
         try {
-          const response = await fetch('/api/available-ports');
+          const response = await apiFetch('/available-ports');
           if (response.ok) {
             const data = await response.json();
             // Include current port even if not in available list

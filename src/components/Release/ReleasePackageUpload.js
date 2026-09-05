@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { Upload, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { getBearerAuthHeader } from '../../utils/apiBase';
 
 /**
  * Logged-in users: install boondock-edge-release-*.zip (from pack_boondock_release.py / release.bat).
@@ -13,8 +12,6 @@ const ReleasePackageUpload = ({ isDarkMode }) => {
   const [applying, setApplying] = useState(false);
   const [installDeps, setInstallDeps] = useState(false);
   const fileRef = useRef(null);
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
-
   const onApply = async () => {
     const f = fileRef.current?.files?.[0];
     if (!f) {
@@ -26,13 +23,7 @@ const ReleasePackageUpload = ({ isDarkMode }) => {
     if (installDeps) fd.append('install_dependencies', 'true');
     setApplying(true);
     try {
-      const auth = getBearerAuthHeader();
-      if (!auth.Authorization) {
-        toast.error('Not signed in. Log in again, then retry the upload.');
-        return;
-      }
-      const { data } = await axios.post(`${edgeServerEndpoint}/version/apply`, fd, {
-        headers: { ...auth },
+      const { data } = await api.post(`/version/apply`, fd, {
         maxContentLength: 250 * 1024 * 1024,
         maxBodyLength: 250 * 1024 * 1024,
       });

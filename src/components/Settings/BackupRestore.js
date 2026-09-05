@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { 
   Database, 
   Cloud, 
@@ -105,7 +105,7 @@ const Toggle = ({ checked, onChange, label, icon: Icon, description, metric, isD
   </div>
 );
 
-const BackupRestore = ({ edgeServerEndpoint, isDarkMode, showToast, globalSettings, handleGlobalChange, handleBackupNow }) => {
+const BackupRestore = ({ isDarkMode, showToast, globalSettings, handleGlobalChange, handleBackupNow }) => {
   const [backupHistory, setBackupHistory] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -116,18 +116,17 @@ const BackupRestore = ({ edgeServerEndpoint, isDarkMode, showToast, globalSettin
   const [testingSamba, setTestingSamba] = useState(false);
   const [sambaTestResult, setSambaTestResult] = useState(null);
   
-  const API_BASE_URL = edgeServerEndpoint || '';
   const RECORDS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchBackupHistory();
-  }, [currentPage, API_BASE_URL]);
+  }, [currentPage]);
 
   const fetchBackupHistory = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${API_BASE_URL}/s3/backup/history?page=${currentPage}&per_page=${RECORDS_PER_PAGE}`
+      const response = await api.get(
+        `/s3/backup/history?page=${currentPage}&per_page=${RECORDS_PER_PAGE}`
       );
       setBackupHistory(response.data.history || []);
       setTotalPages(response.data.total_pages || 1);
@@ -387,7 +386,6 @@ const BackupRestore = ({ edgeServerEndpoint, isDarkMode, showToast, globalSettin
           setShowBackupModal(false);
           fetchBackupHistory();
         }}
-        edgeServerEndpoint={edgeServerEndpoint}
         isDarkMode={isDarkMode}
       />
 
@@ -395,7 +393,6 @@ const BackupRestore = ({ edgeServerEndpoint, isDarkMode, showToast, globalSettin
       <RestoreModal
         isOpen={showRestoreModal}
         onClose={() => setShowRestoreModal(false)}
-        edgeServerEndpoint={edgeServerEndpoint}
         isDarkMode={isDarkMode}
         showToast={showToast}
       />
@@ -740,7 +737,7 @@ const BackupRestore = ({ edgeServerEndpoint, isDarkMode, showToast, globalSettin
                           setTestingSamba(true);
                           setSambaTestResult(null);
                           try {
-                            const response = await axios.post(`${API_BASE_URL}/s3/backup/test-samba`, {
+                            const response = await api.post(`/s3/backup/test-samba`, {
                               share_path: globalSettings.samba_share_path || '',
                               username: globalSettings.samba_username || '',
                               password: globalSettings.samba_password || ''

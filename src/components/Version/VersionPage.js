@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { ArrowLeft, Package, Upload, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../AuthContext';
-import { getBearerAuthHeader } from '../../utils/apiBase';
 
 const VersionPage = ({ isDarkMode }) => {
   const navigate = useNavigate();
@@ -15,20 +14,19 @@ const VersionPage = ({ isDarkMode }) => {
   const [rolling, setRolling] = useState(null);
   const [installDeps, setInstallDeps] = useState(false);
   const fileRef = useRef(null);
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${edgeServerEndpoint}/version/status`, { headers: getBearerAuthHeader() });
+      const { data } = await api.get(`/version/status`);
       setStatus(data);
     } catch (e) {
       toast.error(e?.response?.data?.error || e?.message || 'Failed to load version status');
     } finally {
       setLoading(false);
     }
-  }, [user, edgeServerEndpoint]);
+  }, [user]);
 
   useEffect(() => {
     if (user) load();
@@ -45,13 +43,8 @@ const VersionPage = ({ isDarkMode }) => {
     if (installDeps) fd.append('install_dependencies', 'true');
     setApplying(true);
     try {
-      const auth = getBearerAuthHeader();
-      if (!auth.Authorization) {
-        toast.error('Not signed in. Log in again, then retry.');
-        return;
-      }
-      const { data } = await axios.post(`${edgeServerEndpoint}/version/apply`, fd, {
-        headers: { ...auth },
+
+      const { data } = await api.post(`/version/apply`, fd, {
         maxContentLength: 250 * 1024 * 1024,
         maxBodyLength: 250 * 1024 * 1024,
       });
@@ -85,9 +78,9 @@ const VersionPage = ({ isDarkMode }) => {
     }
     setRolling(backupId);
     try {
-      const { data } = await axios.post(`${edgeServerEndpoint}/version/rollback`,
+      const { data } = await api.post(`/version/rollback`,
         { backup_id: backupId },
-        { headers: { 'Content-Type': 'application/json', ...getBearerAuthHeader() } }
+        { headers: { 'Content-Type': 'application/json' } }
       );
       toast.success(data?.message || 'Rolled back');
       load();

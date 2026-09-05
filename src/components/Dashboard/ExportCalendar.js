@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import logger from '../../utils/logger';
 
-const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, selectedRecordings, setSelectedRecordings }) => {
+const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, setSelectedRecordings }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [daysWithRecordings, setDaysWithRecordings] = useState(new Set());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -19,7 +19,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
   useEffect(() => {
     const fetchDaysWithRecordings = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/recordings/calendar/days`, {
+        const response = await api.get(`/recordings/calendar/days`, {
           params: { year, month: month + 1 }
         });
         const days = response.data.days || [];
@@ -30,7 +30,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
     };
 
     fetchDaysWithRecordings();
-  }, [year, month, edgeServerEndpoint]);
+  }, [year, month]);
 
   // Fetch hours when a day is selected
   useEffect(() => {
@@ -38,7 +38,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
       const fetchHours = async () => {
         setLoading(true);
         try {
-          const response = await axios.get(`${edgeServerEndpoint}/recordings/calendar/hours`, {
+          const response = await api.get(`/recordings/calendar/hours`, {
             params: { year, month: month + 1, day: selectedDay }
           });
           const hours = response.data.hours || [];
@@ -56,7 +56,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
       setSelectedHour(null);
       setRecordings([]);
     }
-  }, [selectedDay, year, month, edgeServerEndpoint]);
+  }, [selectedDay, year, month]);
 
   // Fetch recordings when an hour is selected
   useEffect(() => {
@@ -64,7 +64,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
       const fetchRecordings = async () => {
         setLoading(true);
         try {
-          const response = await axios.get(`${edgeServerEndpoint}/recordings/calendar/recordings`, {
+          const response = await api.get(`/recordings/calendar/recordings`, {
             params: { year, month: month + 1, day: selectedDay, hour: selectedHour }
           });
           const recs = response.data.recordings || [];
@@ -83,7 +83,7 @@ const ExportCalendar = ({ edgeServerEndpoint, isDarkMode, onRecordingsSelected, 
     } else {
       setRecordings([]);
     }
-  }, [selectedDay, selectedHour, year, month, edgeServerEndpoint, onRecordingsSelected]);
+  }, [selectedDay, selectedHour, year, month, onRecordingsSelected]);
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));

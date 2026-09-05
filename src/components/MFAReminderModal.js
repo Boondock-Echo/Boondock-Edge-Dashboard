@@ -1,7 +1,8 @@
+import { apiFetch } from '../utils/apiClient';
 import { useState } from 'react';
 import { Shield, X, Check } from 'lucide-react';
 
-const MFAReminderModal = ({ isOpen, onClose, onSetup, edgeServerEndpoint, isDarkMode, user }) => {
+const MFAReminderModal = ({ isOpen, onClose, onSetup, isDarkMode, user }) => {
   const [mfaSetup, setMfaSetup] = useState(null);
   const [totpCode, setTotpCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -15,7 +16,7 @@ const MFAReminderModal = ({ isOpen, onClose, onSetup, edgeServerEndpoint, isDark
     try {
       setError('');
       const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/mfa/setup`, {
+      const response = await apiFetch(`/mfa/setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,7 +48,7 @@ const MFAReminderModal = ({ isOpen, onClose, onSetup, edgeServerEndpoint, isDark
       setVerifying(true);
       setError('');
       const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/mfa/verify-setup`, {
+      const response = await apiFetch(`/mfa/verify-setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

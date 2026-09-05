@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { io } from 'socket.io-client';
 import {
   Volume2,
@@ -20,7 +20,7 @@ import {
 import logger from '../../utils/logger';
 import { toast } from 'react-toastify';
 
-const StreamsSection = ({ isDarkMode, edgeServerEndpoint }) => {
+const StreamsSection = ({ isDarkMode}) => {
   const SOCKET_URL = window.location.origin;
   
   const [streams, setStreams] = useState([]);
@@ -42,7 +42,7 @@ const StreamsSection = ({ isDarkMode, edgeServerEndpoint }) => {
   // Fetch stream status
   const fetchStreamStatus = useCallback(async () => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/streams/status`, {
+      const response = await api.get(`/streams/status`, {
         timeout: 5000
       });
 
@@ -56,19 +56,19 @@ const StreamsSection = ({ isDarkMode, edgeServerEndpoint }) => {
     } finally {
       setLoading(false);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // Fetch buffer info periodically
   const fetchBufferInfo = useCallback(async (channelId) => {
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/streams/${channelId}/buffer/info`);
+      const response = await api.get(`/streams/${channelId}/buffer/info`);
       if (response.data.success) {
         bufferInfoRef.current[channelId] = response.data.data;
       }
     } catch (err) {
       logger.error(`Error fetching buffer info for channel ${channelId}:`, err);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // Poll stream status periodically
   useEffect(() => {
@@ -437,7 +437,7 @@ const StreamsSection = ({ isDarkMode, edgeServerEndpoint }) => {
 
   const clearStreamBuffer = async (channelId) => {
     try {
-      const response = await axios.post(`${edgeServerEndpoint}/streams/${channelId}/clear`);
+      const response = await api.post(`/streams/${channelId}/clear`);
 
       if (response.data.success) {
         toast.success(`Cleared buffer for channel ${channelId}`, {

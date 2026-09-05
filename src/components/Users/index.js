@@ -1,3 +1,4 @@
+import api from '../../utils/apiClient';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { Search, UserPlus, Shield, Activity, Edit, Trash2, Lock, Unlock, X, Save, Key,Users } from 'lucide-react';
@@ -166,7 +167,7 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
   );
 };
 
-const UserManagement = ({ isDarkMode = false, edgeServerEndpoint }) => {
+const UserManagement = ({ isDarkMode = false }) => {
   const { user: currentAuthUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -184,50 +185,29 @@ const UserManagement = ({ isDarkMode = false, edgeServerEndpoint }) => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${edgeServerEndpoint}/users`, {
-        headers
-      });
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const data = await response.json();
-      
+      const { data } = await api.get('/users');
       const transformedUsers = Object.entries(data).map(([email, details]) => ({
         ...details,
         email,
         role: details.role,
         profile: details.profile || 'Default'
-      }));
-      
+      })); 
       setUsers(transformedUsers);
-    } catch (err) {
-      showToast(err.message, 'error');
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Failed to fetch users', 'error');
     } finally {
       setLoading(false);
     }
-  }, [edgeServerEndpoint, showToast]);
+  }, [showToast]);
 
   const fetchProfiles = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/profiles`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProfiles(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch profiles:', err);
+      const { data } = await api.get('/profiles');
+      setProfiles(data);
+    } catch (error) {
+      console.error('Failed to fetch profiles:', error);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -243,141 +223,62 @@ const UserManagement = ({ isDarkMode = false, edgeServerEndpoint }) => {
     input: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200',
   };
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCreateUser = async (formData) => {
     try {
-      const response = await fetch(`${edgeServerEndpoint}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create user');
-      }
-
+      await api.post('/users', formData);
       await fetchUsers();
       showToast('User created successfully');
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.response?.data?.error || 'Failed to create user', 'error');
       throw error;
     }
   };
 
   const handleUpdateUser = async (formData) => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${edgeServerEndpoint}/users/${formData.email}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update user');
-      }
-
+      await api.put(`/users/${formData.email}`, formData);
       await fetchUsers();
       showToast('User updated successfully');
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.response?.data?.error || 'Failed to update user', 'error');
       throw error;
     }
   };
 
   const handleDelete = async (email) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
-    
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${edgeServerEndpoint}/users/${email}`, {
-        method: 'DELETE',
-        headers
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete user');
-      }
-
+      await api.delete(`/users/${email}`);
       await fetchUsers();
       showToast('User deleted successfully');
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.response?.data?.error || 'Failed to delete user', 'error');
     }
   };
 
   const handleResetMfa = async (email) => {
     if (!window.confirm(`Are you sure you want to reset MFA for ${email}? They will be able to login with just password and can setup MFA again.`)) return;
-    
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/users/${email}/mfa/reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset MFA');
-      }
-
+      await api.post(`/users/${email}/mfa/reset`);
       await fetchUsers();
       showToast(`MFA reset for ${email}`);
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.response?.data?.error || 'Failed to reset MFA', 'error');
     }
   };
 
   const handleEnforceMfa = async (email, enforce) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${edgeServerEndpoint}/users/${email}/mfa/enforce`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ enforce })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${enforce ? 'enforce' : 'remove enforcement'} MFA`);
-      }
-
+      await api.post(`/users/${email}/mfa/enforce`, { enforce });
       await fetchUsers();
       showToast(`MFA enforcement ${enforce ? 'enabled' : 'removed'} for ${email}`);
     } catch (error) {
-      showToast(error.message, 'error');
+      showToast(error.response?.data?.error || `Failed to ${enforce ? 'enforce' : 'remove enforcement'} MFA`, 'error');
     }
   };
 

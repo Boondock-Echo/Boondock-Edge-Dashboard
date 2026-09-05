@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { X, Play, Pause, Volume2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { io } from 'socket.io-client';
 import logger from '../../utils/logger';
 
-const LiveAudioPopup = ({ channel, isDarkMode, onClose, edgeServerEndpoint }) => {
+const LiveAudioPopup = ({ channel, isDarkMode, onClose}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,7 +179,7 @@ const LiveAudioPopup = ({ channel, isDarkMode, onClose, edgeServerEndpoint }) =>
 
     const fetchBufferInfo = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/streams/${channel.id}/buffer/info`);
+        const response = await api.get(`/streams/${channel.id}/buffer/info`);
         if (response.data?.data) {
           setBufferInfo(response.data.data);
         }
@@ -220,7 +220,7 @@ const LiveAudioPopup = ({ channel, isDarkMode, onClose, edgeServerEndpoint }) =>
 
       // Fetch buffer info
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/streams/${channel.id}/buffer/info`);
+        const response = await api.get(`/streams/${channel.id}/buffer/info`);
         if (response.data?.data) {
           setBufferInfo(response.data.data);
         }

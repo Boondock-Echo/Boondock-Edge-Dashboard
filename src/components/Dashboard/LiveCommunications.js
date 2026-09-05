@@ -1,3 +1,4 @@
+import { api, apiFetch } from '../../utils/apiClient';
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import TeamsSidebar from "./Sidebar";
 import { Volume2, Volume1, X } from "lucide-react";
@@ -7,7 +8,6 @@ import FullscreenMessages from './FullscreenMessages';
 import FloatingChatbot from './FloatingChatbot';
 import GlobalAudioPlayer from "./GlobalAudioPlayer";
 import NotificationBanner from './NotificationBanner';
-import axios from "axios";
 import { useAuth } from "../AuthContext";
 import MFAReminderModal from "../MFAReminderModal";
 import logger from "../../utils/logger";
@@ -62,7 +62,6 @@ function isCursorGreater(a, b) {
 }
 
 const LiveCommunications = ({
-  edgeServerEndpoint,
   toggleTheme,
   channels,
   setChannels,
@@ -293,7 +292,7 @@ const LiveCommunications = ({
     if (!user?.username) return;
 
     try {
-      await axios.post(`${edgeServerEndpoint}/pagination-preferences/${user.username}`, {
+      await api.post(`/pagination-preferences/${user.username}`, {
         recordsPerPage: newRecordsPerPage || recordsPerPage,
         currentPage: newCurrentPage || currentPage,
         reverseSort: newReverseSort !== undefined ? newReverseSort : reverseSort,
@@ -302,7 +301,7 @@ const LiveCommunications = ({
     } catch (error) {
       logger.error('Failed to save pagination preferences:', error);
     }
-  }, [user?.username, edgeServerEndpoint, recordsPerPage, currentPage, reverseSort, showFullTimestamps]);
+  }, [user?.username, recordsPerPage, currentPage, reverseSort, showFullTimestamps]);
 
   const fetchOlderForPagination = useCallback(async () => {
     if (!onFetchOlderInbox || inboxViewMode !== 'pagination') return false;
@@ -335,7 +334,7 @@ const LiveCommunications = ({
       if (mode === previous) return;
       setInboxViewMode(mode);
       try {
-        await axios.put(`${edgeServerEndpoint}/settings`, {
+        await api.put(`/settings`, {
           global_inbox_view_mode: mode,
         });
         if (mode === 'pagination' && !reverseSort) {
@@ -346,7 +345,7 @@ const LiveCommunications = ({
         setInboxViewMode(previous);
       }
     },
-    [edgeServerEndpoint, inboxViewMode, reverseSort, setReverseSortWithSave],
+    [inboxViewMode, reverseSort, setReverseSortWithSave],
   );
 
   // Save showFullTimestamps preference when it changes (only after initial load)
@@ -374,7 +373,7 @@ const LiveCommunications = ({
       }
 
       // Use .then/.catch chain instead of await to prevent unhandled rejections
-      fetch(`${edgeServerEndpoint}/mfa/status`, {
+      apiFetch(`/mfa/status`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -428,7 +427,7 @@ const LiveCommunications = ({
         clearTimeout(timeout);
       }
     };
-  }, [user?.username, edgeServerEndpoint]);
+  }, [user?.username]);
 
   // Load pagination preferences from backend
   useEffect(() => {
@@ -436,7 +435,7 @@ const LiveCommunications = ({
       if (!user?.username || paginationLoaded) return;
       
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/pagination-preferences/${user.username}`);
+        const response = await api.get(`/pagination-preferences/${user.username}`);
         if (response.data) {
           const { recordsPerPage: savedRecordsPerPage, currentPage: savedCurrentPage, reverseSort: savedReverseSort, showFullTimestamps: savedShowFullTimestamps } = response.data;
           if (savedRecordsPerPage) {
@@ -464,13 +463,13 @@ const LiveCommunications = ({
     };
 
     loadPaginationPreferences();
-  }, [user?.username, edgeServerEndpoint, paginationLoaded, setReverseSort]);
+  }, [user?.username, paginationLoaded, setReverseSort]);
 
   // Load global inbox view mode and default records-per-page from settings
   useEffect(() => {
     const loadInboxSettings = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/settings`);
+        const response = await api.get(`/settings`);
         const mode = response.data?.global_inbox_view_mode || 'pagination';
         const defaultPageSize = response.data?.global_inbox_records_per_page || 10;
         setInboxViewMode(mode);
@@ -489,16 +488,14 @@ const LiveCommunications = ({
       }
     };
 
-    if (edgeServerEndpoint) {
-      loadInboxSettings();
-    }
-  }, [edgeServerEndpoint, reverseSort, setReverseSortWithSave]);
+    loadInboxSettings();
+  }, [reverseSort, setReverseSortWithSave]);
 
   // Load live mode setting from database (separate effect to prevent reloading on other changes)
   useEffect(() => {
     const loadLiveModeSetting = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/settings`);
+        const response = await api.get(`/settings`);
         const liveModeEnabled = response.data?.global_live_mode_enabled;
         // Convert string "True"/"False" to boolean, default to false if not set
         const isEnabled = liveModeEnabled === 'True' || liveModeEnabled === true;
@@ -510,22 +507,20 @@ const LiveCommunications = ({
       }
     };
 
-    if (edgeServerEndpoint) {
-      loadLiveModeSetting();
-    }
-  }, [edgeServerEndpoint]); // Only depend on edgeServerEndpoint
+    loadLiveModeSetting();
+  }, []);
 
   // Save live mode setting to database
   const saveLiveModeSetting = useCallback(async (enabled) => {
     try {
-      await axios.put(`${edgeServerEndpoint}/settings`, {
+      await api.put(`/settings`, {
         global_live_mode_enabled: enabled ? 'True' : 'False'
       });
       logger.debug('Live mode setting saved to database:', enabled);
     } catch (error) {
       logger.error('Failed to save live mode setting:', error);
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   // Wrapper for setIsVolumeOn that also saves to database
   const setLiveMode = useCallback((enabled) => {
@@ -535,14 +530,14 @@ const LiveCommunications = ({
 
   // While the new-message popup is open, poll transcription for that recording only (does not hit the full inbox).
   useEffect(() => {
-    if (!newMessagePopup?.id || !edgeServerEndpoint) return;
+    if (!newMessagePopup?.id) return;
     if (!popupTranscriptionStillPending(newMessagePopup.message)) return;
 
     const recordingId = newMessagePopup.id;
 
     const poll = async () => {
       try {
-        const { data } = await axios.get(`${edgeServerEndpoint}/transcribe_save/${recordingId}`, {
+        const { data } = await api.get(`/transcribe_save/${recordingId}`, {
           timeout: 4000,
         });
         const t = data?.transcription;
@@ -567,7 +562,6 @@ const LiveCommunications = ({
   }, [
     newMessagePopup?.id,
     newMessagePopup?.message,
-    edgeServerEndpoint,
     setMessages,
     schedulePopupDismissAfterTranscription,
   ]);
@@ -880,11 +874,11 @@ const LiveCommunications = ({
 
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (!user?.username || !edgeServerEndpoint) {
+      if (!user?.username) {
         return;
       }
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/users/${user.username}`);
+        const response = await api.get(`/users/${user.username}`);
         const role = response.data?.[user.username]?.role || 'member';
         setUserRole(role);
       } catch (error) {
@@ -894,7 +888,7 @@ const LiveCommunications = ({
     };
 
     fetchUserRole();
-  }, [user?.username, edgeServerEndpoint]);
+  }, [user?.username]);
 
   
   // Toggle sidebar and log state for debugging
@@ -929,7 +923,7 @@ const LiveCommunications = ({
   useEffect(() => {
     const fetchBrandingData = async () => {
       try {
-        const response = await fetch(`${edgeServerEndpoint}/branding`);
+        const response = await apiFetch(`/branding`);
         if (!response.ok) throw new Error('Failed to fetch branding data');
         const data = await response.json();
         setBranding({
@@ -954,7 +948,7 @@ const LiveCommunications = ({
       }
     };
     fetchBrandingData();
-  }, [edgeServerEndpoint]);
+  }, []);
 
   useEffect(() => {
     if (brandingLoaded && branding.assets.favicon) {
@@ -1571,7 +1565,6 @@ const LiveCommunications = ({
           setSearchQuery={setSearchQuery}
           keywordCounts={keywordCounts}
           channelMessageCounts={channelMessageCounts}
-          API_BASE_URL={edgeServerEndpoint}
           isMobile={isMobile}
           closeSidebar={() => setIsSidebarOpen(false)}
           onDocumentationClick={() => window.open('/user-guide', '_blank')}
@@ -1622,7 +1615,6 @@ const LiveCommunications = ({
             showPerson={showPerson}
             setShowPerson={setShowPerson}
             isMobile={isMobile}
-            edgeServerEndpoint={edgeServerEndpoint}
             userRole={userRole}
             showFullTimestamps={showFullTimestamps}
             setShowFullTimestamps={setShowFullTimestamps}
@@ -1644,7 +1636,7 @@ const LiveCommunications = ({
         )}
 
         {/* Notification Banner */}
-        <NotificationBanner edgeServerEndpoint={edgeServerEndpoint} isDarkMode={isDarkMode} />
+        <NotificationBanner isDarkMode={isDarkMode} />
 
         <div id="dashboard-feed" className="flex min-h-0 min-w-0 flex-1 flex-col">
         <FullscreenMessages
@@ -1654,7 +1646,6 @@ const LiveCommunications = ({
           setSelectedMessages={setSelectedMessages}
           isMultiSelectMode={isMultiSelectMode}
           setIsMultiSelectMode={setIsMultiSelectMode}
-          edgeServerEndpoint={edgeServerEndpoint}
           isDarkMode={isDarkMode}
           messages={isMobile ? mobileMessages : desktopMessages}
           totalMessages={totalFilteredMessages}
@@ -1698,7 +1689,6 @@ const LiveCommunications = ({
             recordsPerPage={recordsPerPage}
             setRecordsPerPage={setRecordsPerPage}
             isMobile={isMobile}
-            edgeServerEndpoint={edgeServerEndpoint}
             reverseSort={reverseSort}
             inboxServerHasMore={inboxServerHasMore}
             inboxServerTotal={inboxServerTotal}
@@ -1729,7 +1719,6 @@ const LiveCommunications = ({
           setShowMfaReminder(false);
           sessionStorage.removeItem('mfa_reminder_dismissed');
         }}
-        edgeServerEndpoint={edgeServerEndpoint}
         isDarkMode={isDarkMode}
         user={user}
       />

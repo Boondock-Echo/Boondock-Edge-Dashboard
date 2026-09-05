@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/apiClient';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Clock } from 'lucide-react';
@@ -57,13 +58,12 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
     border: isDarkMode ? 'border-slate-800' : 'border-slate-200',
   };
 
-  const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
   // Fetch timezone from settings
   useEffect(() => {
     const fetchTimezone = async () => {
       try {
-        const settingsResp = await fetch(`${edgeServerEndpoint}/settings`).catch(() => null);
+        const settingsResp = await apiFetch(`/settings`).catch(() => null);
         if (settingsResp && settingsResp.ok) {
           const settingsData = await settingsResp.json();
           const tz = settingsData?.global_timezone;
@@ -93,7 +93,7 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
   useEffect(() => {
     const fetchReportsData = async () => {
       try {
-        const response = await fetch(`${edgeServerEndpoint}/incident-reports`);
+        const response = await apiFetch(`/incident-reports`);
         if (!response.ok) throw new Error('Failed to fetch reports');
         
         const data = await response.json();
@@ -257,7 +257,7 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
         return bestMatch.toISOString();
       };
       
-      const response = await fetch(`${edgeServerEndpoint}/incident-reports/${selectedIncident.id}`, {
+      const response = await apiFetch(`/incident-reports/${selectedIncident.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -323,7 +323,7 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
     setDeleteLoading(true);
     
     try {      
-      const response = await fetch(`${edgeServerEndpoint}/incident-reports/${incidentToDelete.id}`, {
+      const response = await apiFetch(`/incident-reports/${incidentToDelete.id}`, {
         method: 'DELETE',
       });
 

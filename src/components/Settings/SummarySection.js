@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { Link } from 'react-router-dom';
 
 const SUMMARY_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
@@ -83,7 +83,7 @@ const DeviceBentoCard = ({
   );
 };
 
-const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'Etc/UTC', globalSettings, handleGlobalChange }) => {
+const SummarySection = ({ isDarkMode, timezone = 'Etc/UTC', globalSettings, handleGlobalChange }) => {
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
   const [stats, setStats] = useState({
@@ -122,8 +122,8 @@ const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'E
       const todayStr = new Date().toISOString().split('T')[0];
 
       const [metricsRes, logsRes] = await Promise.all([
-        axios.get(`${edgeServerEndpoint}/settings/summary/metrics`, { params: { timezone } }),
-        axios.get(`${edgeServerEndpoint}/logs?date=${todayStr}&limit=20`),
+        api.get(`/settings/summary/metrics`, { params: { timezone } }),
+        api.get(`/logs?date=${todayStr}&limit=20`),
       ]);
 
       const metrics = metricsRes?.data || {};
@@ -143,12 +143,12 @@ const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'E
     } finally {
       setLoading(false);
     }
-  }, [edgeServerEndpoint, timezone, flattenLogsPayload]);
+  }, [timezone, flattenLogsPayload]);
 
   const fetchRecordingsDetail = useCallback(async () => {
     setDetailLoading((prev) => ({ ...prev, recordings: true }));
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/recordings/inbox`, {
+      const response = await api.get(`/recordings/inbox`, {
         params: { limit: 1000 },
       });
       const payload = response?.data;
@@ -162,16 +162,16 @@ const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'E
     } finally {
       setDetailLoading((prev) => ({ ...prev, recordings: false }));
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchLogsDetail = useCallback(async () => {
     setDetailLoading((prev) => ({ ...prev, logs: true }));
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const [errorRes, warningRes, eventRes] = await Promise.all([
-        axios.get(`${edgeServerEndpoint}/logs/error?date=${todayStr}&limit=300`),
-        axios.get(`${edgeServerEndpoint}/logs/warning?date=${todayStr}&limit=300`),
-        axios.get(`${edgeServerEndpoint}/logs/event?date=${todayStr}&limit=200`),
+        api.get(`/logs/error?date=${todayStr}&limit=300`),
+        api.get(`/logs/warning?date=${todayStr}&limit=300`),
+        api.get(`/logs/event?date=${todayStr}&limit=200`),
       ]);
       const logs = [
         ...(Array.isArray(errorRes?.data) ? errorRes.data : []),
@@ -185,12 +185,12 @@ const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'E
     } finally {
       setDetailLoading((prev) => ({ ...prev, logs: false }));
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   const fetchUsersDetail = useCallback(async () => {
     setDetailLoading((prev) => ({ ...prev, users: true }));
     try {
-      const response = await axios.get(`${edgeServerEndpoint}/users`);
+      const response = await api.get(`/users`);
       const users = response?.data && typeof response.data === 'object' ? response.data : {};
       setDetailData((prev) => ({ ...prev, users }));
       setDetailLoaded((prev) => ({ ...prev, users: true }));
@@ -199,13 +199,13 @@ const SummarySection = ({ isDarkMode, edgeServerEndpoint = '/api', timezone = 'E
     } finally {
       setDetailLoading((prev) => ({ ...prev, users: false }));
     }
-  }, [edgeServerEndpoint]);
+  }, []);
 
   useEffect(() => {
     fetchSummaryData();
     const interval = setInterval(fetchSummaryData, SUMMARY_REFRESH_MS);
     return () => clearInterval(interval);
-  }, [fetchSummaryData, edgeServerEndpoint]);
+  }, [fetchSummaryData]);
 
   useEffect(() => {
     if (!expandedCard) return;

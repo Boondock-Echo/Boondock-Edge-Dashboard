@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiClient';
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   Volume2,
@@ -305,7 +306,7 @@ const GlobalAudioPlayer = ({ audioUrl, onClose, isDarkMode = false }) => {
     ctx.textAlign = "center";
     ctx.fillText("Loading waveform...", canvas.width / 2, canvas.height / 2);
 
-    fetch(audioRef.current.src)
+    apiFetch(audioRef.current.src)
       .then((response) => {
         if (!response.ok) throw new Error("Network response failed");
         return response.arrayBuffer();

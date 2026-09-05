@@ -1,9 +1,9 @@
+import { apiFetch } from '../../utils/apiClient';
 // src/services/tagsService.js
-const edgeServerEndpoint = (localStorage.getItem("EDGE_SERVER_ENDPOINT") || process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api');
 
 async function requestJSON(url, opts = {}) {
 
-  const res = await fetch(`${edgeServerEndpoint}/url`, opts);
+  const res = await apiFetch(url, opts);
 
   if (!res.ok) {
 
@@ -96,4 +96,3 @@ export function deleteTag(id) {
   });
 
 }
-

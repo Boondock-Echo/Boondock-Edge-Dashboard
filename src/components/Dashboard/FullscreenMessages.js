@@ -1,3 +1,4 @@
+import { api, apiFetch } from '../../utils/apiClient';
 import React, {
   useRef,
   useEffect,
@@ -8,7 +9,6 @@ import { ArrowUp, MessageSquare } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
-import axios from "axios";
 import logger from "../../utils/logger";
 import IncidentReportModal from "./IncidentReportModal";
 import { useAuth } from "../AuthContext";
@@ -20,7 +20,6 @@ import { saveAs } from "file-saver";
 const MESSAGE_BODY_PREVIEW_CHAR_THRESHOLD = 110;
 
 const FullscreenMessages = ({
-  edgeServerEndpoint = '/api',
   messages: messagesProp,
   totalMessages = 0,
   channels,
@@ -67,7 +66,7 @@ const FullscreenMessages = ({
   );
 
   const { logout, user } = useAuth();
-  const { hasPermission } = usePermissions(edgeServerEndpoint);
+  const { hasPermission } = usePermissions();
 
   // Permission checks
   const canPlayAudio = user?.role === 'admin' || hasPermission('play_audio');
@@ -179,7 +178,7 @@ const FullscreenMessages = ({
     const fetchUserRole = async () => {
       if (!user) return;
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/users/${user.username}`);
+        const response = await api.get(`/users/${user.username}`);
         setUserRole(response.data[user.username]?.role || 'member');
       } catch (error) {
         logger.error('Error fetching user role:', error);
@@ -187,7 +186,7 @@ const FullscreenMessages = ({
       }
     };
     fetchUserRole();
-  }, [user, edgeServerEndpoint]);
+  }, [user]);
 
   // Available tags and fetched tags
 
@@ -372,7 +371,7 @@ const FullscreenMessages = ({
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      audioRef.current.src = edgeServerEndpoint + '/' + url;
+      audioRef.current.src = url;
       audioRef.current.load(); // Load the audio first
       try {
         await audioRef.current.play();
@@ -402,7 +401,7 @@ const FullscreenMessages = ({
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      audioRef.current.src = edgeServerEndpoint + '/' + url;
+      audioRef.current.src = url;
       audioRef.current.load();
       setPlayingAudio(url);
       setExpandedPlayer(messageId);
@@ -503,7 +502,7 @@ const FullscreenMessages = ({
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
 
-      const response = await fetch(`${edgeServerEndpoint}/${audioUrl}`);
+      const response = await apiFetch(audioUrl);
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
 
@@ -780,20 +779,20 @@ const FullscreenMessages = ({
   useEffect(() => {
     (async () => {
       try {
-        const resp = await axios.get(`${edgeServerEndpoint}/tags`);
+        const resp = await api.get(`/tags`);
         setAllTags(resp.data.map((t) => t.name));
       } catch (err) {
         logger.error("Failed to load tags:", err);
         showToast("Failed to load available tags", "error");
       }
     })();
-  }, [edgeServerEndpoint, showToast]);
+  }, [showToast]);
 
   // Fetch global settings to check if hallucination filtering is enabled
   useEffect(() => {
     const fetchGlobalSettings = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/settings`);
+        const response = await api.get(`/settings`);
         const hallucinationSetting = response.data?.global_hallucination || "True";
         setIsHallucinationEnabled(hallucinationSetting === "True");
       } catch (err) {
@@ -803,7 +802,7 @@ const FullscreenMessages = ({
       }
     };
     fetchGlobalSettings();
-  }, [edgeServerEndpoint]);
+  }, []);
 
    useEffect(() => {
       const fetchHallucinations = async () => {
@@ -814,7 +813,7 @@ const FullscreenMessages = ({
         }
 
         try {
-          const response = await fetch(`${edgeServerEndpoint}/hallucinations`);
+          const response = await apiFetch(`/hallucinations`);
           
           if (!response.ok) {
             throw new Error(`Failed to fetch hallucinations: ${response.status} ${response.statusText}`);
@@ -836,7 +835,7 @@ const FullscreenMessages = ({
         }
       };
       fetchHallucinations();
-    }, [edgeServerEndpoint, isHallucinationEnabled]);
+    }, [isHallucinationEnabled]);
   // Fetch tags for messages using batch endpoint with page-based caching
   useEffect(() => {
     const fetchTagsBatch = async () => {
@@ -858,7 +857,7 @@ const FullscreenMessages = ({
         // Use batch endpoint to fetch tags for all unchecked messages at once
         const recordingIds = uncheckedMessages.map(message => message.id);
         
-        const response = await axios.post(`${edgeServerEndpoint}/recordings_tag/batch/tags`,
+        const response = await api.post(`/recordings_tag/batch/tags`,
           { recording_ids: recordingIds }
         );
         
@@ -886,7 +885,7 @@ const FullscreenMessages = ({
     if (messages.length > 0) {
       fetchTagsBatch();
     }
-  }, [messages, edgeServerEndpoint, showToast, checkedMessageIds, tagsByMessage, currentPage]);
+  }, [messages, showToast, checkedMessageIds, tagsByMessage, currentPage]);
 
 
 
@@ -914,7 +913,7 @@ const FullscreenMessages = ({
     setRefreshingTags(prev => new Set(prev).add(messageId));
     
     try {
-      await axios.post(`${edgeServerEndpoint}/recordings_tag/${messageId}/tags`, {
+      await api.post(`/recordings_tag/${messageId}/tags`, {
         tag,
       });
       setTagsByMessage((prev) => ({
@@ -952,7 +951,7 @@ const FullscreenMessages = ({
       await Promise.all(
         Array.from(selectedMessages).map(async (id) => {
           if (!tagsByMessage[id]?.includes(selectedTag)) {
-            await axios.post(`${edgeServerEndpoint}/recordings_tag/${id}/tags`, {
+            await api.post(`/recordings_tag/${id}/tags`, {
               tag: selectedTag,
             });
           }
@@ -987,8 +986,8 @@ const FullscreenMessages = ({
     setRefreshingTags(prev => new Set(prev).add(messageId));
     
     try {
-      await axios.delete(
-        `${edgeServerEndpoint}/recordings_tag/${messageId}/tags/${tag}`
+      await api.delete(
+        `/recordings_tag/${messageId}/tags/${tag}`
       );
       setTagsByMessage((prev) => ({
         ...prev,
@@ -1047,7 +1046,7 @@ const FullscreenMessages = ({
       });
       
       // Fetch tags for this specific message
-      const response = await axios.get(`${edgeServerEndpoint}/recordings_tag/${messageId}/tags`);
+      const response = await api.get(`/recordings_tag/${messageId}/tags`);
       
       setTagsByMessage((prev) => ({
         ...prev,
@@ -1109,7 +1108,7 @@ const FullscreenMessages = ({
         try {
           await Promise.all(
             mergedTags.map((tag) =>
-              axios.post(`${edgeServerEndpoint}/recordings_tag/${newMsg.id}/tags`, {
+              api.post(`/recordings_tag/${newMsg.id}/tags`, {
                 tag,
               })
             )
@@ -1162,8 +1161,8 @@ const FullscreenMessages = ({
   const handleIncidentSubmit = async (reportData) => {
     setIsProcessing(true);
     try {
-      const { data } = await axios.post(
-        `${edgeServerEndpoint}/incident-reports`,
+      const { data } = await api.post(
+        `/incident-reports`,
         reportData
       );
       showToast(`Incident report created: ${data.report_id}`, "success");
@@ -1191,7 +1190,7 @@ const FullscreenMessages = ({
     try {
       await Promise.all(
         Array.from(selectedMessages).map((id) =>
-          axios.delete(`${edgeServerEndpoint}/recordings/${id}`)
+          api.delete(`/recordings/${id}`)
         )
       );
       setMessages((prev) => prev.filter((m) => !selectedMessages.has(m.id)));
@@ -1235,7 +1234,7 @@ const FullscreenMessages = ({
         onClose: async () => {
           if (!shouldDelete) return;
           try {
-            await axios.delete(`${edgeServerEndpoint}/recordings/${id}`);
+            await api.delete(`/recordings/${id}`);
             setMessages((p) => p.filter((m) => m.id !== id));
             setTagsByMessage((p) => {
               const n = { ...p };
@@ -1728,7 +1727,7 @@ const FullscreenMessages = ({
     let downloadFilename = filename;
     if (messageId) {
       try {
-        const res = await axios.get(`${edgeServerEndpoint}/audio_url/${messageId}?time_format=${timeFormat}`);
+        const res = await api.get(`/audio_url/${messageId}?time_format=${timeFormat}`);
         // Use formatted filename from API response, fallback to provided filename
         downloadFilename = res.data.utc_filename || filename;
       } catch (err) {
@@ -1737,7 +1736,7 @@ const FullscreenMessages = ({
       }
     }
     
-    const response = await fetch(`${edgeServerEndpoint}/url`);
+    const response = await apiFetch(url);
     const blob = await response.blob();
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -1876,7 +1875,7 @@ const FullscreenMessages = ({
           let filename = `audio_${msg.id}.wav`; // Fallback filename
           if (msg.id) {
             try {
-              const res = await axios.get(`${edgeServerEndpoint}/audio_url/${msg.id}?time_format=${timeFormat}`);
+              const res = await api.get(`/audio_url/${msg.id}?time_format=${timeFormat}`);
               // Use formatted filename from API response
               filename = res.data.utc_filename || filename;
             } catch (err) {
@@ -1886,7 +1885,7 @@ const FullscreenMessages = ({
           }
           
           // Fetch the audio file
-          const response = await fetch(`${edgeServerEndpoint}/msg.url`);
+          const response = await apiFetch(msg.url);
           const blob = await response.blob();
           // Use the proper filename format (respects time format preference)
           zip.file(filename, blob);
@@ -2533,7 +2532,7 @@ const FullscreenMessages = ({
                 setRetranscribeLoading((prev) => ({ ...prev, [item.id]: true }));
                 showToast('Transcribing...', 'info');
                 try {
-                  const response = await axios.post(`${edgeServerEndpoint}/transcribe/${item.id}`);
+                  const response = await api.post(`/transcribe/${item.id}`);
                   if (response.data && response.data.transcription) {
                     setMessages((prev) => prev.map((m) => m.id === item.id ? { ...m, message: response.data.transcription } : m));
                     showToast('Transcription updated!', 'success');

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../../utils/apiClient';
 import { X, Cloud, CheckCircle, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const BackupProgressModal = ({ isOpen, onClose, edgeServerEndpoint = '/api', isDarkMode, globalSettings }) => {
+const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) => {
   const [backupType, setBackupType] = useState('incremental');
   // Separate destination checkboxes to reduce vertical height
   const [includeCloud, setIncludeCloud] = useState(true);
@@ -61,7 +61,7 @@ const BackupProgressModal = ({ isOpen, onClose, edgeServerEndpoint = '/api', isD
       setIncludeCloud(false);
       setIncludeSamba(false);
     }
-  }, [isOpen, edgeServerEndpoint, globalSettings]);
+  }, [isOpen, globalSettings]);
 
   const handleStartBackup = async () => {
     // Derive destination string from checkbox selections
@@ -109,7 +109,7 @@ const BackupProgressModal = ({ isOpen, onClose, edgeServerEndpoint = '/api', isD
     
     try {
       setBackupStarted(true);
-      await axios.post(`${edgeServerEndpoint}/s3/backup/start`, { backup_type: backupType, destination });
+      await api.post(`/s3/backup/start`, { backup_type: backupType, destination });
     } catch (error) {
       console.error('Error starting backup:', error);
       setBackupStarted(false);
@@ -134,7 +134,7 @@ const BackupProgressModal = ({ isOpen, onClose, edgeServerEndpoint = '/api', isD
     // Poll for progress updates
     const pollProgress = async () => {
       try {
-        const response = await axios.get(`${edgeServerEndpoint}/s3/backup/status`);
+        const response = await api.get(`/s3/backup/status`);
         const newProgress = response.data;
         setProgress(newProgress);
 
@@ -161,7 +161,7 @@ const BackupProgressModal = ({ isOpen, onClose, edgeServerEndpoint = '/api', isD
         intervalRef.current = null;
       }
     };
-  }, [isOpen, edgeServerEndpoint, backupStarted]);
+  }, [isOpen, backupStarted]);
 
   if (!isOpen) return null;
 
