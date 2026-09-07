@@ -1,11 +1,12 @@
 import { apiFetch } from '../../utils/apiClient';
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
-import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search, Play, Pause, 
+import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search,
   ChevronDown, ChevronUp, Radio, MapPin, Download, Edit, Trash2, Copy, FileDown } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { buildIncidentReportPdfBlob, incidentReportPdfFilename, fetchBrandingForPdf } from '../../utils/incidentReportPdf';
+import InlineAudioPlayer from '../InlineAudioPlayer';
 
 /**
  * AUDIO PLAYER
@@ -16,39 +17,15 @@ const AudioPlayer = ({
   source,
   transcription,
   recordedAt,
-  isPlaying,
-  onTogglePlay,
   themeClasses,
   formatDate,
-  audioRefs,
   isDarkMode,
   isCompact = false
 }) => {
-  const setRef = (el) => {
-    if (el) {
-      audioRefs.current[audioId] = el;
-      el.src = url;
-      if (isPlaying) {
-        el.play().catch(() => {});
-      }
-    }
-  };
-
-  useEffect(() => {
-    const audioEl = audioRefs.current[audioId];
-    if (!audioEl) return;
-    if (isPlaying) {
-      audioEl.play().catch(() => {});
-    } else {
-      audioEl.pause();
-    }
-  }, [isPlaying, audioId, url]);
-
   return (
     <div className={`rounded-xl ${isCompact ? 'p-2.5' : 'p-4'} border transition-all duration-200 hover:shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-800 hover:bg-slate-800/70' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
       <div className="flex items-start space-x-3">
         <div
-          onClick={() => onTogglePlay(audioId, url)}
           className={`
             ${isCompact ? 'w-8 h-8' : 'w-10 h-10'} flex-shrink-0
             ${themeClasses.cardHover}
@@ -58,24 +35,16 @@ const AudioPlayer = ({
             group
           `}
         >
-          <button
+          <InlineAudioPlayer
+            ownerId={`report:${audioId}`}
+            src={url}
+            isDarkMode={isDarkMode}
             className={`
               p-2 rounded-full
               bg-transparent
               ${themeClasses.secondaryBtn}
               focus:outline-none focus:ring-2 ${isDarkMode ? 'focus:ring-blue-500' : 'focus:ring-blue-500'}
             `}
-            aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
-          >
-            {isPlaying ? (
-              <Pause className={`${isCompact ? 'w-3 h-3' : 'w-4 h-4'} ${isDarkMode ? 'text-blue-300 group-hover:text-blue-200' : 'text-[#003178] group-hover:text-blue-700'} transition-colors`} />
-            ) : (
-              <Play className={`${isCompact ? 'w-3 h-3' : 'w-4 h-4'} ${isDarkMode ? 'text-blue-300 group-hover:text-blue-200' : 'text-[#003178] group-hover:text-blue-700'} transition-colors`} />
-            )}
-          </button>
-          <audio
-            ref={setRef}
-            onEnded={() => onTogglePlay(audioId, null)}
           />
         </div>
 
@@ -616,12 +585,10 @@ const IncidentReportsUI = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('transcription');
-  const [playingAudioId, setPlayingAudioId] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const [operationError, setOperationError] = useState(null);
-  const audioRefs = useRef({});
   const { user } = useAuth();
   const [settingsTimezone, setSettingsTimezone] = useState(null);
   const [channelsById, setChannelsById] = useState({});
@@ -842,25 +809,6 @@ const IncidentReportsUI = ({
     const found = reports.find(r => r.id === id);
     if (!isSame && found) setSelectedIncident(found);
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-  };
-
-  // TOGGLE AUDIO PLAYBACK
-  const toggleAudio = (audioId, url) => {
-    if (playingAudioId && playingAudioId !== audioId) {
-      audioRefs.current[playingAudioId]?.pause();
-      setPlayingAudioId(null);
-    }
-
-    if (playingAudioId === audioId) {
-      audioRefs.current[audioId]?.pause();
-      setPlayingAudioId(null);
-    } else {
-      const newAudio = audioRefs.current[audioId];
-      if (!newAudio) return;
-      newAudio.src = url;
-      newAudio.play().catch(() => {});
-      setPlayingAudioId(audioId);
-    }
   };
 
   // Build TXT content (shared by TXT and ZIP)
@@ -1322,11 +1270,8 @@ const IncidentReportsUI = ({
                             source={getDisplaySource(audio.source)}
                             transcription={audio.transcription}
                             recordedAt={audio.recordedAt}
-                            isPlaying={playingAudioId === audio.id}
-                            onTogglePlay={toggleAudio}
                             themeClasses={themeClasses}
                             formatDate={formatDate}
-                            audioRefs={audioRefs}
                             isDarkMode={isDarkMode}
                             isCompact={isCompact}
                           />

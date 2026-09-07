@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_TIMEOUT_MS = 30000;
 export const API_BASE_URL = process.env.REACT_APP_EDGE_SERVER_ENDPOINT || '/api';
 
 let getToken = () => null;

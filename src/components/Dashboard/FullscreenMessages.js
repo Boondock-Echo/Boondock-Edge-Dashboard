@@ -13,6 +13,8 @@ import logger from "../../utils/logger";
 import IncidentReportModal from "./IncidentReportModal";
 import { useAuth } from "../AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
+import { useAudioPlayback } from "../AudioPlaybackContext";
+import SharedInlineAudioPlayer from "../InlineAudioPlayer";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
@@ -83,17 +85,9 @@ const FullscreenMessages = ({
   const msgActionFont = isMobile ? "text-[18px]" : "text-[20px]";
 
   // State declarations - moved before useEffect that depends on them
-  const [playingAudio, setPlayingAudio] = useState(null);
   const [expandedPlayer, setExpandedPlayer] = useState(null); // Track which message has expanded player
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef(new Audio());
-  const [iconToggle, setIconToggle] = useState(false);
+  const { activeTrack, status: audioStatus } = useAudioPlayback();
   const [hallucinations, setHallucinations] = useState([]);
-  const [waveformData, setWaveformData] = useState(null); // Store waveform data for current audio
-  const audioContextRef = useRef(null);
-  const waveformAnimationRef = useRef(null);
   // UI state
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -345,95 +339,12 @@ const FullscreenMessages = ({
   return matches;
 };
 
-  const handlePlayAudio = async (url, messageId) => {
-    // If this is the currently loaded audio
-    if (playingAudio === url) {
-      if (isPlaying) {
-        // Pause the audio
-        if (audioRef.current) {
-          audioRef.current.pause();
-        }
-        setIsPlaying(false);
-      } else {
-        // Resume playing
-        try {
-          if (audioRef.current) {
-            await audioRef.current.play();
-            setIsPlaying(true);
-          }
-        } catch (error) {
-          logger.error('Error playing audio:', error);
-          setIsPlaying(false);
-        }
-      }
-    } else {
-      // Switch to a different audio file
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      audioRef.current.src = url;
-      audioRef.current.load(); // Load the audio first
-      try {
-        await audioRef.current.play();
-        setPlayingAudio(url);
-        setIsPlaying(true);
-        setExpandedPlayer(messageId); // Expand the player for this message
-      } catch (error) {
-        logger.error('Error playing audio:', error);
-        logger.error('Error audio:', audioRef.current.src);
-        setIsPlaying(false);
-      }
-    }
-  };
-
-  const togglePlayerExpand = (messageId, url) => {
+  const togglePlayerExpand = (messageId) => {
     if (expandedPlayer === messageId) {
-      // Collapse player and stop audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
       setExpandedPlayer(null);
-      setPlayingAudio(null);
-      setIsPlaying(false);
-      setCurrentTime(0);
     } else {
-      // Expand player for this message and auto-play
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      audioRef.current.src = url;
-      audioRef.current.load();
-      setPlayingAudio(url);
       setExpandedPlayer(messageId);
-      setCurrentTime(0);
-      // Auto-play the audio when player expands
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch((error) => {
-        logger.error('Error auto-playing audio:', error);
-        logger.error('Error audio:', audioRef.current.src);
-        setIsPlaying(false);
-      });
     }
-  };
-
-  const handleSeek = (e) => {
-    const seekTime = parseFloat(e.target.value);
-    audioRef.current.currentTime = seekTime;
-    setCurrentTime(seekTime);
-  };
-
-  const skipTime = (seconds) => {
-    const newTime = Math.max(0, Math.min(audioRef.current.currentTime + seconds, duration));
-    audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
-
-  const formatAudioTime = (time) => {
-    if (isNaN(time)) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   // Parse timestamp from YYYYMMDD_HHMMSS format
@@ -488,163 +399,6 @@ const FullscreenMessages = ({
       return timeFormat === '12h' ? '00:00:00:000 AM' : '00:00:00:000';
     }
   };
-
-  // Generate waveform data from audio
-  const generateWaveform = useCallback(async (audioUrl) => {
-    try {
-      if (!audioUrl) {
-        setWaveformData(null);
-        return;
-      }
-
-      // Create audio context if it doesn't exist
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-
-      const response = await apiFetch(audioUrl);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-
-      // Get channel data (use first channel)
-      const channelData = audioBuffer.getChannelData(0);
-      const samples = 200; // Number of waveform bars
-      const blockSize = Math.floor(channelData.length / samples);
-      const waveform = [];
-
-      // Sample the audio data
-      for (let i = 0; i < samples; i++) {
-        let sum = 0;
-        const start = i * blockSize;
-        const end = Math.min(start + blockSize, channelData.length);
-        
-        for (let j = start; j < end; j++) {
-          sum += Math.abs(channelData[j]);
-        }
-        
-        const average = sum / (end - start);
-        waveform.push(average);
-      }
-
-      // Normalize waveform data
-      const max = Math.max(...waveform);
-      const normalizedWaveform = waveform.map(value => max > 0 ? value / max : 0);
-      
-      setWaveformData(normalizedWaveform);
-    } catch (error) {
-      logger.error('Error generating waveform:', error);
-      setWaveformData(null);
-    }
-  }, []);
-
-  // Generate waveform when audio URL changes
-  useEffect(() => {
-    if (playingAudio) {
-      generateWaveform(playingAudio);
-    } else {
-      setWaveformData(null);
-    }
-    return () => {
-      // HIGH-29: close AudioContext when waveform is torn down to release system resources
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-        audioContextRef.current = null;
-      }
-    };
-  }, [playingAudio, generateWaveform]);
-
-  // Cancel any outstanding rAF animation loop on unmount (HIGH-28)
-  useEffect(() => {
-    return () => {
-      if (waveformAnimationRef.current) {
-        cancelAnimationFrame(waveformAnimationRef.current);
-        waveformAnimationRef.current = null;
-      }
-    };
-  }, []);
-
-  // Handle audio ended and time updates
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      // Clear audio playing flag when audio ends
-      localStorage.removeItem('audioIsPlaying');
-    };
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
-    const handleDurationChange = () => {
-      setDuration(audio.duration);
-    };
-
-    const handlePlay = () => {
-      setIsPlaying(true);
-      localStorage.setItem('audioIsPlaying', 'true');
-    };
-
-    const handlePause = () => {
-      setIsPlaying(false);
-      localStorage.removeItem('audioIsPlaying');
-    };
-
-    const handleError = (e) => {
-      logger.error('Audio error:', e);
-      setIsPlaying(false);
-      localStorage.removeItem('audioIsPlaying');
-    };
-
-    // Add event listeners
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('durationchange', handleDurationChange);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('error', handleError);
-
-    return () => {
-      // Remove event listeners
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('durationchange', handleDurationChange);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('error', handleError);
-      // Clear audio playing flag on cleanup
-      localStorage.removeItem('audioIsPlaying');
-    };
-  }, []);
-
-  // Track audio playing state in localStorage to pause screen refreshes
-  useEffect(() => {
-    if (isPlaying) {
-      localStorage.setItem('audioIsPlaying', 'true');
-    } else {
-      localStorage.removeItem('audioIsPlaying');
-    }
-  }, [isPlaying]);
-
-  // Icon animation effect
-  useEffect(() => {
-    let interval;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setIconToggle(prev => !prev);
-      }, 500);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying]);
 
   // Infinite scroll for all devices
   useEffect(() => {
@@ -1331,7 +1085,7 @@ const FullscreenMessages = ({
 //   );
 // };
   const AudioIcon = ({ url, messageId }) => {
-    const isCurrentlyPlaying = playingAudio === url && isPlaying;
+    const isCurrentlyPlaying = activeTrack?.ownerId === `inbox:${messageId}` && audioStatus === 'playing';
     const isExpanded = expandedPlayer === messageId;
     return (
       <button
@@ -1357,7 +1111,7 @@ const FullscreenMessages = ({
         aria-label={isExpanded ? "Close player" : "Open player"}
       >
         <span className={`${msgActionIcon} ${msgActionFont}`}>
-          {isCurrentlyPlaying ? (iconToggle ? "equalizer" : "graphic_eq") : "audio_file"}
+          {isCurrentlyPlaying ? "graphic_eq" : "audio_file"}
         </span>
       </button>
     );
@@ -1370,355 +1124,6 @@ const FullscreenMessages = ({
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Inline Audio Player Component - Full width below transcription
-  const InlineAudioPlayer = ({ url, messageId }) => {
-    const isThisPlaying = playingAudio === url && isPlaying;
-    const progressPercent = duration ? ((playingAudio === url ? currentTime : 0) / duration) * 100 : 0;
-    const localWaveformCanvasRef = useRef(null);
-    
-    // Find the message to get its timestamp
-    const message = messages.find(m => m.id === messageId);
-    const playbackTime = playingAudio === url ? currentTime : 0;
-    const actualTimestamp = message ? formatTimestampWithMillis(message.time, playbackTime) : '00:00:00:000';
-    
-    // Draw waveform on canvas for this specific player
-    useEffect(() => {
-      if (!localWaveformCanvasRef.current || !waveformData || waveformData.length === 0 || playingAudio !== url) {
-        // Cancel animation if conditions not met
-        if (waveformAnimationRef.current) {
-          cancelAnimationFrame(waveformAnimationRef.current);
-          waveformAnimationRef.current = null;
-        }
-        return;
-      }
-
-      const canvas = localWaveformCanvasRef.current;
-      const ctx = canvas.getContext('2d');
-      const container = canvas.parentElement;
-      
-      if (!container) return;
-
-      // Set canvas size to match container (only once, not on every update)
-      const rect = container.getBoundingClientRect();
-      const containerWidth = Math.max(rect.width, 1); // Ensure minimum width of 1
-      const canvasHeight = 32;
-      
-      if (canvas.width !== containerWidth || canvas.height !== canvasHeight) {
-        canvas.width = containerWidth;
-        canvas.height = canvasHeight;
-      }
-
-      const width = canvas.width;
-      const height = canvas.height;
-      
-      // Validate canvas dimensions before proceeding
-      if (width <= 0 || height <= 0) {
-        console.warn('Canvas has invalid dimensions, skipping waveform draw', { width, height });
-        return;
-      }
-      
-      const barCount = waveformData.length;
-      if (barCount === 0) return;
-      
-      const barWidth = width / barCount;
-      const centerY = height / 2;
-
-      // Cache colors
-      const rootStyles = getComputedStyle(document.documentElement);
-      const playedColor = rootStyles.getPropertyValue('--ui-accent').trim();
-      const unplayedColor = rootStyles.getPropertyValue('--ui-muted').trim();
-
-      // Create offscreen canvas for base waveform (drawn once, never cleared)
-      const baseCanvas = document.createElement('canvas');
-      baseCanvas.width = width;
-      baseCanvas.height = height;
-      const baseCtx = baseCanvas.getContext('2d');
-      
-      // Validate baseCanvas dimensions before drawing
-      if (baseCanvas.width <= 0 || baseCanvas.height <= 0) {
-        console.warn('Base canvas has invalid dimensions, skipping waveform draw', { 
-          width: baseCanvas.width, 
-          height: baseCanvas.height 
-        });
-        return;
-      }
-      
-      // Draw base waveform once on offscreen canvas
-      waveformData.forEach((value, index) => {
-        const x = index * barWidth;
-        const barHeight = value * (height * 0.8);
-        baseCtx.fillStyle = unplayedColor;
-        baseCtx.fillRect(x, centerY - barHeight / 2, barWidth - 1, barHeight);
-      });
-
-      // Create offscreen canvas for progress layer (double buffering)
-      const progressCanvas = document.createElement('canvas');
-      progressCanvas.width = width;
-      progressCanvas.height = height;
-      const progressCtx = progressCanvas.getContext('2d');
-      
-      // Validate progressCanvas dimensions before drawing
-      if (progressCanvas.width <= 0 || progressCanvas.height <= 0) {
-        console.warn('Progress canvas has invalid dimensions, skipping waveform draw', { 
-          width: progressCanvas.width, 
-          height: progressCanvas.height 
-        });
-        return;
-      }
-
-      // Draw base waveform to main canvas once
-      ctx.drawImage(baseCanvas, 0, 0);
-
-      // Track last drawn progress to only update changed bars
-      let lastDrawnBarIndex = -1;
-      let lastUpdateTime = 0;
-      const UPDATE_INTERVAL = 100; // Update every 100ms (~10fps) to significantly reduce flickering
-
-      // Draw full waveform with progress using double buffering
-      const drawWaveformWithProgress = (progressTime) => {
-        // Validate canvas dimensions before drawing
-        if (width <= 0 || height <= 0 || baseCanvas.width <= 0 || baseCanvas.height <= 0) {
-          return;
-        }
-        
-        if (!duration) {
-          // Just draw base waveform
-          ctx.clearRect(0, 0, width, height);
-          if (baseCanvas.width > 0 && baseCanvas.height > 0) {
-            ctx.drawImage(baseCanvas, 0, 0);
-          }
-          return;
-        }
-        
-        const currentProgressPercent = (progressTime / duration) * 100;
-        const progressPosition = currentProgressPercent / 100 * width;
-        const currentBarIndex = Math.floor((progressPosition / width) * barCount);
-        
-        // Only redraw if we've moved to a new bar (throttle updates)
-        if (currentBarIndex !== lastDrawnBarIndex) {
-          // Validate progressCanvas dimensions
-          if (progressCanvas.width <= 0 || progressCanvas.height <= 0) {
-            return;
-          }
-          
-          // Clear and redraw progress layer on offscreen canvas
-          progressCtx.clearRect(0, 0, width, height);
-          
-          // Draw played portion on progress canvas
-          progressCtx.fillStyle = playedColor;
-          for (let i = 0; i <= currentBarIndex && i < barCount; i++) {
-            const x = i * barWidth;
-            const barHeight = waveformData[i] * (height * 0.8);
-            progressCtx.fillRect(x, centerY - barHeight / 2, barWidth - 1, barHeight);
-          }
-          
-          // Composite both canvases to main canvas in one operation (no flicker)
-          ctx.clearRect(0, 0, width, height);
-          if (baseCanvas.width > 0 && baseCanvas.height > 0) {
-            ctx.drawImage(baseCanvas, 0, 0);
-          }
-          if (progressCanvas.width > 0 && progressCanvas.height > 0) {
-            ctx.drawImage(progressCanvas, 0, 0);
-          }
-          
-          lastDrawnBarIndex = currentBarIndex;
-        }
-      };
-
-      // Initial draw
-      drawWaveformWithProgress(isThisPlaying && duration ? currentTime : 0);
-
-      // Animation loop - throttled to reduce flickering
-      const animate = (timestamp) => {
-        if (isThisPlaying && playingAudio === url && duration && audioRef.current) {
-          // Throttle updates to reduce flickering
-          if (timestamp - lastUpdateTime >= UPDATE_INTERVAL) {
-            const currentProgressTime = audioRef.current.currentTime || 0;
-            drawWaveformWithProgress(currentProgressTime);
-            lastUpdateTime = timestamp;
-          }
-          waveformAnimationRef.current = requestAnimationFrame(animate);
-        }
-      };
-
-      if (isThisPlaying) {
-        waveformAnimationRef.current = requestAnimationFrame(animate);
-      }
-
-      // Redraw on window resize
-      const handleResize = () => {
-        const newRect = container.getBoundingClientRect();
-        canvas.width = newRect.width;
-        canvas.height = 32;
-        const newWidth = canvas.width;
-        const newBarWidth = newWidth / barCount;
-        
-        // Recreate base canvas with new dimensions
-        baseCanvas.width = newWidth;
-        baseCanvas.height = height;
-        
-        // Recreate progress canvas with new dimensions
-        progressCanvas.width = newWidth;
-        progressCanvas.height = height;
-        
-        // Redraw base waveform
-        baseCtx.clearRect(0, 0, newWidth, height);
-        waveformData.forEach((value, index) => {
-          const x = index * newBarWidth;
-          const barHeight = value * (height * 0.8);
-          baseCtx.fillStyle = unplayedColor;
-          baseCtx.fillRect(x, centerY - barHeight / 2, newBarWidth - 1, barHeight);
-        });
-        
-        // Redraw everything
-        lastDrawnBarIndex = -1;
-        const progressTime = isThisPlaying && audioRef.current ? audioRef.current.currentTime : 0;
-        drawWaveformWithProgress(progressTime);
-      };
-      window.addEventListener('resize', handleResize);
-
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        if (waveformAnimationRef.current) {
-          cancelAnimationFrame(waveformAnimationRef.current);
-          waveformAnimationRef.current = null;
-        }
-      };
-    }, [waveformData, playingAudio, url, isDarkMode, isThisPlaying]);
-    
-    return (
-      <div 
-        className={`flex flex-col gap-2 px-3 py-2 rounded-lg ${
-          isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Timestamp Display */}
-        <div className={`flex items-center justify-center text-xs font-mono ${
-          isDarkMode ? 'text-blue-400' : 'text-blue-600'
-        }`}>
-          <span className="font-semibold">Timestamp: </span>
-          <span className="ml-1">{actualTimestamp}</span>
-        </div>
-
-        {/* Controls Row */}
-        <div className="flex items-center gap-3">
-          {/* Skip Back */}
-          <button
-            onClick={() => skipTime(-5)}
-            className={`flex-shrink-0 p-1 rounded hover:bg-opacity-50 ${
-              isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200'
-            }`}
-            title="Back 5s"
-          >
-            <span className={`${msgActionIcon} text-[18px]`}>replay_5</span>
-          </button>
-
-          {/* Play/Pause */}
-          <button
-            onClick={() => handlePlayAudio(url, messageId)}
-            className={`flex-shrink-0 p-2 rounded-full ${
-              isDarkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'
-            } text-white`}
-          >
-            <span className={`${msgActionIcon} text-[22px] text-white`}>
-              {isThisPlaying ? "pause_circle" : "play_circle"}
-            </span>
-          </button>
-
-          {/* Skip Forward */}
-          <button
-            onClick={() => skipTime(5)}
-            className={`flex-shrink-0 p-1 rounded hover:bg-opacity-50 ${
-              isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200'
-            }`}
-            title="Forward 5s"
-          >
-            <span className={`${msgActionIcon} text-[18px]`}>forward_5</span>
-          </button>
-
-          {/* Current Time */}
-          <span className={`flex-shrink-0 text-xs font-mono ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-600'
-          }`}>
-            {formatAudioTime(playbackTime)}
-          </span>
-
-          {/* Waveform and Progress Bar Container */}
-          <div className="flex-grow flex flex-col gap-1">
-            {/* Waveform Visualization */}
-            {waveformData && waveformData.length > 0 && playingAudio === url && (
-              <div 
-                className="relative w-full h-8 cursor-pointer"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const percent = (e.clientX - rect.left) / rect.width;
-                  const newTime = percent * (duration || 0);
-                  audioRef.current.currentTime = newTime;
-                  setCurrentTime(newTime);
-                }}
-              >
-                <canvas
-                  ref={localWaveformCanvasRef}
-                  className="w-full h-full"
-                  style={{ imageRendering: 'pixelated' }}
-                />
-              </div>
-            )}
-            
-            {/* Progress Bar - Full width */}
-            <div 
-              className={`relative w-full h-2 rounded-full cursor-pointer ${
-                isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
-              }`}
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                const newTime = percent * (duration || 0);
-                audioRef.current.currentTime = newTime;
-                setCurrentTime(newTime);
-              }}
-            >
-              <div 
-                className={`absolute left-0 top-0 h-full rounded-full ${
-                  isDarkMode ? 'bg-blue-500' : 'bg-blue-600'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-              {/* Thumb indicator */}
-              <div 
-                className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full shadow ${
-                  isDarkMode ? 'bg-gray-200 border border-gray-500' : 'bg-white border border-gray-300'
-                }`}
-                style={{ left: `calc(${progressPercent}% - 6px)` }}
-              />
-            </div>
-          </div>
-
-          {/* Duration */}
-          <span className={`flex-shrink-0 text-xs font-mono ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-600'
-          }`}>
-            {formatAudioTime(playingAudio === url ? duration : 0)}
-          </span>
-
-          {/* Close Button */}
-          <button
-            onClick={() => togglePlayerExpand(messageId, url)}
-            className={`flex-shrink-0 p-1 rounded hover:bg-opacity-50 ${
-              isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
-            }`}
-            title="Close player"
-          >
-            <span className={`${msgActionIcon} text-[18px]`}>close</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-
 
   const downloadAudio = async (url, filename, messageId) => {
   try {
@@ -2215,7 +1620,7 @@ const FullscreenMessages = ({
                 }`}
               >
                 <span className={`${msgActionIcon} text-[20px]`}>
-                  {playingAudio === item.url && isPlaying ? "pause_circle" : "play_circle"}
+                  {activeTrack?.ownerId === `inbox:${item.id}` && audioStatus === 'playing' ? "pause_circle" : "play_circle"}
                 </span>
               </button>
             )}
@@ -2313,7 +1718,18 @@ const FullscreenMessages = ({
           {/* Audio Player for mobile - full width */}
           {expandedPlayer === item.id && item.url && canPlayAudio && (
             <div className="mt-2">
-              <InlineAudioPlayer url={item.url} messageId={item.id} />
+              <SharedInlineAudioPlayer
+                ownerId={`inbox:${item.id}`}
+                src={item.url}
+                autoPlay
+                stopOnUnmount
+                showWaveform
+                showTransport
+                isDarkMode={isDarkMode}
+                timestamp={item.time}
+                formatTimestamp={formatTimestampWithMillis}
+                onClose={() => togglePlayerExpand(item.id)}
+              />
             </div>
           )}
         </>
@@ -2419,7 +1835,18 @@ const FullscreenMessages = ({
         {/* Audio Player - shows below transcription when expanded */}
         {expandedPlayer === item.id && item.url && canPlayAudio && (
           <div className="mt-2">
-            <InlineAudioPlayer url={item.url} messageId={item.id} />
+            <SharedInlineAudioPlayer
+              ownerId={`inbox:${item.id}`}
+              src={item.url}
+              autoPlay
+              stopOnUnmount
+              showWaveform
+              showTransport
+              isDarkMode={isDarkMode}
+              timestamp={item.time}
+              formatTimestamp={formatTimestampWithMillis}
+              onClose={() => togglePlayerExpand(item.id)}
+            />
           </div>
         )}
 

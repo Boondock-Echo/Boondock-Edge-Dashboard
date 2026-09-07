@@ -362,7 +362,7 @@ const processMessagesFromAPI = (apiData, timezone) => {
       timezone,
       status: item.hasOwnProperty("status") ? item.status : "new",
       id: item.id,
-      url: `${API_BASE_URL}${item.filename}`,
+      url: `${API_BASE_URL}/${item.filename}`,
       message: item.transcription || "No transcription available",
       duration: item.duration,
       isNew: true,

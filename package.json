@@ -2,7 +2,6 @@
   "name": "react-dev-app",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://127.0.0.1:4000",
   "dependencies": {
     "@chakra-ui/react": "^3.2.3",
     "@emotion/react": "^11.14.0",

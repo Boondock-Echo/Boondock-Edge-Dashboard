@@ -1,16 +1,17 @@
 import { api, apiFetch } from '../../utils/apiClient';
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import TeamsSidebar from "./Sidebar";
-import { Volume2, Volume1, X } from "lucide-react";
+import { X } from "lucide-react";
 import TopBar from "./TopBar";
 import FooterPagination from "./FooterPagination";
 import FullscreenMessages from './FullscreenMessages';
 import FloatingChatbot from './FloatingChatbot';
-import GlobalAudioPlayer from "./GlobalAudioPlayer";
 import NotificationBanner from './NotificationBanner';
 import { useAuth } from "../AuthContext";
 import MFAReminderModal from "../MFAReminderModal";
 import logger from "../../utils/logger";
+import { useAudioPlayback } from "../AudioPlaybackContext";
+import InlineAudioPlayer from "../InlineAudioPlayer";
 import {
   TIME_FILTERS,
   DEFAULT_INBOX_TIME_FILTER,
@@ -37,10 +38,6 @@ function popupTranscriptionStillPending(messageText) {
 }
 
 const POPUP_TRANSCRIPTION_POLL_MS = 2000;
-/** When transcript was missing on open, max time before force-close if audio never ends */
-const POPUP_NO_TRANSCRIPT_SAFETY_MS = 40000;
-/** After transcript appears (e.g. from poll), minimum time before auto-close for reading + audio tail */
-const POPUP_AFTER_TRANSCRIPT_MIN_MS = 6000;
 /** Keep only the newest burst of live notifications to avoid overload. */
 const LIVE_POPUP_QUEUE_LIMIT = 10;
 
@@ -86,8 +83,8 @@ const LiveCommunications = ({
   const [mfaEnforced, setMfaEnforced] = useState(false);
   const [isVolumeOn, setIsVolumeOn] = useState(false);
   const [keywordCounts, setKeywordCounts] = useState({});
-  const [playingAudio, setPlayingAudio] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [, setPlayingAudio] = useState(null);
+  const [, setIsPlaying] = useState(false);
   const [lastPlayedMessageId, setLastPlayedMessageId] = useState(null);
   const [newMessagePopup, setNewMessagePopup] = useState(null);
   const [popupQueue, setPopupQueue] = useState([]);
@@ -101,8 +98,7 @@ const LiveCommunications = ({
   });
   const [activeAudioUrl, setActiveAudioUrl] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const audioRef = useRef(new Audio());
-  const [iconToggle, setIconToggle] = useState(false);
+  const { audioRef, stop: stopSharedAudio } = useAudioPlayback();
   const [channelMessageCounts, setChannelMessageCounts] = useState({});
   const [activeChannels, setActiveChannels] = useState(
     Object.keys(channels).reduce((acc, channelId) => {
@@ -164,88 +160,25 @@ const LiveCommunications = ({
     () => localStorage.getItem(INBOX_CUSTOM_DATE_STORAGE_KEYS.endTime) || ''
   );
 
-  const popupDismissTimerRef = useRef(null);
-  const popupAudioEndedCleanupRef = useRef(null);
   const activePopupMessageIdRef = useRef(null);
   const livePopupCursorRef = useRef(null);
 
-  const clearPopupDismissTimer = useCallback(() => {
-    if (popupDismissTimerRef.current) {
-      clearTimeout(popupDismissTimerRef.current);
-      popupDismissTimerRef.current = null;
-    }
-  }, []);
-
-  const detachPopupAudioEndedListener = useCallback(() => {
-    if (popupAudioEndedCleanupRef.current) {
-      popupAudioEndedCleanupRef.current();
-      popupAudioEndedCleanupRef.current = null;
-    }
-  }, []);
-
-  const schedulePopupDismissTimer = useCallback(
-    (ms) => {
-      clearPopupDismissTimer();
-      popupDismissTimerRef.current = setTimeout(() => {
-        detachPopupAudioEndedListener();
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }
-        setPlayingAudio(null);
-        setIsPlaying(false);
-        setNewMessagePopup(null);
-        popupDismissTimerRef.current = null;
-      }, ms);
-    },
-    [clearPopupDismissTimer, detachPopupAudioEndedListener],
-  );
-
   const closeNewMessagePopup = useCallback(() => {
-    clearPopupDismissTimer();
-    detachPopupAudioEndedListener();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopSharedAudio(newMessagePopup ? `popup:${newMessagePopup.id}` : undefined);
     setPlayingAudio(null);
     setIsPlaying(false);
     setNewMessagePopup(null);
-  }, [clearPopupDismissTimer, detachPopupAudioEndedListener]);
+  }, [newMessagePopup, stopSharedAudio]);
+
+  const handlePopupAudioEnded = useCallback(() => {
+    setNewMessagePopup(null);
+    setPlayingAudio(null);
+    setIsPlaying(false);
+  }, []);
 
   useEffect(() => {
     activePopupMessageIdRef.current = newMessagePopup?.id ?? null;
   }, [newMessagePopup?.id]);
-
-  useEffect(() => {
-    return () => {
-      clearPopupDismissTimer();
-      detachPopupAudioEndedListener();
-    };
-  }, [clearPopupDismissTimer, detachPopupAudioEndedListener]);
-
-  /** After transcript loads in the popup, align auto-close with remaining playback + read time */
-  const schedulePopupDismissAfterTranscription = useCallback(() => {
-    clearPopupDismissTimer();
-    detachPopupAudioEndedListener();
-    const a = audioRef.current;
-    if (!a || !a.src) {
-      schedulePopupDismissTimer(POPUP_AFTER_TRANSCRIPT_MIN_MS);
-      return;
-    }
-    const dur = a.duration;
-    const ct = a.currentTime;
-    if (!a.paused && isFinite(dur) && dur > 0 && isFinite(ct)) {
-      const remaining = Math.max((dur - ct) * 1000 + 500, POPUP_AFTER_TRANSCRIPT_MIN_MS);
-      schedulePopupDismissTimer(remaining);
-    } else {
-      schedulePopupDismissTimer(POPUP_AFTER_TRANSCRIPT_MIN_MS);
-    }
-  }, [
-    clearPopupDismissTimer,
-    detachPopupAudioEndedListener,
-    schedulePopupDismissTimer,
-  ]);
 
   // Persist custom date range for offline cache + App.js cache window
   useEffect(() => {
@@ -549,8 +482,6 @@ const LiveCommunications = ({
         setMessages((prev) =>
           prev.map((m) => (m.id === recordingId ? { ...m, message: t, status: 'new' } : m)),
         );
-        // Avoid popup closing early from pre-transcript timers; align dismiss with playback + read time
-        schedulePopupDismissAfterTranscription();
       } catch {
         /* ignore transient errors */
       }
@@ -563,7 +494,6 @@ const LiveCommunications = ({
     newMessagePopup?.id,
     newMessagePopup?.message,
     setMessages,
-    schedulePopupDismissAfterTranscription,
   ]);
 
   // Handle re-login scenario - automatically redirect to latest messages
@@ -1050,24 +980,6 @@ const LiveCommunications = ({
     }
   }, [paginationLoaded, reverseSort, inboxViewMode, messages.length, isMobile, getFilteredMessagesForMobile, getFilteredMessages, recordsPerPage, currentPage, savePaginationPreferences, hasAppliedDefaultPage]);
 
-  const handlePlayAudio = (url) => {
-    if (playingAudio === url) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
-    } else {
-      if (audioRef.current) audioRef.current.pause();
-      audioRef.current.src = url;
-      audioRef.current.play();
-      setPlayingAudio(url);
-      setIsPlaying(true);
-    }
-  };
-
   useEffect(() => {
     const audioEl = audioRef.current;
     const handleEnded = () => {
@@ -1076,15 +988,7 @@ const LiveCommunications = ({
     };
     audioEl.addEventListener('ended', handleEnded);
     return () => audioEl.removeEventListener('ended', handleEnded);
-  }, []);
-
-  useEffect(() => {
-    let interval;
-    if (isPlaying) {
-      interval = setInterval(() => setIconToggle(prev => !prev), 500);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [audioRef]);
 
   useEffect(() => {
     if (!keywords?.length) return;
@@ -1102,19 +1006,6 @@ const LiveCommunications = ({
     setKeywordCounts(counts);
   }, [messages, keywords, timeFilter, startDate, endDate, startTime, endTime]);
 
-
-  const AudioIcon = ({ url }) => {
-    const isCurrentlyPlaying = playingAudio === url && isPlaying;
-    return isCurrentlyPlaying ? (
-      iconToggle ? (
-        <Volume2 className="inline ml-2 text-blue-500 cursor-pointer" size={18} />
-      ) : (
-        <Volume1 className="inline ml-2 text-blue-500 cursor-pointer" size={18} />
-      )
-    ) : (
-      <Volume1 className="inline ml-2 text-gray-400 cursor-pointer" size={18} />
-    );
-  };
 
   const toggleKeyword = (keywordId) => {
     setActiveKeywords((prev) => {
@@ -1309,58 +1200,10 @@ const LiveCommunications = ({
   };
 
   const playQueuedPopupNotification = useCallback((popupItem) => {
-    clearPopupDismissTimer();
-    detachPopupAudioEndedListener();
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-
     setNewMessagePopup(popupItem);
-    audioRef.current.src = popupItem.url;
-    audioRef.current.load();
-
-    const hadTranscriptOnOpen = !popupTranscriptionStillPending(popupItem.message);
-
-    const handleLoadedMetadata = () => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-
-      const duration = audio.duration;
-      if (hadTranscriptOnOpen && duration && isFinite(duration) && duration > 0) {
-        schedulePopupDismissTimer(duration * 1000 + 500);
-        return;
-      }
-
-      if (!hadTranscriptOnOpen) {
-        schedulePopupDismissTimer(POPUP_NO_TRANSCRIPT_SAFETY_MS);
-        const onEnded = () => {
-          detachPopupAudioEndedListener();
-          clearPopupDismissTimer();
-          setNewMessagePopup(null);
-        };
-        audio.addEventListener('ended', onEnded);
-        popupAudioEndedCleanupRef.current = () => {
-          audio.removeEventListener('ended', onEnded);
-        };
-        return;
-      }
-
-      schedulePopupDismissTimer(POPUP_NO_TRANSCRIPT_SAFETY_MS);
-    };
-
-    audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-
-    audioRef.current.play().then(() => {
-      setPlayingAudio(popupItem.url);
-      setIsPlaying(true);
-      setLastPlayedMessageId(popupItem.id);
-    }).catch((error) => {
-      logger.error('Error auto-playing queued message:', error);
-      schedulePopupDismissTimer(POPUP_NO_TRANSCRIPT_SAFETY_MS);
-    });
-  }, [clearPopupDismissTimer, detachPopupAudioEndedListener, schedulePopupDismissTimer]);
+    setPlayingAudio(popupItem.url);
+    setLastPlayedMessageId(popupItem.id);
+  }, []);
 
   useEffect(() => {
     if (isVolumeOn) return;
@@ -1662,8 +1505,6 @@ const LiveCommunications = ({
           setActiveAudioUrl={setActiveAudioUrl}
           highlightText={highlightText}
           searchQuery={searchQuery}
-          handlePlayAudio={handlePlayAudio}
-          AudioIcon={AudioIcon}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
           isMobile={isMobile}
@@ -1769,71 +1610,14 @@ const LiveCommunications = ({
 
               {/* Audio Playback Controls */}
               {newMessagePopup.url && (
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => {
-                      if (audioRef.current && audioRef.current.src === newMessagePopup.url) {
-                        if (isPlaying) {
-                          audioRef.current.pause();
-                          setIsPlaying(false);
-                        } else {
-                          audioRef.current.play().then(() => {
-                            setIsPlaying(true);
-                          }).catch((error) => {
-                            logger.error('Error playing audio:', error);
-                            setIsPlaying(false);
-                          });
-                        }
-                      } else {
-                        if (audioRef.current) {
-                          audioRef.current.pause();
-                        }
-                        audioRef.current.src = newMessagePopup.url;
-                        audioRef.current.load();
-                        audioRef.current.play().then(() => {
-                          setPlayingAudio(newMessagePopup.url);
-                          setIsPlaying(true);
-                        }).catch((error) => {
-                          logger.error('Error playing audio:', error);
-                          setIsPlaying(false);
-                        });
-                      }
-                    }}
-                    className={`flex items-center justify-center w-16 h-16 rounded-full transition-all ${
-                      isPlaying && playingAudio === newMessagePopup.url
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : isDarkMode
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {isPlaying && playingAudio === newMessagePopup.url ? (
-                      <Volume2 className="w-8 h-8" />
-                    ) : (
-                      <Volume1 className="w-8 h-8" />
-                    )}
-                  </button>
-                  
-                  {/* Audio Waveform Indicator */}
-                  <div className="flex-1 flex items-center gap-1 h-12">
-                    {[...Array(20)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`flex-1 rounded-full transition-all ${
-                          isPlaying && playingAudio === newMessagePopup.url
-                            ? 'bg-blue-500 animate-pulse'
-                            : isDarkMode
-                            ? 'bg-gray-600'
-                            : 'bg-gray-300'
-                        }`}
-                        style={{
-                          height: `${Math.random() * 60 + 20}%`,
-                          animationDelay: `${i * 50}ms`
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <InlineAudioPlayer
+                  ownerId={`popup:${newMessagePopup.id}`}
+                  src={newMessagePopup.url}
+                  autoPlay
+                  showWaveform
+                  isDarkMode={isDarkMode}
+                  onEnded={handlePopupAudioEnded}
+                />
               )}
             </div>
           </div>
