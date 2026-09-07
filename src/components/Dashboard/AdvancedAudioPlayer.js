@@ -2,6 +2,7 @@ import { api, apiFetch } from '../../utils/apiClient';
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, ChevronLeft, X, RotateCcw, Scissors, Save, Download, Plus, History, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 import WaveSurfer from "wavesurfer.js";
+import { useAudioPlayback } from "../AudioPlaybackContext";
 import { useLocation, useNavigate } from 'react-router-dom';
 import ContentEditable from "react-contenteditable";
 
@@ -57,7 +58,9 @@ const ProfessionalAudioEditor = ({
 
   
   const urlMessageId = queryParams.get("messageId");
-  const audioRef = useRef(new Audio());
+  const { audioRef, activeTrack, status: audioStatus, claim: claimSharedAudio, stop: stopSharedAudio } = useAudioPlayback();
+  const advancedOwnerId = `advanced:${urlMessageId || navigationMessage?.url || 'player'}`;
+  const isAdvancedPlaying = activeTrack?.ownerId === advancedOwnerId && audioStatus === 'playing';
   const audioContextRef = useRef(null);
   const wavesurferRef = useRef(null);
   const waveformRef = useRef(null);
@@ -68,11 +71,14 @@ const ProfessionalAudioEditor = ({
   const [originalAudioBuffer, setOriginalAudioBuffer] = useState(null);
   const [processedAudioBuffer, setProcessedAudioBuffer] = useState(null);
   const [croppedAudioWav, setCroppedAudioWav] = useState(null); // Store cropped audio for saving
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    stopSharedAudio();
+  }, [stopSharedAudio]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -535,6 +541,8 @@ const formatActualTime = useCallback((timeOffset) => {
 
     wavesurferRef.current = WaveSurfer.create({
       container: waveformRef.current,
+      backend: "MediaElement",
+      removeMediaElementOnDestroy: false,
       waveColor: isDarkMode ? "#4B5563" : "#E5E7EB",
       progressColor: "#9333EA",
       cursorColor: "#9333EA",
@@ -545,7 +553,6 @@ const formatActualTime = useCallback((timeOffset) => {
       normalize: true,
       interact: true,
       dragToSeek: true,
-      media: audioRef.current,
     });
 
     wavesurferRef.current.on("ready", () => {
@@ -561,16 +568,7 @@ const formatActualTime = useCallback((timeOffset) => {
     });
 
     wavesurferRef.current.on("finish", () => {
-      setIsPlaying(false);
       setCurrentTime(0);
-    });
-
-    wavesurferRef.current.on("play", () => {
-      setIsPlaying(true);
-    });
-
-    wavesurferRef.current.on("pause", () => {
-      setIsPlaying(false);
     });
 
     wavesurferRef.current.on("error", (error) => {
@@ -579,9 +577,15 @@ const formatActualTime = useCallback((timeOffset) => {
     });
 
     if (audioUrl) {
-      wavesurferRef.current.load(audioUrl);
+      // WaveSurfer v6 does not support the v7 `media` constructor option.
+      // Loading the provider-owned element explicitly keeps WaveSurfer and the
+      // global playback context attached to the same audio resource.
+      if (audioRef.current.getAttribute('src') !== audioUrl) {
+        audioRef.current.src = audioUrl;
+      }
+      wavesurferRef.current.load(audioRef.current);
     }
-  }, [isDarkMode, audioUrl, zoomLevel]);
+  }, [isDarkMode, audioUrl, zoomLevel, audioRef]);
 
   // Initialize AudioContext and Worker
   useEffect(() => {
@@ -664,7 +668,6 @@ const formatActualTime = useCallback((timeOffset) => {
         wavesurferRef.current.pause();
         wavesurferRef.current.seekTo(0);
       }
-      setIsPlaying(false);
       
       setAudioUrl(newUrl);
       setDuration(newDuration);
@@ -960,7 +963,6 @@ const handledownloadaudio = async () => {
       await loadAudioBuffer(audioUrl);
       
       // Reset playback state
-      setIsPlaying(false);
       setCurrentTime(0);
       
     } catch (error) {
@@ -1254,32 +1256,37 @@ const contentEditableRef = useRef(null);
   useEffect(() => {
     if (!audioUrl) return;
 
-    audioRef.current.src = audioUrl;
-    audioRef.current.volume = volume;
+    const audio = audioRef.current;
+    audio.src = audioUrl;
+    audio.volume = volume;
 
     const handleLoadedMetadata = () => {
-      setDuration(audioRef.current.duration);
+      setDuration(audio.duration);
       if (audioUrl === initialAudioUrl) {
         loadAudioBuffer(audioUrl);
       }
     };
 
-    audioRef.current.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     return () => {
-      audioRef.current.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [audioUrl, volume, initialAudioUrl, loadAudioBuffer]);
+  }, [audioUrl, volume, initialAudioUrl, loadAudioBuffer, audioRef]);
 
   const togglePlayPause = useCallback(() => {
     if (!wavesurferRef.current) return;
-    
-    if (isPlaying) {
+
+    // Read the media element directly here rather than waiting for React's
+    // playback state to update between clicks. WaveSurfer uses this same
+    // element, so pausing it also stops waveform progress immediately.
+    if (audioRef.current && !audioRef.current.paused) {
       wavesurferRef.current.pause();
     } else {
+      claimSharedAudio({ ownerId: advancedOwnerId, src: audioUrl });
       wavesurferRef.current.play();
     }
-  }, [isPlaying]);
+  }, [advancedOwnerId, audioUrl, audioRef, claimSharedAudio]);
 
   const handleVolumeChange = useCallback((e) => {
     const newVolume = parseFloat(e.target.value);
@@ -1290,7 +1297,7 @@ const contentEditableRef = useRef(null);
     if (wavesurferRef.current) {
       wavesurferRef.current.setVolume(newVolume);
     }
-  }, []);
+  }, [audioRef]);
 
   const handleSkipBackward = useCallback(() => {
     if (!wavesurferRef.current || !duration) return;
@@ -1332,18 +1339,20 @@ const handleWaveformClick = useCallback(
     if (audioUrl && audioUrl !== initialAudioUrl && audioUrl.startsWith('blob:')) {
       URL.revokeObjectURL(audioUrl);
     }
+
+    stopSharedAudio(advancedOwnerId);
     
     navigate(-1);
-  }, [audioUrl, initialAudioUrl, navigate]);
+  }, [advancedOwnerId, audioUrl, initialAudioUrl, navigate, stopSharedAudio]);
 
   const handleStop = useCallback(() => {
     if (wavesurferRef.current) {
       wavesurferRef.current.pause();
       wavesurferRef.current.seekTo(0);
     }
-    setIsPlaying(false);
+    stopSharedAudio(advancedOwnerId);
     setCurrentTime(0);
-  }, []);
+  }, [advancedOwnerId, stopSharedAudio]);
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -1664,7 +1673,7 @@ const handleWaveformClick = useCallback(
             >
               {isLoading || isProcessing ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : isPlaying ? (
+              ) : isAdvancedPlaying ? (
                 <Pause size={20} />
               ) : (
                 <Play size={20} className="ml-0.5" />

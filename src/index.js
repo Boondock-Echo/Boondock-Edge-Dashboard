@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './components/AuthContext';
+import { AudioPlaybackProvider } from './components/AudioPlaybackContext';
 
 // Apply the saved device palette before React mounts to avoid a flash of the
 // opposite theme while the dashboard is loading.
@@ -61,7 +62,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <AudioPlaybackProvider>
+        <App />
+      </AudioPlaybackProvider>
     </AuthProvider>
   </React.StrictMode>
 );

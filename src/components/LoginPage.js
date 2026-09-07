@@ -151,6 +151,8 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
         email: username,
         password,
         totp_code: mfaRequired ? totpCode : undefined,
+      }, {
+        timeout: 0,
       });
       persistRemember();
       // TO-DO Pass user not fields

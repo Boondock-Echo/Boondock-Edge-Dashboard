@@ -207,16 +207,16 @@ fi
 echo -e "${GREEN}Installation configuration${NC}"
 prompt_if_unset INSTALL_ROOT "Installation root directory" "/opt/boondock/edge"
 if [ -e "$INSTALL_ROOT" ]; then
-    prompt_if_unset INSTALL_MODE "Do you want to update or do an install?" "update"
+    prompt_if_unset INSTALL_MODE "Do you want to upgrade or do an install?" "upgrade"
     case "${INSTALL_MODE,,}" in
-        update)
-            INSTALL_MODE="update"
+        upgrade)
+            INSTALL_MODE="upgrade"
             ;;
         install)
             INSTALL_MODE="install"
             ;;
         *)
-            echo -e "${RED}Error: INSTALL_MODE must be update or install.${NC}" >&2
+            echo -e "${RED}Error: INSTALL_MODE must be upgrade or install.${NC}" >&2
             exit 1
             ;;
     esac
@@ -530,7 +530,7 @@ if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
         exit 1
     fi
 
-    if [ "$INSTALL_MODE" = "update" ]; then
+    if [ "$INSTALL_MODE" = "upgrade" ]; then
         echo "✓ Existing shared virtual environment retained: venv"
     else
         echo "✓ Shared virtual environment created: venv"
@@ -541,7 +541,7 @@ if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
     pip install --upgrade pip --quiet
 
     if [ -f "$API_DIR/requirements.txt" ]; then
-        if [ "$INSTALL_MODE" = "update" ]; then
+        if [ "$INSTALL_MODE" = "upgrade" ]; then
             pip install --upgrade -r "$API_DIR/requirements.txt"
         else
             pip install -r "$API_DIR/requirements.txt"
@@ -549,7 +549,7 @@ if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
         echo "✓ Dependencies installed from $API_DIR/requirements.txt"
     elif [ -f "$UDP_DIR/requirements.txt" ]; then
         echo -e "${YELLOW}API requirements.txt not available. Using UDP requirements instead.${NC}"
-        if [ "$INSTALL_MODE" = "update" ]; then
+        if [ "$INSTALL_MODE" = "upgrade" ]; then
             pip install --upgrade -r "$UDP_DIR/requirements.txt"
         else
             pip install -r "$UDP_DIR/requirements.txt"
@@ -631,12 +631,12 @@ chmod -R 755 "$INSTALL_ROOT"
 echo "✓ Ownership set to $INSTALL_USER:$INSTALL_USER with 755 permissions"
 
 if _is_truthy "$INSTALL_API"; then
-    if [ "$INSTALL_MODE" = "update" ]; then
+    if [ "$INSTALL_MODE" = "upgrade" ]; then
         echo -e "${GREEN}Updating application data...${NC}"
         runuser -u "$INSTALL_USER" -- \
             "$INSTALL_ROOT/venv/bin/python" \
             "$API_DIR/manage.py" upgrade
-        echo "✓ Application data updated"
+        echo "✓ Application code updated"
     else
         SETUP_FILE="$INSTALL_ROOT/db/setup.json"
         echo -e "${GREEN}Writing setup configuration...${NC}"
