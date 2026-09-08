@@ -5,6 +5,10 @@ import WaveSurfer from "wavesurfer.js";
 import { useAudioPlayback } from "../AudioPlaybackContext";
 import { useLocation, useNavigate } from 'react-router-dom';
 import ContentEditable from "react-contenteditable";
+import Button from "../ui/Button";
+import { toast } from "react-toastify";
+import audioStyles from "../ui/AudioPlayer.module.css";
+import { Spinner } from "../ui/Spinner";
 
 
 // Debounce utility to prevent rapid transcription requests
@@ -40,12 +44,14 @@ const getRecordingTimes = (startTime, duration) => {
 };
 
 const ProfessionalAudioEditor = ({
-  isDarkMode = false,
   timeFormat = "24h",
   transcription = [],
   messageId = null,
   onClose = () => console.log("Close clicked"),
 }) => {
+  const themeStyles = getComputedStyle(document.documentElement);
+  const waveformColor = themeStyles.getPropertyValue("--ui-muted").trim();
+  const waveformAccent = themeStyles.getPropertyValue("--ui-accent").trim();
   const queryParams = new URLSearchParams(window.location.search);
   const location = useLocation();
   const navigationMessage = location.state?.message;
@@ -64,6 +70,7 @@ const ProfessionalAudioEditor = ({
   const audioContextRef = useRef(null);
   const wavesurferRef = useRef(null);
   const waveformRef = useRef(null);
+  const historyDialogRef = useRef(null);
   const workerRef = useRef(null);
  const [error, setError] = useState(null);
   const isMounted = useRef(true);
@@ -103,50 +110,6 @@ const { recordingStartTime, recordingEndTime } = recordingTimes;
 // console.log("audioUrl:", audioUrl);
 
 const [channelName, setChannelName] = useState(navigationMessage?.channelName || "");
-
-// Show toast notification
-const showToast = useCallback((message, type = 'success') => {
-  const toast = document.createElement('div');
-  const isSuccess = type === 'success';
-  const isError = type === 'error';
-  const isInfo = type === 'info';
-  
-  toast.className = `fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full ${
-    isDarkMode 
-      ? (isSuccess ? 'bg-green-600 text-white' : isError ? 'bg-red-600 text-white' : 'bg-blue-600 text-white')
-      : (isSuccess ? 'bg-green-100 text-green-800 border border-green-200' : isError ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-blue-100 text-blue-800 border border-blue-200')
-  }`;
-  
-  const icon = isSuccess ? 
-    '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>' :
-    isError ? 
-    '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>' :
-    '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 100-16 8 8 0 000 16zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>';
-  
-  toast.innerHTML = `
-    <div class="flex items-center gap-2">
-      ${icon}
-      <span class="font-medium">${message}</span>
-    </div>
-  `;
-  document.body.appendChild(toast);
-  
-  // Animate in
-  setTimeout(() => {
-    toast.classList.remove('translate-x-full');
-  }, 100);
-  
-  // Remove toast after 3 seconds (5 for errors)
-  const duration = isError ? 5000 : 3000;
-  setTimeout(() => {
-    toast.classList.add('translate-x-full');
-    setTimeout(() => {
-      if (document.body.contains(toast)) {
-        document.body.removeChild(toast);
-      }
-    }, 300);
-  }, duration);
-}, [isDarkMode]);
 
   // Fetch audio URL based on messageId
 
@@ -543,9 +506,9 @@ const formatActualTime = useCallback((timeOffset) => {
       container: waveformRef.current,
       backend: "MediaElement",
       removeMediaElementOnDestroy: false,
-      waveColor: isDarkMode ? "#4B5563" : "#E5E7EB",
-      progressColor: "#9333EA",
-      cursorColor: "#9333EA",
+      waveColor: waveformColor,
+      progressColor: waveformAccent,
+      cursorColor: waveformAccent,
       barWidth: 2,
       barRadius: 2,
       height: 100,
@@ -585,7 +548,7 @@ const formatActualTime = useCallback((timeOffset) => {
       }
       wavesurferRef.current.load(audioRef.current);
     }
-  }, [isDarkMode, audioUrl, zoomLevel, audioRef]);
+  }, [audioUrl, zoomLevel, audioRef, waveformAccent, waveformColor]);
 
   // Initialize AudioContext and Worker
   useEffect(() => {
@@ -681,7 +644,7 @@ const formatActualTime = useCallback((timeOffset) => {
       setTimeout(() => setProcessProgress(0), 1000);
       
       // Show success toast for audio processing
-      showToast('Audio processing completed successfully!', 'success');
+      toast.success('Audio processing completed successfully!');
     };
 
     return () => {
@@ -767,13 +730,13 @@ const formatActualTime = useCallback((timeOffset) => {
     const newLength = processedAudioBuffer.length - startSample;
 
     if (newLength <= 0) {
-      showToast("Cannot delete - would result in empty audio", "error");
+      toast.error("Cannot delete - would result in empty audio");
       setIsProcessing(false);
       setProcessProgress(0);
       return;
     }
 
-    showToast("Deleting audio before current position...", "info");
+    toast.info("Deleting audio before current position...");
     workerRef.current.postMessage({
       type: "trim",
       ...serializeAudioBuffer(processedAudioBuffer),
@@ -781,7 +744,7 @@ const formatActualTime = useCallback((timeOffset) => {
       endSample: processedAudioBuffer.length,
     });
     setProcessProgress(50);
-  }, [currentTime, processedAudioBuffer, isProcessing, showToast]);
+  }, [currentTime, processedAudioBuffer, isProcessing]);
 
   // Delete After
   const handleDeleteAfter = useCallback(async () => {
@@ -794,13 +757,13 @@ const formatActualTime = useCallback((timeOffset) => {
     const newLength = endSample;
 
     if (newLength <= 0) {
-      showToast("Cannot delete - would result in empty audio", "error");
+      toast.error("Cannot delete - would result in empty audio");
       setIsProcessing(false);
       setProcessProgress(0);
       return;
     }
 
-    showToast("Deleting audio after current position...", "info");
+    toast.info("Deleting audio after current position...");
     workerRef.current.postMessage({
       type: "trim",
       ...serializeAudioBuffer(processedAudioBuffer),
@@ -808,12 +771,12 @@ const formatActualTime = useCallback((timeOffset) => {
       endSample,
     });
     setProcessProgress(50);
-  }, [currentTime, processedAudioBuffer, isProcessing, showToast]);
+  }, [currentTime, processedAudioBuffer, isProcessing]);
 
 const handledownloadaudio = async () => {
   // TO-DO Doubt if this works -- why do we need this?
   try {
-    showToast('Starting download...', 'info');
+    toast.info('Starting download...');
     const res = await api.get(`/audio_url/${messageId || urlMessageId}?time_format=${timeFormat}`);
     let downloadUrl = res.data.download_url; // e.g., "/recordings/channel_3/audio_20250707_120747.wav"
 
@@ -834,23 +797,23 @@ const handledownloadaudio = async () => {
       a.click();
       document.body.removeChild(a);
       
-      showToast('Download started successfully!', 'success');
+      toast.success('Download started successfully!');
     } else {
       console.error("No download URL provided in the response");
-      showToast('No download URL available', 'error');
+      toast.error('No download URL available');
     }
   } catch (error) {
     console.error("Failed to download audio:", error.message);
-    showToast(`Download failed: ${error.message}`, 'error');
+    toast.error(`Download failed: ${error.message}`);
   }
 };
 
 
   // Reload page
   const handleReload = useCallback(() => {
-    showToast('Page reloaded successfully', 'info');
+    toast.info('Page reloaded successfully');
     window.location.reload();
-  }, [showToast]);
+  }, []);
 
   // Handle transcription with improved error handling
   const handleTranscribe = useCallback(
@@ -863,7 +826,7 @@ const handledownloadaudio = async () => {
       setIsProcessing(true);
       setProcessProgress(10);
       setTranscriptionText('Transcribing...');
-      showToast('Starting transcription...', 'info');
+      toast.info('Starting transcription...');
 
       try {
         // TO-DO why are we calling audio for transription
@@ -924,7 +887,7 @@ const handledownloadaudio = async () => {
           }
           console.log('Transcription formatted:', formatted);
           setTranscriptionText(formatted);
-          showToast('Transcription completed successfully!', 'success');
+          toast.success('Transcription completed successfully!');
         } else {
           throw new Error(`Transcription request failed: ${result.error || 'Unknown error'}`);
         }
@@ -933,7 +896,7 @@ const handledownloadaudio = async () => {
       } catch (error) {
         console.error('Transcription error:', error);
         setTranscriptionText(`Error: Transcription service is currently unavailable - ${error.message}. Please try again later.`);
-        showToast(`Transcription failed: ${error.message}`, 'error');
+        toast.error(`Transcription failed: ${error.message}`);
       } finally {
         setIsProcessing(false);
         setProcessProgress(100);
@@ -997,7 +960,7 @@ const handledownloadaudio = async () => {
     if (!effectiveMessageId) return;
 
     setIsProcessing(true);
-    showToast('Reverting to version...', 'info');
+    toast.info('Reverting to version...');
     
     try {
       const response = await api.post(`/recording/${effectiveMessageId}/history/${versionNumber}/revert`);
@@ -1008,7 +971,7 @@ const handledownloadaudio = async () => {
       
       // If audio was restored, reload the audio
       if (response.data.audio_restored) {
-        showToast('Audio and transcription reverted successfully!', 'success');
+        toast.success('Audio and transcription reverted successfully!');
         
         // Force reload the audio by updating the audio URL
         try {
@@ -1026,10 +989,10 @@ const handledownloadaudio = async () => {
           }
         } catch (audioError) {
           console.error('Failed to reload audio after revert:', audioError);
-          showToast('Audio reverted but failed to reload in player', 'error');
+          toast.error('Audio reverted but failed to reload in player');
         }
       } else {
-        showToast('Transcription reverted successfully!', 'success');
+        toast.success('Transcription reverted successfully!');
       }
       
       // Refresh history after revert
@@ -1040,11 +1003,11 @@ const handledownloadaudio = async () => {
     } catch (error) {
       console.error('Failed to revert to version:', error);
       setTranscriptionText(`Error: Failed to revert to version - ${error.message}`);
-      showToast(`Failed to revert: ${error.message}`, 'error');
+      toast.error(`Failed to revert: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
-  }, [messageId, urlMessageId, fetchHistory, showToast, reloadAudioAfterRevert]);
+  }, [messageId, urlMessageId, fetchHistory, reloadAudioAfterRevert]);
 
   const deleteVersion = useCallback(async (versionNumber) => {
     const effectiveMessageId = messageId || urlMessageId;
@@ -1053,16 +1016,16 @@ const handledownloadaudio = async () => {
     try {
       await api.delete(`/recording/${effectiveMessageId}/history/${versionNumber}`);
       await fetchHistory(); // Refresh history
-      showToast('Version deleted successfully', 'success');
+      toast.success('Version deleted successfully');
     } catch (error) {
       console.error('Failed to delete version:', error);
       if (error.response?.status === 403) {
-        showToast('Cannot delete the original version', 'error');
+        toast.error('Cannot delete the original version');
       } else {
-        showToast(`Failed to delete version: ${error.message}`, 'error');
+        toast.error(`Failed to delete version: ${error.message}`);
       }
     }
-  }, [messageId, urlMessageId, fetchHistory, showToast]);
+  }, [messageId, urlMessageId, fetchHistory]);
 
   // Save transcription and cropped audio
   const handleSaveTranscription = useCallback(async () => {
@@ -1138,7 +1101,7 @@ const handledownloadaudio = async () => {
       console.log("Save transcription response:", result);
 
       if (response.ok) {
-        showToast('Transcription saved successfully!', 'success');
+        toast.success('Transcription saved successfully!');
         
         // Log timezone info if available
         if (result.timezone) {
@@ -1154,7 +1117,7 @@ const handledownloadaudio = async () => {
       setProcessProgress(80);
     } catch (error) {
       console.error("Save transcription error:", error);
-      showToast(`Failed to save transcription: ${error.message}`, 'error');
+      toast.error(`Failed to save transcription: ${error.message}`);
     } finally {
       setIsProcessing(false);
       setProcessProgress(100);
@@ -1244,6 +1207,12 @@ const [redoStack, setRedoStack] = useState([]);
 // History management state
 const [historyVersions, setHistoryVersions] = useState([]);
 const [showHistory, setShowHistory] = useState(false);
+
+useEffect(() => {
+  if (showHistory && historyDialogRef.current && !historyDialogRef.current.open) {
+    historyDialogRef.current.showModal();
+  }
+}, [showHistory]);
 const [historyLoaded, setHistoryLoaded] = useState(false);
 const [selectedVersion, setSelectedVersion] = useState(null);
 const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -1357,53 +1326,52 @@ const handleWaveformClick = useCallback(
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${isDarkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
-      <header className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}>
-        <button
+    <section className={audioStyles.editorPage} aria-label="Audio editor">
+      <header className={audioStyles.editorHeader}>
+        <Button
           onClick={handleClose}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDarkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-600 hover:bg-gray-100"}`}
+          variant="secondary"
         >
           <ChevronLeft size={20} />
-          <span className="font-medium">Back</span>
-        </button>
-        <div className="flex items-center gap-2">
-          <button
+          <span>Back</span>
+        </Button>
+        <nav className={audioStyles.editorToolbar} aria-label="Audio editing actions">
+          <Button
             onClick={handleReload}
             disabled={isProcessing || isLoading}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-200 hover:bg-gray-300 text-gray-700"}`}
           >
-            <RotateCcw size={14} className="inline mr-1" /> Reload
-          </button>
-          <button
+            <RotateCcw size={14} /> Reload
+          </Button>
+          <Button
             onClick={handleDeleteBefore}
             disabled={isProcessing || isLoading || !processedAudioBuffer}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-red-800 hover:bg-red-700 text-red-200" : "bg-red-100 hover:bg-red-200 text-red-700"}`}
+            variant="danger"
           >
-            <Scissors size={14} className="inline mr-1" /> Delete Before
-          </button>
-          <button
+            <Scissors size={14} /> Delete Before
+          </Button>
+          <Button
             onClick={handleDeleteAfter}
             disabled={isProcessing || isLoading || !processedAudioBuffer}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-red-800 hover:bg-red-700 text-red-200" : "bg-red-100 hover:bg-red-200 text-red-700"}`}
+            variant="danger"
           >
-            <Scissors size={14} className="inline mr-1" /> Delete After
-          </button>
-          <button
+            <Scissors size={14} /> Delete After
+          </Button>
+          <Button
             onClick={handleTranscribe}
             disabled={isProcessing || isLoading || !audioUrl}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-blue-800 hover:bg-blue-700 text-blue-200" : "bg-blue-100 hover:bg-blue-200 text-blue-700"}`}
+            variant="accent"
           >
             Transcribe
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSaveTranscription}
             disabled={isProcessing || isLoading || !transcriptionText.trim() || (!messageId && !urlMessageId)}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-green-800 hover:bg-green-700 text-green-200" : "bg-green-100 hover:bg-green-200 text-green-700"}`}
+            variant="success"
           >
-            <Save size={14} className="inline mr-1" /> Save
-          </button>
+            <Save size={14} /> Save
+          </Button>
 
-          <button
+          <Button
             onClick={() => {
               const opening = !showHistory;
               setShowHistory(opening);
@@ -1413,232 +1381,181 @@ const handleWaveformClick = useCallback(
               }
             }}
             disabled={isLoadingHistory}
-            className={`px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-blue-800 hover:bg-blue-700 text-blue-200" : "bg-blue-100 hover:bg-blue-200 text-blue-700"}`}
+            variant="accent"
           >
-            <History size={14} className="inline mr-1" /> History ({historyVersions.length})
-          </button>
+            <History size={14} /> History ({historyVersions.length})
+          </Button>
 
-      <button
-        onClick={handledownloadaudio}
-        disabled={isProcessing || isLoading || !transcriptionText.trim() || (!messageId && !urlMessageId)}
-        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${isDarkMode
-            ? "bg-emerald-700 hover:bg-emerald-600 text-white"
-            : "bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
-          }`}
-      >
-        <Download size={14} className="inline mr-1 -mt-0.5" /> Download
-      </button>
-
-
-
-
-        </div>
-        <button
+          <Button
+            onClick={handledownloadaudio}
+            disabled={isProcessing || isLoading || !transcriptionText.trim() || (!messageId && !urlMessageId)}
+            variant="success"
+          >
+            <Download size={14} /> Download
+          </Button>
+        </nav>
+        <Button
+          aria-label="Close audio editor"
           onClick={handleClose}
-          className={`p-2 rounded-lg ${isDarkMode ? "text-gray-400 hover:bg-gray-700" : "text-gray-500 hover:bg-gray-100"}`}
+          variant="secondary"
         >
           <X size={20} />
-        </button>
+        </Button>
       </header>
-      <main className="flex-1 overflow-y-auto p-6">
-     <div className={`flex items-center justify-between p-4 rounded-lg mb-6 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
-  <div className="flex justify-between w-full">
-    {/* Left side: Audio Name and Station */}
-    <div>
-      <h1 className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-        {parseAudioUrl(audioUrl)?.audioName || "Unknown Audio"}
-      </h1>
-      <div className="mt-1">
-        <span className="text-sm font-semibold">Station: </span>
-        <span className="text-sm">{channelName || "Loading..."}</span>
-      </div>
-    </div>
+      <main className={audioStyles.editorContent}>
+        <section className={audioStyles.summary} aria-labelledby="recording-title">
+          <div>
+            <h1 id="recording-title">{parseAudioUrl(audioUrl)?.audioName || "Unknown Audio"}</h1>
+            <p><strong>Station:</strong> {channelName || "Loading..."}</p>
+          </div>
+          <dl className={audioStyles.metadata}>
+            <div><dt>Recording date:</dt><dd>{formatRecordingDate()}</dd></div>
+            <div><dt>Recording start time:</dt><dd>{formatRecordingTime(recordingStartTime)} {userTimezone && <small>({userTimezone})</small>}</dd></div>
+            <div><dt>Recording end time:</dt><dd>{formatRecordingTime(recordingEndTime)} {userTimezone && <small>({userTimezone})</small>}</dd></div>
+          </dl>
+        </section>
 
-    {/* Right side: Recording Details */}
-  <div className="text-sm text-right space-y-1">
-  <div>
-    <span className="font-semibold">Recording date: </span>
-    <span className="font-medium">{formatRecordingDate()}</span>
-  </div>
-
-  <div>
-    <span className="font-semibold">Recording start time: </span>
-    <span className="font-medium">
-      {formatRecordingTime(recordingStartTime)}
-    </span>
-    {userTimezone && (
-      <span className="text-xs text-blue-500"> ({userTimezone})</span>
-    )}
-  </div>
-
-  <div>
-    <span className="font-semibold">Recording end time: </span>
-    <span className="font-medium">
-      {formatRecordingTime(recordingEndTime)}
-    </span>
-    {userTimezone && (
-      <span className="text-xs text-blue-500"> ({userTimezone})</span>
-    )}
-  </div>
-</div>
-
-
-  </div>
-
- 
-</div>
-
-
-        <div className="flex items-center justify-between mb-4">
-
-           {/* Processing/Loading Indicator */}
-  {(isProcessing || isLoading) && (
-    <div className="flex items-center gap-2 mt-4">
-      <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      <span className={`text-sm ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
-        {isProcessing ? `Processing (${processProgress}%)` : "Loading..."}
-      </span>
-    </div>
-  )}
-                      <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
-              Time: {formatActualTime(currentTime)} / {formatActualTime(duration)}
-            </span>
+        <div className={audioStyles.timelineHeader}>
+          {(isProcessing || isLoading) && (
+            <div className={audioStyles.status}>
+              <Spinner size="small" label={isProcessing ? "Processing audio" : "Loading audio"} />
+              <span>{isProcessing ? `Processing (${processProgress}%)` : "Loading..."}</span>
+            </div>
+          )}
+          <span className={audioStyles.timeReadout}>Time: {formatActualTime(currentTime)} / {formatActualTime(duration)}</span>
         </div>
 
-
-
-        <div className="mb-6">
+        <div className={audioStyles.editorBody}>
           <div
             ref={waveformRef}
             key={waveformKey}
-            className={`relative h-24 rounded-xl overflow-hidden cursor-crosshair border ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}
+            className={`${audioStyles.waveform} ${audioStyles.waveformLarge}`}
             onClick={handleWaveformClick}
           >
             {isLoading && (
-              <div className={`h-full flex items-center justify-center text-center ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>Loading waveform...</div>
+              <div className={audioStyles.waveformLoading}>Loading waveform...</div>
             )}
           </div>
-          <div className="flex justify-between mt-2 px-4">
+          <div className={audioStyles.timelineTicks}>
             {Array.from({ length: 9 }, (_, i) => (
-              <span key={i} className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{formatActualTime((duration * i) / 8)}</span>
+              <span key={i}>{formatActualTime((duration * i) / 8)}</span>
             ))}
           </div>
 
-                <ContentEditable
-        innerRef={contentEditableRef}
-        html={transcriptionText} // Use innerHTML to preserve text
-        onChange={handleChange}
-        className={`w-full min-h-[6rem] p-4 mt-4 rounded-lg border overflow-auto whitespace-pre-wrap text-sm ${
-          isDarkMode ? "bg-gray-800 text-gray-200 border-gray-700" : "bg-gray-50 text-gray-900 border-gray-200"
-        }`}
-        data-transcription={transcriptionText}
-        placeholder="Transcription will appear here..."
-      />
+          <ContentEditable
+            innerRef={contentEditableRef}
+            html={transcriptionText}
+            onChange={handleChange}
+            className={audioStyles.transcription}
+            data-transcription={transcriptionText}
+            placeholder="Transcription will appear here..."
+          />
         </div>
 
         {/* History Panel */}
         {showHistory && (
-          <div className={`fixed inset-0 z-[9999] bg-black bg-opacity-50 flex items-center justify-center p-4`}>
-            <div className={`w-full max-w-4xl max-h-[80vh] overflow-hidden rounded-lg shadow-xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"}`}>
-              <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
+          <dialog
+            ref={historyDialogRef}
+            className={audioStyles.dialog}
+            aria-labelledby="version-history-title"
+            onClose={() => setShowHistory(false)}
+          >
+              <header className={audioStyles.dialogHeader}>
                 <div>
-                  <h2 className="text-lg font-semibold">Version History</h2>
-                  <p className="text-xs text-gray-500 mt-1">All timestamps shown in {userTimezone}</p>
+                  <h2 id="version-history-title" className={audioStyles.dialogTitle}>Version History</h2>
+                  <p className={audioStyles.dialogSubtitle}>All timestamps shown in {userTimezone}</p>
                 </div>
-                <button
+                <Button
+                  aria-label="Close version history"
                   onClick={() => setShowHistory(false)}
-                  className={`p-2 rounded-lg ${isDarkMode ? "text-gray-400 hover:bg-gray-700" : "text-gray-500 hover:bg-gray-100"}`}
+                  size="icon"
                 >
                   <X size={20} />
-                </button>
-              </div>
+                </Button>
+              </header>
               
-              <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <div className={audioStyles.dialogBody}>
                 {isLoadingHistory ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="ml-2">Loading history...</span>
+                  <div className={audioStyles.dialogLoading}>
+                    <Spinner size="large" label="Loading version history" />
+                    <span>Loading history...</span>
                   </div>
                 ) : historyVersions.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Clock size={48} className="mx-auto mb-4 opacity-50" />
+                  <div className={audioStyles.dialogEmpty}>
+                    <Clock size={48} />
                     <p>No version history available</p>
-                    <p className="text-sm">History will be created when you save changes</p>
+                    <p>History will be created when you save changes</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className={audioStyles.dialogList}>
                     {historyVersions.map((version) => (
                       <div
                         key={version.id}
-                        className={`p-4 rounded-lg border ${isDarkMode ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-200"}`}
+                        className={audioStyles.dialogCard}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded ${
-                              version.version_number === 0 
-                                ? (isDarkMode ? "bg-orange-600 text-white" : "bg-orange-100 text-orange-800")
-                                : (isDarkMode ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-800")
-                            }`}>
+                        <div className={audioStyles.dialogCardHeader}>
+                          <div className={audioStyles.dialogRow}>
+                            <span className={`${audioStyles.dialogBadge} ${version.version_number === 0 ? audioStyles.dialogBadgeWarning : ""}`}>
                               {version.version_number === 0 ? "Original" : `Version ${version.version_number}`}
                             </span>
-                            <span className="text-sm text-gray-500">
+                            <span className={audioStyles.dialogMeta}>
                               {typeof version.created_at === 'string' && version.created_at.includes(' ') ? 
                                 version.created_at : 
                                 new Date(version.created_at).toLocaleString("en-US")
                               }
                               {typeof version.created_at === 'string' && version.created_at.includes(' ') && 
-                                <span className="ml-1 text-xs text-blue-500">({historyTimezone})</span>
+                                <small>({historyTimezone})</small>
                               }
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
+                          <div className={audioStyles.dialogRow}>
+                            <Button
                               onClick={() => revertToVersion(version.version_number)}
                               disabled={isProcessing}
-                              className={`px-3 py-1 text-xs font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-green-600 hover:bg-green-700 text-white" : "bg-green-100 hover:bg-green-200 text-green-700"}`}
+                              size="small"
+                              variant="success"
                             >
-                              <ArrowLeft size={12} className="inline mr-1" /> Revert
-                            </button>
+                              <ArrowLeft size={12} /> Revert
+                            </Button>
                             {version.version_number !== 0 && (
-                              <button
+                              <Button
                                 onClick={() => deleteVersion(version.version_number)}
                                 disabled={isProcessing}
-                                className={`px-3 py-1 text-xs font-medium rounded-lg disabled:opacity-50 ${isDarkMode ? "bg-red-600 hover:bg-red-700 text-white" : "bg-red-100 hover:bg-red-200 text-red-700"}`}
+                                size="small"
+                                variant="danger"
                               >
-                                <X size={12} className="inline mr-1" /> Delete
-                              </button>
+                                <X size={12} /> Delete
+                              </Button>
                             )}
                           </div>
                         </div>
                         
                         {version.description && (
-                          <div className="mb-3">
-                            <span className="text-sm font-medium">Description: </span>
-                            <span className="text-sm text-gray-600">{version.description}</span>
+                          <div className={audioStyles.dialogSection}>
+                            <strong>Description: </strong>
+                            <span>{version.description}</span>
                           </div>
                         )}
                         
-                        <div className="mb-3">
-                          <span className="text-sm font-medium">Transcription Preview:</span>
+                        <div className={audioStyles.dialogSection}>
+                          <strong>Transcription Preview:</strong>
                           <div 
-                            className={`mt-2 p-3 rounded text-sm max-h-32 overflow-y-auto ${isDarkMode ? "bg-gray-600" : "bg-gray-100"}`}
+                            className={audioStyles.dialogPreview}
                             dangerouslySetInnerHTML={{ 
                               __html: version.transcription ? 
                                 (version.transcription.length > 200 ? 
                                   version.transcription.substring(0, 200) + '...' : 
                                   version.transcription
                                 ) : 
-                                '<span class="text-gray-500 italic">No transcription</span>'
+                                '<em>No transcription</em>'
                             }}
                           />
                         </div>
                         
                         {version.audio_filename && (
-                          <div className="text-sm">
-                            <span className="font-medium">Audio: </span>
-                            <span className="text-gray-600">{version.audio_filename}</span>
+                          <div className={audioStyles.dialogMetaLine}>
+                            <strong>Audio: </strong>
+                            <span>{version.audio_filename}</span>
                           </div>
                         )}
                       </div>
@@ -1646,8 +1563,7 @@ const handleWaveformClick = useCallback(
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+          </dialog>
         )}
 
       </main>
@@ -1655,51 +1571,55 @@ const handleWaveformClick = useCallback(
 
 
 
-      <footer className={`fixed bottom-0 left-0 right-0 p-4 border-t ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <button
+      <footer className={audioStyles.editorFooter}>
+        <div className={audioStyles.footerContent}>
+          <div className={audioStyles.transport}>
+            <Button
+              aria-label="Skip back 1 second"
               onClick={handleSkipBackward}
               disabled={isLoading || isProcessing}
-              className={`p-2 rounded-full disabled:opacity-50 ${isDarkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-600 hover:bg-gray-200"}`}
+              size="icon"
               title="Skip back 1s"
             >
               <SkipBack size={20} />
-            </button>
+            </Button>
             <button
+              aria-label={isAdvancedPlaying ? "Pause audio" : "Play audio"}
               onClick={togglePlayPause}
               disabled={isLoading || isProcessing}
-              className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50"
+              className={audioStyles.playToggle}
             >
               {isLoading || isProcessing ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Spinner label="Loading audio" />
               ) : isAdvancedPlaying ? (
                 <Pause size={20} />
               ) : (
-                <Play size={20} className="ml-0.5" />
+                <Play size={20} />
               )}
             </button>
-            <button
+            <Button
+              aria-label="Stop playback"
               onClick={handleStop}
               disabled={isLoading || isProcessing}
-              className={`p-2 rounded-full disabled:opacity-50 ${isDarkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-600 hover:bg-gray-200"}`}
+              size="icon"
               title="Stop"
             >
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M6 6h12v12H6z" />
               </svg>
-            </button>
-            <button
+            </Button>
+            <Button
+              aria-label="Skip forward 1 second"
               onClick={handleSkipForward}
               disabled={isLoading || isProcessing}
-              className={`p-2 rounded-full disabled:opacity-50 ${isDarkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-600 hover:bg-gray-200"}`}
+              size="icon"
               title="Skip forward 1s"
             >
               <SkipForward size={20} />
-            </button>
+            </Button>
           </div>
-          <div className="flex items-center gap-3">
-            <Volume2 size={20} className={isDarkMode ? "text-gray-400" : "text-gray-600"} />
+          <div className={audioStyles.volumeControl}>
+            <Volume2 size={20} className={audioStyles.muted} />
             <input
               type="range"
               min="0"
@@ -1707,35 +1627,16 @@ const handleWaveformClick = useCallback(
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
-              className="w-20 h-2 rounded-lg cursor-pointer"
+              className={audioStyles.range}
               style={{
-                background: `linear-gradient(to right, rgb(147, 51, 234) ${volume * 100}%, ${isDarkMode ? "#4B5563" : "#E5E7EB"} ${volume * 100}%)`,
+                background: `linear-gradient(to right, var(--ui-accent) ${volume * 100}%, var(--ui-border) ${volume * 100}%)`,
               }}
             />
-            <span className={`text-sm w-8 text-center ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>{Math.round(volume * 100)}%</span>
+            <span className={audioStyles.volumeValue}>{Math.round(volume * 100)}%</span>
           </div>
         </div>
       </footer>
-      <style jsx>{`
-        input[type=range]::-webkit-slider-thumb {
-          appearance: none;
-          height: 12px;
-          width: 12px;
-          border-radius: 50%;
-          background: rgb(147, 51, 234);
-          cursor: pointer;
-          border: 1px solid white;
-        }
-        input[type=range]::-moz-range-thumb {
-          height: 12px;
-          width: 12px;
-          border-radius: 50%;
-          background: rgb(147, 51, 234);
-          cursor: pointer;
-          border: 1px solid white;
-        }
-      `}</style>
-    </div>
+    </section>
   );
 };
 

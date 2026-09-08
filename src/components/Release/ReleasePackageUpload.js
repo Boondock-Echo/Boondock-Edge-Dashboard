@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom';
 import api from '../../utils/apiClient';
 import { Upload, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
+import Button from '../ui/Button';
+import { Spinner } from '../ui/Spinner';
+import styles from '../ui/Page.module.css';
 
 /**
  * Logged-in users: install boondock-edge-release-*.zip (from pack_boondock_release.py / release.bat).
  * Shown on the Release notes page; full status and rollback live at /version.
  */
-const ReleasePackageUpload = ({ isDarkMode }) => {
+const ReleasePackageUpload = () => {
   const [applying, setApplying] = useState(false);
   const [installDeps, setInstallDeps] = useState(false);
   const fileRef = useRef(null);
@@ -43,69 +46,44 @@ const ReleasePackageUpload = ({ isDarkMode }) => {
   };
 
   return (
-    <div
-      className={`mb-8 rounded-2xl border p-5 ${
-        isDarkMode ? 'bg-violet-950/30 border-violet-800/50' : 'bg-violet-50/80 border-violet-200/80'
-      }`}
-    >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+    <section className={styles.uploadCard}>
+      <header className={styles.uploadHeader}>
         <div>
-          <h2
-            className={`text-base font-semibold flex items-center gap-2 ${
-              isDarkMode ? 'text-violet-200' : 'text-violet-900'
-            }`}
-          >
-            <Upload className="w-4 h-4 shrink-0" />
+          <h2 className={styles.cardTitle}>
+            <Upload size={16} />
             Install a full release
           </h2>
-          <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-violet-800/80'}`}>
-            Upload <code className="text-xs px-1 rounded bg-black/20">boondock-edge-release-… .zip</code> from{' '}
-            <code className="text-xs px-1 rounded bg-black/20">release.bat</code> (UI + server). Restart the edge service
+          <p className={styles.description}>
+            Upload <code className={styles.code}>boondock-edge-release-… .zip</code> from{' '}
+            <code className={styles.code}>release.bat</code> (UI + server). Restart the edge service
             afterward.
           </p>
         </div>
-        <Link
-          to="/version"
-          className={`shrink-0 inline-flex items-center gap-1.5 text-sm font-medium ${
-            isDarkMode
-              ? 'text-violet-300 hover:text-violet-200'
-              : 'text-violet-700 hover:text-violet-900'
-          }`}
-        >
-          Snapshots &amp; rollback
-          <ExternalLink className="w-3.5 h-3.5" />
+        <Link to="/version" className={styles.link}>
+          Snapshots &amp; rollback <ExternalLink size={14} />
         </Link>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+      </header>
+      <div className={styles.formRow}>
         <input
           ref={fileRef}
           type="file"
           accept=".zip,application/zip"
-          className={
-            isDarkMode
-              ? 'block w-full sm:flex-1 text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-slate-800 file:text-slate-200'
-              : 'block w-full sm:flex-1 text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-white file:text-violet-800'
-          }
+          className={`${styles.file} ${styles.grow}`}
         />
-        <label className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap cursor-pointer">
+        <label className={styles.check}>
           <input
             type="checkbox"
             checked={installDeps}
             onChange={(e) => setInstallDeps(e.target.checked)}
-            className="rounded"
           />
-          <span className={isDarkMode ? 'text-slate-300' : 'text-gray-700'}>Run pip after</span>
+          <span>Run pip after</span>
         </label>
-        <button
-          type="button"
-          disabled={applying}
-          onClick={onApply}
-          className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
-        >
+        <Button variant="primary" disabled={applying} onClick={onApply}>
+          {applying && <Spinner size="small" label="Uploading release" />}
           {applying ? 'Uploading…' : 'Install'}
-        </button>
+        </Button>
       </div>
-    </div>
+    </section>
   );
 };
 

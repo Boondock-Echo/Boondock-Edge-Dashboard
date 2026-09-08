@@ -1615,7 +1615,6 @@ const LiveCommunications = ({
                   src={newMessagePopup.url}
                   autoPlay
                   showWaveform
-                  isDarkMode={isDarkMode}
                   onEnded={handlePopupAudioEnded}
                 />
               )}

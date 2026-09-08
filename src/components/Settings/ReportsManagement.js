@@ -38,7 +38,6 @@ const AudioPlayer = ({
           <InlineAudioPlayer
             ownerId={`report:${audioId}`}
             src={url}
-            isDarkMode={isDarkMode}
             className={`
               p-2 rounded-full
               bg-transparent

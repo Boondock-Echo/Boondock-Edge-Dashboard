@@ -1,0 +1,118 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.small {
+  min-height: var(--control-height-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.75rem;
+}
+
+.medium {
+  min-height: var(--control-height-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+}
+
+.icon {
+  width: var(--control-height-md);
+  min-width: var(--control-height-md);
+  height: var(--control-height-md);
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
+
+.primary {
+  color: var(--ui-button-text);
+  background: var(--ui-accent);
+}
+
+.secondary {
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+.danger {
+  color: var(--ui-danger);
+  background: var(--ui-danger-subtle);
+  border-color: color-mix(in srgb, var(--ui-danger) 45%, transparent);
+}
+
+.success {
+  color: var(--ui-success);
+  background: var(--ui-success-subtle);
+  border-color: color-mix(in srgb, var(--ui-success) 45%, transparent);
+}
+
+.accent {
+  color: var(--ui-accent);
+  background: var(--ui-accent-subtle);
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+
+@media (hover: hover) {
+  .primary:hover:not(:disabled) {
+    background: var(--ui-accent-hover);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--ui-surface-hover);
+  }
+
+  .danger:hover:not(:disabled) {
+    background: var(--ui-danger-subtle-hover);
+  }
+
+  .success:hover:not(:disabled) {
+    background: var(--ui-success-subtle-hover);
+  }
+
+  .accent:hover:not(:disabled) {
+    background: var(--ui-accent-subtle-hover);
+  }
+}
+
+@media (pointer: coarse) {
+  .small,
+  .medium,
+  .icon {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition-duration: 0.01ms;
+  }
+}
