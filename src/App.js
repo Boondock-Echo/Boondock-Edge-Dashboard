@@ -1144,7 +1144,7 @@ const App = () => {
               } />
 
               <Route path="/advanced-player" element={
-                  <AdvancedAudioPlayer isDarkMode={isDarkMode} timeFormat={timeFormat} />
+                  <AdvancedAudioPlayer timeFormat={timeFormat} />
               } />
               <Route path="/logs" element={
                   <LogsPage timezone={timezone} timeFormat={timeFormat} />

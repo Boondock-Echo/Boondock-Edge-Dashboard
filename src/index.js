@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'typeface-roboto'; // Local Roboto font instead of Google Fonts CDN
+import './styles/tokens.css';
+import './styles/themes.css';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
