@@ -1,35 +1,15 @@
 import api from '../../utils/apiClient';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
-import { Search, UserPlus, Shield, Activity, Edit, Trash2, Lock, Unlock, X, Save, Key,Users } from 'lucide-react';
+import { Search, UserPlus, Shield, Activity, Edit, Trash2, Lock, Unlock, X, Save, Key, Users } from 'lucide-react';
+import { toast } from 'react-toastify';
+import Button from '../ui/Button';
+import { Spinner } from '../ui/Spinner';
+import styles from '../ui/Page.module.css';
 import SettingsSectionHeader from '../Settings/SettingsSectionHeader';
 
-const Toast = ({ message, type = 'success', onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
 
-  return (
-    <div className="fixed top-4 right-4 z-50 transform transition-transform duration-300 ease-in-out">
-      <div className={`${
-        type === 'success' ? 'bg-green-500' : 'bg-red-500'
-      } text-white px-6 py-4 rounded-lg shadow-lg flex items-center justify-between min-w-[300px]`}>
-        <span>{message}</span>
-        <button 
-          onClick={onClose} 
-          className="ml-4 hover:opacity-75 focus:outline-none"
-        >
-          <X size={18} />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasses, profiles = {} }) => {
+const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = {} }) => {
   const initialFormData = useMemo(() => 
     user ? {
       ...user,
@@ -58,24 +38,24 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className={`${themeClasses.card} w-full max-w-md rounded-lg shadow-xl z-50 p-6`}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className={`text-xl font-semibold ${themeClasses.text}`}>
+    <div className={styles.modalBackdrop}>
+      <div className={styles.modalScrim} onClick={onClose}></div>
+      <div className={styles.modal}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitleText}>
             {isEdit ? 'Edit User' : 'Create New User'}
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
+            className={styles.iconButton}
           >
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className={styles.stack}>
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.text} mb-2`}>
+            <label className={styles.label}>
               Email
             </label>
             <input
@@ -84,12 +64,12 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
               onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
               disabled={isEdit}
               required
-              className={`w-full ${themeClasses.input} rounded-md shadow-sm p-2 ${themeClasses.text}`}
+              className={styles.input}
             />
           </div>
 
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.text} mb-2`}>
+            <label className={styles.label}>
               Name
             </label>
             <input
@@ -97,12 +77,12 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
               value={formData.name}
               onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
               required
-              className={`w-full ${themeClasses.input} rounded-md shadow-sm p-2 ${themeClasses.text}`}
+              className={styles.input}
             />
           </div>
 
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.text} mb-2`}>
+            <label className={styles.label}>
               Password {isEdit && '(leave blank to keep current)'}
             </label>
             <input
@@ -110,18 +90,18 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
               value={formData.password}
               onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
               required={!isEdit}
-              className={`w-full ${themeClasses.input} rounded-md shadow-sm p-2 ${themeClasses.text}`}
+              className={styles.input}
             />
           </div>
 
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.text} mb-2`}>
+            <label className={styles.label}>
               Role
             </label>
             <select
               value={formData.role}
               onChange={(e) => setFormData(prev => ({...prev, role: e.target.value}))}
-              className={`w-full ${themeClasses.input} rounded-md shadow-sm p-2 ${themeClasses.text}`}
+              className={styles.input}
             >
               <option value="member">Member</option>
               <option value="admin">Administrator</option>
@@ -129,13 +109,13 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
           </div>
 
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.text} mb-2`}>
+            <label className={styles.label}>
               Profile
             </label>
             <select
               value={formData.profile || 'Default'}
               onChange={(e) => setFormData(prev => ({...prev, profile: e.target.value}))}
-              className={`w-full ${themeClasses.input} rounded-md shadow-sm p-2 ${themeClasses.text}`}
+              className={styles.input}
             >
               {Object.keys(profiles).map(profileName => (
                 <option key={profileName} value={profileName}>
@@ -145,19 +125,19 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
             </select>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className={styles.actionsEnd}>
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 rounded-md border ${themeClasses.subText} hover:bg-gray-100`}
+              className={styles.secondaryButton}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              className={styles.primaryButton}
             >
-              <Save size={18} className="mr-2" />
+              <Save size={18} className={styles.iconSmall} />
               {isEdit ? 'Update' : 'Create'}
             </button>
           </div>
@@ -167,7 +147,7 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, themeClasse
   );
 };
 
-const UserManagement = ({ isDarkMode = false }) => {
+const UserManagement = () => {
   const { user: currentAuthUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -176,11 +156,10 @@ const UserManagement = ({ isDarkMode = false }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [toast, setToast] = useState(null);
   const isAdmin = currentAuthUser?.role === 'admin';
 
   const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
+    toast[type === 'error' ? 'error' : 'success'](message);
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -214,14 +193,7 @@ const UserManagement = ({ isDarkMode = false }) => {
     fetchProfiles();
   }, [fetchUsers, fetchProfiles]);
 
-  const themeClasses = {
-    background: isDarkMode ? 'bg-gray-900' : 'bg-gray-50',
-    card: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200',
-    text: isDarkMode ? 'text-white' : 'text-gray-900',
-    subText: isDarkMode ? 'text-gray-400' : 'text-gray-500',
-    tableHover: isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50',
-    input: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200',
-  };
+
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -284,9 +256,9 @@ const UserManagement = ({ isDarkMode = false }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="flex items-center text-gray-700">
-          <div className="animate-spin mr-3">
+      <div className={styles.centeredCompact}>
+        <div className={styles.rowMuted}>
+          <div className={styles.spin}>
             <Shield size={24} />
           </div>
           Loading Users...
@@ -296,66 +268,54 @@ const UserManagement = ({ isDarkMode = false }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-
+    <div className={styles.stackLarge}>
       <SettingsSectionHeader
         icon={Users}
         title="Users"
         description="Manage system access, permissions, and user accounts"
-        isDarkMode={isDarkMode}
         iconColor="blue"
       />
       
-      <div className="flex justify-end mb-4">
+      <div className={styles.actionsEnd}>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+          className={styles.primaryButton}
         >
           <UserPlus size={20} />
           Add New User
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className={styles.statsGrid}>
         {[
           { 
             title: 'Total Users', 
             count: users.length,
-            icon: <Shield className="text-blue-500" size={24} />,
-            bgColor: 'bg-blue-500/10'
+            icon: <Shield className={styles.iconAccent} size={24} />,
           },
           { 
             title: 'Active Users', 
             count: users.filter(user => user.status === 'Active').length,
-            icon: <Activity className="text-green-500" size={24} />,
-            bgColor: 'bg-green-500/10'
+            icon: <Activity className={styles.iconSuccess} size={24} />,
           },
           { 
             title: 'Administrators', 
             count: users.filter(user => user.role === 'admin').length,
-            icon: <Key className="text-purple-500" size={24} />,
-            bgColor: 'bg-purple-500/10'
+            icon: <Key className={styles.iconAccent} size={24} />,
           }
         ].map((stat, index) => (
           <div 
             key={index} 
-            className={`${themeClasses.card} rounded-lg border p-6`}
+            className={styles.card}
           >
-            <div className="flex items-center justify-between">
+            <div className={styles.rowBetween}>
               <div>
-                <p className={themeClasses.subText}>{stat.title}</p>
-                <h3 className={`text-2xl font-bold ${themeClasses.text} mt-1`}>
+                <p className={styles.muted}>{stat.title}</p>
+                <h3 className={styles.statValue}>
                   {stat.count}
                 </h3>
               </div>
-              <div className={`p-3 rounded-full ${stat.bgColor}`}>
+              <div className={styles.iconCircle}>
                 {stat.icon}
               </div>
             </div>
@@ -363,99 +323,87 @@ const UserManagement = ({ isDarkMode = false }) => {
         ))}
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClasses.subText}`} size={20} />
+      <div className={styles.section}>
+        <div className={styles.searchField}>
+          <Search className={styles.searchIcon} size={20} />
           <input
             type="text"
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full ${themeClasses.input} pl-10 pr-4 py-2 rounded-md ${themeClasses.text}`}
+            className={styles.searchInput}
           />
         </div>
       </div>
 
-      <div className={`${themeClasses.card} rounded-lg border overflow-hidden`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className={styles.cardFlush}>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
             <thead>
-              <tr className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>User</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>Email</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>Role</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>Profile</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>Status</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>MFA</th>
-                <th className={`text-left p-4 ${themeClasses.subText}`}>Actions</th>
+              <tr className={styles.tableRow}>
+                <th className={styles.tableHeader}>User</th>
+                <th className={styles.tableHeader}>Email</th>
+                <th className={styles.tableHeader}>Role</th>
+                <th className={styles.tableHeader}>Profile</th>
+                <th className={styles.tableHeader}>Status</th>
+                <th className={styles.tableHeader}>MFA</th>
+                <th className={styles.tableHeader}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
                 <tr 
                   key={user.email} 
-                  className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} ${themeClasses.tableHover}`}
+                  className={styles.tableRowInteractive}
                 >
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <span className={`${themeClasses.text} text-sm font-medium`}>
+                  <td className={styles.tableCell}>
+                    <div className={styles.row}>
+                      <div className={styles.avatar}>
+                      <span className={styles.itemTitle}>
                           {user.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span className={`${themeClasses.text} font-medium`}>
+                      <span className={styles.itemTitle}>
                         {user.name}
                       </span>
                     </div>
                   </td>
-                  <td className={`p-4 ${themeClasses.text}`}>{user.email}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                      ${user.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-blue-100 text-blue-800'
-                      }`}>
+                  <td className={styles.tableCell}>{user.email}</td>
+                  <td className={styles.tableCell}>
+                    <span className={`${styles.badge} ${user.role === 'admin' ? styles.badgeAccent : ''}`}>
                       {user.role === 'admin' ? 'Administrator' : 'Member'}
                     </span>
                   </td>
-                  <td className={`p-4 ${themeClasses.text}`}>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  <td className={styles.tableCell}>
+                    <span className={styles.badge}>
                       {user.profile || 'Default'}
                     </span>
                   </td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                      ${user.status === 'Active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                      }`}>
+                  <td className={styles.tableCell}>
+                    <span className={`${styles.badge} ${user.status === 'Active' ? styles.badgeSuccess : ''}`}>
                       {user.status}
                     </span>
                   </td>
-                  <td className="p-4">
-                    <div className="flex flex-col gap-1">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs
-                        ${user.mfa_enabled 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-600'
-                        }`}>
+                  <td className={styles.tableCell}>
+                    <div className={styles.stackCompact}>
+                      <span className={`${styles.badge} ${user.mfa_enabled ? styles.badgeSuccess : ''}`}>
                         {user.mfa_enabled ? 'Enabled' : 'Disabled'}
                       </span>
                       {user.mfa_enforced && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800">
+                        <span className={styles.badgeWarning}>
                           Required
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
-                    <div className="flex items-center space-x-3">
+                  <td className={styles.tableCell}>
+                    <div className={styles.actions}>
                       <button 
                         onClick={() => {
                           setCurrentUser(user);
                           setIsEditModalOpen(true);
                         }}
-                        className={`${themeClasses.subText} hover:text-blue-500 transition-colors`}
+                        className={styles.iconButton}
                         title="Edit User"
                       >
                         <Edit size={18} />
@@ -465,7 +413,7 @@ const UserManagement = ({ isDarkMode = false }) => {
                           {user.mfa_enforced ? (
                             <button 
                               onClick={() => handleEnforceMfa(user.email, false)}
-                              className={`${themeClasses.subText} hover:text-yellow-500 transition-colors`}
+                              className={styles.warningIconButton}
                               title="Remove MFA Requirement"
                             >
                               <Unlock size={18} />
@@ -473,7 +421,7 @@ const UserManagement = ({ isDarkMode = false }) => {
                           ) : (
                             <button 
                               onClick={() => handleEnforceMfa(user.email, true)}
-                              className={`${themeClasses.subText} hover:text-yellow-500 transition-colors`}
+                              className={styles.warningIconButton}
                               title="Require MFA Setup"
                             >
                               <Lock size={18} />
@@ -481,7 +429,7 @@ const UserManagement = ({ isDarkMode = false }) => {
                           )}
                           <button 
                             onClick={() => handleResetMfa(user.email)}
-                            className={`${themeClasses.subText} hover:text-orange-500 transition-colors`}
+                            className={styles.warningIconButton}
                             title="Reset/Clear MFA"
                           >
                             <Key size={18} />
@@ -490,7 +438,7 @@ const UserManagement = ({ isDarkMode = false }) => {
                       )}
                       <button 
                         onClick={() => handleDelete(user.email)}
-                        className={`${themeClasses.subText} hover:text-red-500 transition-colors`}
+                        className={styles.dangerIconButton}
                         title="Delete User"
                       >
                         <Trash2 size={18} />
@@ -508,7 +456,6 @@ const UserManagement = ({ isDarkMode = false }) => {
         <UserModal 
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateUser}
-          themeClasses={themeClasses}
           profiles={profiles}
         />
       )}
@@ -522,7 +469,6 @@ const UserManagement = ({ isDarkMode = false }) => {
             setCurrentUser(null);
           }}
           onSubmit={handleUpdateUser}
-          themeClasses={themeClasses}
           profiles={profiles}
         />
       )}

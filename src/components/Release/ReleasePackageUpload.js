@@ -46,8 +46,8 @@ const ReleasePackageUpload = () => {
   };
 
   return (
-    <section className={styles.uploadCard}>
-      <header className={styles.uploadHeader}>
+    <section className={styles.callout}>
+      <header className={styles.cardHeader}>
         <div>
           <h2 className={styles.cardTitle}>
             <Upload size={16} />

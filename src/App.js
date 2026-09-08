@@ -1106,9 +1106,7 @@ const App = () => {
                   <LiveCommunications
                     timezone={timezone}
                     timeFormat={timeFormat}
-                    isDarkMode={isDarkMode}
                     setMessages={setMessages}
-                    setIsDarkMode={setIsDarkMode}
                     toggleTheme={toggleTheme}
                     channels={channels}
                     messages={processedMessages}
@@ -1123,7 +1121,6 @@ const App = () => {
               } />
               <Route path="/settings" element={
                   <SettingsPage
-                    isDarkMode={isDarkMode}
                     timezone={timezone}
                     timeFormat={timeFormat}
                     setTimeFormat={setTimeFormatWithLogging}
@@ -1136,9 +1133,7 @@ const App = () => {
                   <UserManagement />
               } />
               <Route path="/profile" element={
-                  <UserProfile
-                    isDarkMode={isDarkMode}
-                  />
+                  <UserProfile />
               } />
 
               <Route path="/advanced-player" element={
