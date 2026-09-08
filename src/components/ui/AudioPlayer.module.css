@@ -65,6 +65,41 @@
 .metadata dd { margin: 0; font-weight: 500; }
 .metadata small { color: var(--ui-accent); }
 
+.dialog {
+  width: min(56rem, calc(100% - (2 * var(--space-4))));
+  max-height: 80dvh;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ui-text);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 30%);
+}
+
+.dialog::backdrop { background: rgb(0 0 0 / 50%); }
+.dialogHeader { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); border-bottom: 1px solid var(--ui-border); }
+.dialogTitle { margin: 0; color: var(--ui-text); font-size: 1.125rem; font-weight: 600; }
+.dialogSubtitle { margin: var(--space-1) 0 0; color: var(--ui-muted); font-size: 0.75rem; }
+.dialogBody { max-height: 60dvh; padding: var(--space-4); overflow-y: auto; }
+.dialogLoading { display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding-block: var(--space-8); }
+.dialogEmpty { display: grid; justify-items: center; gap: var(--space-2); padding-block: var(--space-8); color: var(--ui-muted); text-align: center; }
+.dialogEmpty svg { margin-bottom: var(--space-2); opacity: 0.5; }
+.dialogEmpty p { margin: 0; }
+.dialogEmpty p + p { font-size: 0.875rem; }
+.dialogList { display: flex; flex-direction: column; gap: var(--space-4); }
+.dialogCard { padding: var(--space-4); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-md); }
+.dialogCardHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.dialogRow { display: flex; align-items: center; gap: var(--space-2); }
+.dialogMeta { color: var(--ui-muted); font-size: 0.875rem; }
+.dialogMeta small { margin-left: var(--space-1); color: var(--ui-accent); font-size: 0.75rem; }
+.dialogSection { margin-bottom: var(--space-3); font-size: 0.875rem; }
+.dialogMetaLine { font-size: 0.875rem; }
+.dialogSection span, .dialogMetaLine span { color: var(--ui-muted); }
+.dialogBadge { padding: var(--space-1) var(--space-2); color: var(--ui-accent); font-size: 0.75rem; font-weight: 600; background: var(--ui-accent-subtle); border-radius: var(--radius-sm); }
+.dialogBadgeWarning { color: var(--ui-warning); }
+.dialogPreview { max-height: 8rem; padding: var(--space-3); margin-top: var(--space-2); overflow-y: auto; color: var(--ui-text); background: var(--ui-surface); border-radius: var(--radius-sm); }
+
 .player {
   display: flex;
   flex-direction: column;
@@ -246,6 +281,7 @@
   .summary { align-items: stretch; flex-direction: column; }
   .metadata { text-align: left; }
   .metadata div { justify-content: flex-start; }
+  .dialogCardHeader { align-items: stretch; flex-direction: column; }
   .footerContent {
     align-items: stretch;
     flex-direction: column;

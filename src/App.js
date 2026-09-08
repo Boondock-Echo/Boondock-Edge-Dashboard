@@ -1099,8 +1099,6 @@ const App = () => {
             <Route path="/login" element={
               <LoginPage
                 toggleTheme={toggleTheme}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
               />
             } />
             <Route element={<PrivateRoute />}>
@@ -1135,7 +1133,7 @@ const App = () => {
                   />
               } />
               <Route path="/users" element={
-                  <UserManagement isDarkMode={isDarkMode} />
+                  <UserManagement />
               } />
               <Route path="/profile" element={
                   <UserProfile
@@ -1150,19 +1148,19 @@ const App = () => {
                   <LogsPage timezone={timezone} timeFormat={timeFormat} />
               } />
               <Route path="/report" element={
-                  <ReportPage isDarkMode={isDarkMode} timeFormat={timeFormat} />
+                  <ReportPage timeFormat={timeFormat} />
               } />
               <Route path="/user-guide" element={
-                  <UserGuidePage isDarkMode={isDarkMode} />
+                  <UserGuidePage />
               } />
               <Route path="/release" element={
-                  <ReleasePage isDarkMode={isDarkMode} />
+                  <ReleasePage />
               } />
               <Route path="/version" element={
-                  <VersionPage isDarkMode={isDarkMode} />
+                  <VersionPage />
               } />
               <Route path="/license" element={
-                  <LicenseSubscriptionPage isDarkMode={isDarkMode} />
+                  <LicenseSubscriptionPage />
               } />
             </Route>
           </Routes>
