@@ -14,8 +14,10 @@ import {
   ArrowUpRight,
   Shield
 } from 'lucide-react';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
 
-const EventManagement = ({ isDarkMode }) => {
+const EventManagement = () => {
   const events = [
     {
       id: 1,
@@ -46,113 +48,83 @@ const EventManagement = ({ isDarkMode }) => {
   };
 
   return (
-    <div className="mt-8">
+    <div className="stackLarge">
       {/* Header Section */}
-      <div className={`rounded-2xl border p-8 mb-8 ${isDarkMode ? 'bg-gray-900/60 border-gray-800 shadow-xl' : 'bg-white border-gray-200 shadow-lg'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className={`flex-shrink-0 h-20 w-20 rounded-full flex items-center justify-center 
-              bg-blue-500/10 animate-pulse`}>
-              <Shield className={`h-10 w-10 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            </div>
+      <div className={cardStyles.card}>
+        <div className="rowBetweenStart">
+          <div className="row">
+            <Shield size={40} />
             <div>
-              <h2 className={`text-3xl font-extrabold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'} tracking-wider mb-2`}>
-                Event Management
-              </h2>
-              <p className={`text-sm opacity-80 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Monitor and manage your active and past events
-              </p>
+              <h2>Event Management</h2>
+              <p className={cardStyles.description}>Monitor and manage your active and past events</p>
             </div>
           </div>
-          <div className={`px-4 py-2 rounded-full ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-100'} 
-            flex items-center gap-2 text-sm border ${isDarkMode ? 'border-blue-500/20' : 'border-blue-200'}`}>
-            <Activity className="h-4 w-4" />
-            <span>{events.filter(e => e.status === 'current').length} Active Events</span>
-          </div>
+          <span className="pill pillAccent">
+            <Activity size={16} />
+            {events.filter(e => e.status === 'current').length} Active Events
+          </span>
         </div>
       </div>
 
       {/* Events Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="gridTwo">
         {events.map((event) => (
-          <div key={event.id} 
-            className={`rounded-2xl ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'} p-6
-              border ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} 
-              hover:scale-[1.02] hover:rotate-1 transition-all duration-300
-              ${isDarkMode ? 'shadow-xl shadow-black/20' : 'shadow-lg shadow-gray-200/50'}`}>
+          <div key={event.id} className={`${cardStyles.card} ${cardStyles.interactive}`}>
             {/* Status Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
-                ${event.status === 'current'
-                  ? `${isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-600'}`
-                  : `${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}`}>
-                {event.status === 'current' ? (
-                  <Timer className="h-4 w-4 animate-pulse" />
-                ) : (
-                  <Clock className="h-4 w-4" />
-                )}
+            <div className="rowBetween">
+              <span className={`pill ${event.status === 'current' ? 'pillSuccess' : ''}`}>
+                {event.status === 'current' ? <Timer size={16} /> : <Clock size={16} />}
                 {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-              </div>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm
-                ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                <FileMusic  className="h-4 w-4" />
+              </span>
+              <span className="pill">
+                <FileMusic size={16} />
                 {event.participants} Recordings
-              </div>
+              </span>
             </div>
 
             {/* Event Title */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">{event.name}</h3>
-              <ArrowUpRight className={`h-5 w-5 opacity-50 group-hover:opacity-100 
-                transition-opacity ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className="rowBetween">
+              <h3>{event.name}</h3>
+              <ArrowUpRight size={20} />
             </div>
 
             {/* Event Details */}
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-3">
-                <Calendar className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                <span className="text-sm">Started: {formatDateTime(event.startTime)}</span>
+            <div className="stackCompact">
+              <div className="row">
+                <Calendar size={20} />
+                <span>Started: {formatDateTime(event.startTime)}</span>
               </div>
               {event.endTime && (
-                <div className="flex items-center gap-3">
-                  <Clock className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <span className="text-sm">Ended: {formatDateTime(event.endTime)}</span>
+                <div className="row">
+                  <Clock size={20} />
+                  <span>Ended: {formatDateTime(event.endTime)}</span>
                 </div>
               )}
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3">
-              {event.status === 'current' && (
-                <button className={`inline-flex items-center px-4 py-2 rounded-lg text-sm
-                  ${isDarkMode 
-                    ? 'bg-red-600/10 text-red-400 hover:bg-red-600/20' 
-                    : 'bg-red-100 text-red-600 hover:bg-red-200'} 
-                  transition-all duration-300 hover:scale-105`}>
-                  <XCircle className="h-4 w-4 mr-2" />
-                  End Event
-                </button>
-              )}
-              {event.status === 'ended' && (
-                <>
-                  <button className={`inline-flex items-center px-4 py-2 rounded-lg text-sm
-                    ${isDarkMode 
-                      ? 'bg-blue-600/10 text-blue-400 hover:bg-blue-600/20' 
-                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'} 
-                    transition-all duration-300 hover:scale-105`}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </button>
-                  <button className={`inline-flex items-center px-4 py-2 rounded-lg text-sm
-                    ${isDarkMode 
-                      ? 'bg-red-600/10 text-red-400 hover:bg-red-600/20' 
-                      : 'bg-red-100 text-red-600 hover:bg-red-200'} 
-                    transition-all duration-300 hover:scale-105`}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </button>
-                </>
-              )}
+            <div className="rowBetween">
+              <div />
+              <div className="row">
+                {event.status === 'current' && (
+                  <Button variant="danger">
+                    <XCircle size={16} />
+                    End Event
+                  </Button>
+                )}
+                {event.status === 'ended' && (
+                  <>
+                    <Button variant="accent">
+                      <Download size={16} />
+                      Download
+                    </Button>
+                    <Button variant="danger">
+                      <Trash2 size={16} />
+                      Delete
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))}

@@ -11,8 +11,11 @@ import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
 import {
   SettingsPageHero,
   SettingsSectionWidth,
-  settingsMainCardClass,
 } from './SettingsSectionLayout';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import listStyles from '../ui/List.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
 const TABS = [
   { id: 'display-language', label: 'Display & Language' },
@@ -25,7 +28,6 @@ const TABS = [
 ];
 
 const SystemSection = ({
-  isDarkMode,
   showToast,
   globalSettings,
   handleGlobalChange,
@@ -68,7 +70,6 @@ const SystemSection = ({
     <GlobalSettings
       globalSettings={globalSettings}
       handleGlobalChange={handleGlobalChange}
-      isDarkMode={isDarkMode}
       timezone={timezone}
       timeFormat={timeFormat}
       setTimeFormat={setTimeFormat}
@@ -88,7 +89,6 @@ const SystemSection = ({
           <GlobalSettings
             globalSettings={globalSettings}
             handleGlobalChange={handleGlobalChange}
-            isDarkMode={isDarkMode}
             timezone={timezone}
             timeFormat={timeFormat}
             setTimeFormat={setTimeFormat}
@@ -108,24 +108,21 @@ const SystemSection = ({
             handleRemoveKeyword={handleRemoveKeyword}
             globalSettings={globalSettings}
             handleGlobalChange={handleGlobalChange}
-            isDarkMode={isDarkMode}
           />
         );
       case 'api-keys':
-        return <ApiKeyManagement isDarkMode={isDarkMode} showToast={showToast} user={user} />;
+        return <ApiKeyManagement showToast={showToast} user={user} />;
       case 'interfaces':
-        return <Interfaces isDarkMode={isDarkMode} />;
+        return <Interfaces />;
       case 'hotspot-configuration':
         return renderHotspotSettings();
       case 'maintenance':
         return (
-          <div className="space-y-10">
+          <div className="stack stackLarge">
             <Maintenance
-              isDarkMode={isDarkMode}
               showToast={showToast}
             />
             <BackupRestore
-              isDarkMode={isDarkMode}
               showToast={showToast}
               globalSettings={globalSettings}
               handleGlobalChange={handleGlobalChange}
@@ -136,7 +133,6 @@ const SystemSection = ({
       case 'danger-zone':
         return (
           <DangerZone
-            isDarkMode={isDarkMode}
             showToast={showToast}
           />
         );
@@ -145,14 +141,12 @@ const SystemSection = ({
     }
   };
 
-  const card = settingsMainCardClass(isDarkMode);
 
   const subnav = (
-    <SettingsSubnav isDarkMode={isDarkMode} embedded aria-label="System sections">
+    <SettingsSubnav embedded aria-label="System sections">
       {TABS.map((t) => (
         <SettingsSubnavTab
           key={t.id}
-          isDarkMode={isDarkMode}
           active={activeTab === t.id}
           danger={!!t.danger}
           onClick={() => handleTabChange(t.id)}
@@ -164,38 +158,28 @@ const SystemSection = ({
   );
 
   const hotspotAside = activeTab === 'hotspot-configuration' && (
-    <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-xl bg-primary-container p-6 text-on-primary-container">
-        <div className="relative z-10">
-          <h4 className="font-headline mb-2 text-lg font-bold">Hotspot guide</h4>
-          <p className="mb-4 text-xs leading-relaxed opacity-90">
+    <div className="stack stackLarge">
+      <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+        <span className={`material-symbols-outlined ${noticeStyles.icon}`}>wifi_tethering</span>
+        <div className={noticeStyles.body}>
+          <p><strong>Hotspot guide</strong></p>
+          <p>
             When the hotspot is enabled, recorders can join the Wi‑Fi network and run Auto Config against this
             server. Set SSID, password, host IP, and port before enabling.
           </p>
-          <button
-            type="button"
-            onClick={() => window.open('/user-guide', '_blank')}
-            className="inline-flex items-center gap-2 text-xs font-bold underline underline-offset-4"
-          >
+          <Button type="button" size="small" variant="ghost" onClick={() => window.open('/user-guide', '_blank')}>
             Open user guide
-            <span className="material-symbols-outlined text-sm">open_in_new</span>
-          </button>
+            <span className="material-symbols-outlined iconSmall">open_in_new</span>
+          </Button>
         </div>
-        <span className="material-symbols-outlined absolute -bottom-4 -right-4 text-8xl opacity-10">
-          wifi_tethering
-        </span>
       </div>
-      <div
-        className={`space-y-4 rounded-xl p-6 ${isDarkMode ? 'bg-slate-800/60' : 'bg-slate-200/40'}`}
-      >
-        <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Checklist</h4>
-        <ul
-          className={`space-y-2 text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-on-surface-variant'}`}
-        >
-          <li>Unique SSID for the field network</li>
-          <li>Strong password (WPA2/WPA3)</li>
-          <li>Host IP matches what recorders should call</li>
-          <li>Port matches the edge HTTP port</li>
+      <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+        <p className="eyebrow">Checklist</p>
+        <ul className={listStyles.list}>
+          <li className={listStyles.item}>Unique SSID for the field network</li>
+          <li className={listStyles.item}>Strong password (WPA2/WPA3)</li>
+          <li className={listStyles.item}>Host IP matches what recorders should call</li>
+          <li className={listStyles.item}>Port matches the edge HTTP port</li>
         </ul>
       </div>
     </div>
@@ -204,22 +188,21 @@ const SystemSection = ({
   return (
     <SettingsSectionWidth>
       <SettingsPageHero
-        isDarkMode={isDarkMode}
         title="System"
         description="Manage display, API keys, WiFi, backups, and maintenance."
-        icon={<span className="material-symbols-outlined text-2xl">settings_suggest</span>}
+        icon={<span className="material-symbols-outlined iconMedium">settings_suggest</span>}
       />
 
       {activeTab === 'hotspot-configuration' ? (
-        <div className={`space-y-6 rounded-xl border p-6 md:p-8 ${card}`}>
+        <div className={`${cardStyles.card} stack stackLarge`}>
           {subnav}
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div className="xl:col-span-2">{renderTabBody()}</div>
-            <div className="xl:col-span-1">{hotspotAside}</div>
+          <div className="gridMainAside">
+            <div>{renderTabBody()}</div>
+            <div>{hotspotAside}</div>
           </div>
         </div>
       ) : (
-        <div className={`rounded-xl border p-6 md:p-8 ${card}`}>
+        <div className={cardStyles.card}>
           {subnav}
           {renderTabBody()}
         </div>

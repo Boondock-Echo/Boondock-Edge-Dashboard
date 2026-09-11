@@ -13,7 +13,6 @@ import { AudioPlaybackProvider } from './components/AudioPlaybackContext';
 // opposite theme while the dashboard is loading.
 const savedDarkMode = JSON.parse(localStorage.getItem('isDarkMode') || 'false');
 document.documentElement.dataset.uiTheme = savedDarkMode ? 'night-ops' : 'ember-command';
-document.documentElement.classList.toggle('dark', savedDarkMode);
 
 // Suppress expected errors and warnings
 // These are expected browser behavior and don't affect functionality

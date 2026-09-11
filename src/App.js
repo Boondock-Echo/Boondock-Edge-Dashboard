@@ -14,11 +14,14 @@ import VersionPage from "./components/Version/VersionPage";
 import LicenseSubscriptionPage from "./components/Licensing/LicenseSubscriptionPage";
 // import FloatingDocumentationIcon from "./components/Documentation/FloatingDocumentationIcon"; // Hidden from apps
 import api from './utils/apiClient';
-import "./App.css";
 import { useAuth } from './components/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import LoginPage from './components/LoginPage';
 import { ToastContainer } from 'react-toastify';
+import Button from './components/ui/Button';
+import cardStyles from './components/ui/Card.module.css';
+import modalStyles from './components/ui/Modal.module.css';
+import noticeStyles from './components/ui/Notice.module.css';
 import 'react-toastify/dist/ReactToastify.css';
 import logger from './utils/logger';
 import {
@@ -45,12 +48,14 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 40, textAlign: 'center', fontFamily: 'sans-serif' }}>
-          <h2>Something went wrong.</h2>
-          <p style={{ color: '#888' }}>{this.state.error?.message}</p>
-          <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 16, padding: '8px 20px', cursor: 'pointer' }}>
-            Try Again
-          </button>
+        <div className="centeredContent">
+          <div className={`${cardStyles.card} stack`}>
+            <h2>Something went wrong.</h2>
+            <p className={cardStyles.description}>{this.state.error?.message}</p>
+            <Button variant="primary" onClick={() => this.setState({ hasError: false, error: null })}>
+              Try Again
+            </Button>
+          </div>
         </div>
       );
     }
@@ -455,6 +460,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showServerErrorModal, setShowServerErrorModal] = useState(false);
+  const serverErrorDialogRef = useRef(null);
   const [cacheCleared, setCacheCleared] = useState(false);
   
   // Add cache debugging to window object for development (LOW-02: inside useEffect)
@@ -482,10 +488,6 @@ const App = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return JSON.parse(localStorage.getItem("isDarkMode")) || false;
-  });
-  
   const [timezone, setTimezone] = useState(() => {
     const cachedTimezone = getCachedData(CACHE_KEYS.TIMEZONE);
     return cachedTimezone && validateTimezone(cachedTimezone) ? cachedTimezone : "Etc/UTC";
@@ -501,8 +503,6 @@ const App = () => {
   });
 
   const [reverseSort, setReverseSort] = useState(false);
-
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   const setTimezoneWithLogging = (newTz) => {
     logger.debug(`Timezone changed from ${timezone} to ${newTz}`);
@@ -537,11 +537,11 @@ const App = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
-    const root = document.documentElement;
-    root.dataset.uiTheme = isDarkMode ? "night-ops" : "ember-command";
-    root.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
+    const dialog = serverErrorDialogRef.current;
+    if (!dialog) return;
+    if (showServerErrorModal && !dialog.open) dialog.showModal();
+    if (!showServerErrorModal && dialog.open) dialog.close();
+  }, [showServerErrorModal]);
 
   // Update document title when branding changes
   useEffect(() => {
@@ -963,8 +963,9 @@ const App = () => {
 
   if (loading && !Object.keys(channels).length) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <div className="centeredContent">
+        <span className="spinner" aria-hidden="true" />
+        <span>Loading...</span>
       </div>
     );
   }
@@ -972,144 +973,74 @@ const App = () => {
   return (
     <>
       {showServerErrorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-          <div className={`w-full max-w-md mx-4 rounded-xl shadow-2xl border overflow-hidden transition-colors duration-300 ${
-            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-          }`}>
-            {/* Header with icon */}
-            <div className={`px-6 py-4 border-b transition-colors duration-300 ${
-              isDarkMode ? 'bg-red-900/30 border-red-800/50' : 'bg-red-50 border-red-100'
-            }`}>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                    isDarkMode ? 'bg-red-900/50' : 'bg-red-100'
-                  }`}>
-                    <svg className={`w-6 h-6 transition-colors duration-300 ${
-                      isDarkMode ? 'text-red-400' : 'text-red-600'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <h2 className={`text-xl font-bold transition-colors duration-300 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    Server Connection Error
-                  </h2>
-                  <p className={`text-sm mt-0.5 transition-colors duration-300 ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>
-                    Unable to reach the server
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-5">
-              <div className="mb-6">
-                <p className={`text-sm leading-relaxed transition-colors duration-300 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Please check your server connection or connect to admin. The server may be temporarily unavailable or experiencing issues.
-                </p>
-              </div>
-
-              {/* Cache info */}
-              <div className={`mb-6 p-3 rounded-lg border transition-colors duration-300 ${
-                isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <svg className={`w-4 h-4 transition-colors duration-300 ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                    </svg>
-                    <span className={`text-xs font-medium transition-colors duration-300 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>Cache Status</span>
-                  </div>
-                  <span className={`text-xs transition-colors duration-300 ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    {getCachedData(CACHE_KEYS.MESSAGES)?.length || 0} messages cached
-                  </span>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="space-y-3">
-                <button
-                  onClick={async () => {
-                    const isHealthy = await fetchInboxData(false);
-                    if (isHealthy) {
-                      setShowServerErrorModal(false);
-                    }
-                  }}
-                  className="w-full px-4 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>Retry Connection</span>
-                </button>
-                
-                <button
-                  onClick={async () => {
-                    await clearAllCache();
-                    setCacheCleared(true);
-                    setTimeout(() => {
-                      setCacheCleared(false);
-                    }, 2000);
-                  }}
-                  className={`w-full px-4 py-3 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center justify-center space-x-2 ${
-                    cacheCleared 
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
-                      : 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
-                  }`}
-                >
-                  {cacheCleared ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Cache Cleared!</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Clear Cache</span>
-                    </>
-                  )}
-                </button>
-              </div>
+        <dialog ref={serverErrorDialogRef} className={modalStyles.dialog}>
+          {/* Header with icon */}
+          <div className={modalStyles.header}>
+            <div>
+              <h2 className={modalStyles.title}>Server Connection Error</h2>
+              <p className={modalStyles.subtitle}>Unable to reach the server</p>
             </div>
           </div>
-        </div>
+
+          {/* Content */}
+          <div className={`${modalStyles.body} stack`}>
+            <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+              <div className={noticeStyles.body}>
+                <p>Please check your server connection or connect to admin. The server may be temporarily unavailable or experiencing issues.</p>
+              </div>
+            </div>
+
+            {/* Cache info */}
+            <div className={`${cardStyles.card} ${cardStyles.compact} rowBetween`}>
+              <span>Cache Status</span>
+              <span className={cardStyles.description}>
+                {getCachedData(CACHE_KEYS.MESSAGES)?.length || 0} messages cached
+              </span>
+            </div>
+
+            {/* Action buttons */}
+            <div className="stack stackCompact">
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  const isHealthy = await fetchInboxData(false);
+                  if (isHealthy) {
+                    setShowServerErrorModal(false);
+                  }
+                }}
+              >
+                Retry Connection
+              </Button>
+
+              <Button
+                variant={cacheCleared ? 'success' : 'secondary'}
+                onClick={async () => {
+                  await clearAllCache();
+                  setCacheCleared(true);
+                  setTimeout(() => {
+                    setCacheCleared(false);
+                  }, 2000);
+                }}
+              >
+                {cacheCleared ? 'Cache Cleared!' : 'Clear Cache'}
+              </Button>
+            </div>
+          </div>
+        </dialog>
       )}
 
       <ErrorBoundary>
         <Router>
           <Routes>
             <Route path="/login" element={
-              <LoginPage
-                toggleTheme={toggleTheme}
-              />
+              <LoginPage />
             } />
             <Route element={<PrivateRoute />}>
               <Route path="/" element={
                   <LiveCommunications
                     timezone={timezone}
                     timeFormat={timeFormat}
-                    isDarkMode={isDarkMode}
                     setMessages={setMessages}
-                    setIsDarkMode={setIsDarkMode}
-                    toggleTheme={toggleTheme}
                     channels={channels}
                     messages={processedMessages}
                     keywords={keywords}
@@ -1123,7 +1054,6 @@ const App = () => {
               } />
               <Route path="/settings" element={
                   <SettingsPage
-                    isDarkMode={isDarkMode}
                     timezone={timezone}
                     timeFormat={timeFormat}
                     setTimeFormat={setTimeFormatWithLogging}
@@ -1136,9 +1066,7 @@ const App = () => {
                   <UserManagement />
               } />
               <Route path="/profile" element={
-                  <UserProfile
-                    isDarkMode={isDarkMode}
-                  />
+                  <UserProfile />
               } />
 
               <Route path="/advanced-player" element={

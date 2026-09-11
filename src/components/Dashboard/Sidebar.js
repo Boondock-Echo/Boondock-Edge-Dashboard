@@ -6,11 +6,9 @@ import KeywordsSection from "./KeywordsSection";
 import SidebarFooter from "./SidebarFooter";
 import ChannelSettingsModal from "./ChannelSettingsModal";
 import api from '../../utils/apiClient';
+import styles from '../ui/Sidebar.module.css';
 
 const TeamsSidebar = ({
-  isDarkMode,
-  toggleTheme,
-  setIsDarkMode,
   channels,
   setChannels,
   activeChannels,
@@ -28,7 +26,7 @@ const TeamsSidebar = ({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [keywordSectionHeight, setKeywordSectionHeight] = useState("max-h-96");
+  const [keywordSectionHeight, setKeywordSectionHeight] = useState(styles.keywordScrollLarge);
 
   useEffect(() => {
     try {
@@ -48,11 +46,11 @@ const TeamsSidebar = ({
       const isLargeScreen = windowHeight >= 800;
 
       if (isSmallScreen) {
-        setKeywordSectionHeight("max-h-48"); // 192px for small screens
+        setKeywordSectionHeight(styles.keywordScrollSmall); // 192px for small screens
       } else if (isMediumScreen) {
-        setKeywordSectionHeight("max-h-64"); // 256px for medium screens
+        setKeywordSectionHeight(styles.keywordScrollMedium); // 256px for medium screens
       } else {
-        setKeywordSectionHeight("max-h-96"); // 384px for large screens
+        setKeywordSectionHeight(styles.keywordScrollLarge); // 384px for large screens
       }
     };
 
@@ -96,40 +94,28 @@ const TeamsSidebar = ({
   const handleKeywordClick = (keyword) => toggleKeyword(keyword);
 
   return (
-    <div
-      className={`flex h-full max-h-screen flex-col overflow-y-auto border-r transition-colors duration-300 ${
-        isDarkMode ? "border-slate-800 bg-slate-900" : "border-slate-200/70 bg-slate-50"
-      } ${isMobile ? "w-full" : "w-72"}`}
-    >
+    <div className={`${styles.sidebar}${isMobile ? ` ${styles.mobile}` : ''}`}>
       <SidebarHeader 
-        isDarkMode={isDarkMode} 
-        toggleTheme={toggleTheme}
         isMobile={isMobile}
         closeSidebar={closeSidebar}
       />
       <SidebarSearch 
         searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
-        isDarkMode={isDarkMode}
+        setSearchQuery={setSearchQuery}
       />
 
-      <div className={`flex-grow overflow-hidden px-6 pb-6 ${isDarkMode ? "dark-mode-scrollbar" : ""}`}>
-        <div className="mb-4 mt-2">
-          <h3
-            className={`mb-3 text-xs font-semibold ${
-              isDarkMode ? "text-slate-400" : "text-slate-600"
-            }`}
-          >
+      <div className={styles.content}>
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>
             Channels
           </h3>
-          <div className="max-h-60 space-y-3 overflow-y-auto pr-1">
+          <div className={styles.channelList}>
             {Object.entries(channels).map(([channelId, channel]) => (
               <ChannelItem
                 key={channelId}
                 channel={channel}
                 isActive={activeChannels[channelId]}
                 channelMessageCounts={channelMessageCounts}
-                isDarkMode={isDarkMode}
                 handleToggleChannel={() => handleToggleChannel(channelId)}
                 handleSettingsClick={handleSettingsClick}
               />
@@ -137,19 +123,14 @@ const TeamsSidebar = ({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1">
-          <h3
-            className={`mb-3 text-xs font-semibold ${
-              isDarkMode ? "text-slate-400" : "text-slate-600"
-            }`}
-          >
+        <div className={styles.sectionGrow}>
+          <h3 className={styles.sectionTitle}>
             Keywords
           </h3>
           <KeywordsSection
             keywordCounts={keywordCounts}
             activeKeywords={activeKeywords}
             handleKeywordClick={handleKeywordClick}
-            isDarkMode={isDarkMode}
             maxHeightClass={keywordSectionHeight}
           />
         </div>
@@ -157,14 +138,13 @@ const TeamsSidebar = ({
         
       </div>
 
-      <SidebarFooter isDarkMode={isDarkMode} />
+      <SidebarFooter />
       <ChannelSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         channel={selectedChannel}
         onSave={handleSave}
         isSaving={isSaving}
-        isDarkMode={isDarkMode}
       />
     </div>
   );

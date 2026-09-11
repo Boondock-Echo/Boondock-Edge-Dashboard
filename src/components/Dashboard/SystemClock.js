@@ -1,6 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../utils/apiClient';
 import { Clock as ClockIcon } from 'lucide-react';
+import Button from '../ui/Button';
+import formStyles from '../ui/Form.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import styles from '../ui/SystemClock.module.css';
 import { toast } from 'react-toastify';
 import logger from '../../utils/logger';
 
@@ -117,10 +121,11 @@ const TIMEZONES = [
   { value: "Africa/Nairobi", label: "Kenya Time (EAT)" },
 ];
 
-const SystemClock = ({ userRole, isDarkMode, timeFormat: timeFormatProp = '24h', timezone, setTimezone }) => {
+const SystemClock = ({ userRole, timeFormat: timeFormatProp = '24h', timezone, setTimezone }) => {
   const [displayTime, setDisplayTime] = useState('--:--:--');
   const [serverTimeOffset, setServerTimeOffset] = useState(null); // Offset in milliseconds
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const dialogRef = useRef(null);
   const [pendingDateTime, setPendingDateTime] = useState('');
   const [pendingTimezone, setPendingTimezone] = useState(timezone || 'UTC');
   const [isSaving, setIsSaving] = useState(false);
@@ -237,6 +242,13 @@ const SystemClock = ({ userRole, isDarkMode, timeFormat: timeFormatProp = '24h',
     setIsModalOpen(false);
   };
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isModalOpen && !dialog.open) dialog.showModal();
+    if (!isModalOpen && dialog.open) dialog.close();
+  }, [isModalOpen]);
+
   const handleSubmit = async (event) => {
     // TO-DO Returning 404 from the API fix on API before re-enabling
     // event.preventDefault();
@@ -276,132 +288,70 @@ const SystemClock = ({ userRole, isDarkMode, timeFormat: timeFormatProp = '24h',
     // }
   };
 
-  const textColor = isDarkMode ? 'text-gray-100' : 'text-gray-900';
-  const iconColor = isDarkMode ? 'text-gray-400' : 'text-gray-600';
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="row">
         <button
           type="button"
           onClick={openModal}
-          className={`flex flex-col items-end gap-0.5 px-3 py-1.5 font-mono text-lg md:text-xl tracking-wider transition-opacity ${
-            isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
-          } ${textColor}`}
+          className={styles.clockButton}
           title={isAdmin ? 'Click to adjust system time' : 'System time'}
           disabled={!isAdmin}
         >
-          <div className="flex items-center gap-2">
-            <ClockIcon className={`w-4 h-4 flex-shrink-0 ${iconColor}`} />
-            <span className="whitespace-nowrap">
-              {displayTime}
-            </span>
+          <div className="row">
+            <ClockIcon className={styles.clockIcon} aria-hidden="true" />
+            <span>{displayTime}</span>
           </div>
-          {timezone && (
-            <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              {timezone}
-            </span>
-          )}
+          {timezone && <span className={styles.timezone}>{timezone}</span>}
         </button>
       </div>
 
-      {isModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: 0,
-            padding: '1rem'
+      <dialog
+          ref={dialogRef}
+          className={modalStyles.dialog}
+          onCancel={(event) => {
+            event.preventDefault();
+            closeModal();
           }}
-          onClick={closeModal}
         >
-          <div
-            className={`w-full max-w-md rounded-lg shadow-xl ${
-              isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'
-            }`}
-            style={{ 
-              margin: 'auto',
-              position: 'relative',
-              zIndex: 51
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className={formStyles.form}>
+            <div className={modalStyles.header}>
               <div>
-                <h2 className="text-lg font-semibold mb-1">Set System Time & Timezone</h2>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <h2 className={modalStyles.title}>Set System Time &amp; Timezone</h2>
+                <p className={modalStyles.subtitle}>
                   Enter the desired local date and time, and select timezone. Administrator privileges are required.
                 </p>
               </div>
+            </div>
 
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Date &amp; Time
-                <input
-                  type="datetime-local"
-                  step="1"
-                  value={pendingDateTime}
-                  onChange={(event) => setPendingDateTime(event.target.value)}
-                  className={`mt-2 w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    isDarkMode
-                      ? 'border-gray-600 bg-gray-800 text-gray-100'
-                      : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                  required
-                />
-              </label>
+            <div className={modalStyles.body}>
+              <div className={formStyles.form}>
+                <label className={formStyles.field}>
+                  <span className={formStyles.label}>Date &amp; Time</span>
+                  <input type="datetime-local" step="1" value={pendingDateTime} onChange={(event) => setPendingDateTime(event.target.value)} className={formStyles.input} required />
+                </label>
 
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Timezone
-                <select
-                  value={pendingTimezone}
-                  onChange={(event) => setPendingTimezone(event.target.value)}
-                  className={`mt-2 w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    isDarkMode
-                      ? 'border-gray-600 bg-gray-800 text-gray-100'
-                      : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                  required
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value} className={isDarkMode ? 'bg-gray-800' : 'bg-white'}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-                    isDarkMode
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-800'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                  }`}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-70"
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving…' : 'Apply'}
-                </button>
+                <label className={formStyles.field}>
+                  <span className={formStyles.label}>Timezone</span>
+                  <select value={pendingTimezone} onChange={(event) => setPendingTimezone(event.target.value)} className={formStyles.select} required>
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>{tz.label}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <div className={modalStyles.actionsBetween}>
+              <span />
+              <div className={modalStyles.actions}>
+                <Button type="button" onClick={closeModal} variant="secondary" disabled={isSaving}>Cancel</Button>
+                <Button type="submit" variant="primary" disabled={isSaving}>{isSaving ? 'Saving…' : 'Apply'}</Button>
+              </div>
+            </div>
+          </form>
+        </dialog>
     </>
   );
 };

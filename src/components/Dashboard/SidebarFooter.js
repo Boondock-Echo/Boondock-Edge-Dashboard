@@ -2,8 +2,10 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { LogOut } from "lucide-react";
+import Button from '../ui/Button';
+import styles from '../ui/Sidebar.module.css';
 
-const SidebarFooter = ({ isDarkMode }) => {
+const SidebarFooter = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -21,60 +23,40 @@ const SidebarFooter = ({ isDarkMode }) => {
   const releaseDate = process.env.REACT_APP_BUILD_DATE;
 
   return (
-    <div
-      className={`mt-auto border-t p-4 transition-colors duration-200 ${
-        isDarkMode ? "border-slate-800/80" : "border-slate-200/20"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2">
+    <div className={styles.footer}>
+      <div className="rowBetween">
         <button
           type="button"
           onClick={() => navigate("/profile")}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left transition-opacity hover:opacity-80"
+          className={styles.profileButton}
           title="View profile"
         >
-          <div
-            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border text-xs font-bold ${
-              isDarkMode
-                ? "border-slate-600 bg-slate-800 text-slate-200"
-                : "border-outline-variant bg-primary-container text-on-primary-container"
-            }`}
-          >
+          <div className={styles.avatar}>
             {user?.avatar ? (
-              <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+              <img src={user.avatar} alt="" />
             ) : (
               getInitials(user?.name || user?.username || "User")
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <span
-              className={`block truncate text-xs font-semibold ${
-                isDarkMode ? "text-slate-200" : "text-slate-800"
-              }`}
-            >
+          <div className={styles.profileText}>
+            <span className={styles.profileName}>
               {user?.name || user?.username || "Guest"}
             </span>
-            <span
-              className={`block truncate text-[10px] leading-4 ${
-                isDarkMode ? "text-slate-300" : "text-slate-500"
-              }`}
-            >
+            <span className={styles.version}>
               {releaseDate ? `${appVersion} | ${releaseDate}` : appVersion}
             </span>
           </div>
         </button>
-        <button
+        <Button
           type="button"
           onClick={() => logout()}
-          className={`rounded-lg p-2 transition-colors ${
-            isDarkMode
-              ? "text-slate-400 hover:bg-slate-800"
-              : "text-slate-500 hover:bg-slate-200/80"
-          }`}
+          variant="ghost"
+          size="icon"
           title="Log out"
+          aria-label="Log out"
         >
-          <LogOut className="h-5 w-5" />
-        </button>
+          <LogOut aria-hidden="true" />
+        </Button>
       </div>
     </div>
   );

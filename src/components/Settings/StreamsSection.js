@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 import logger from '../../utils/logger';
 import { toast } from 'react-toastify';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import styles from '../ui/StreamsSection.module.css';
 
-const StreamsSection = ({ isDarkMode}) => {
+const StreamsSection = () => {
   const SOCKET_URL = window.location.origin;
   
   const [streams, setStreams] = useState([]);
@@ -518,96 +522,62 @@ const StreamsSection = ({ isDarkMode}) => {
     const bufferInfo = bufferInfoRef.current[stream.channel_id];
 
     return (
-      <div
-        key={stream.channel_id}
-        className={`p-4 rounded-lg border-2 transition-all ${
-          isDarkMode
-            ? `border-gray-700 bg-gray-800 hover:bg-gray-750`
-            : `border-gray-300 bg-gray-50 hover:bg-gray-100`
-        }`}
-      >
+      <div key={stream.channel_id} className={`${cardStyles.card} ${cardStyles.compact} stack`}>
         {/* Header with channel info */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Radio className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold">Channel {stream.channel_id}</h3>
+        <div className="rowBetween">
+          <div className="row">
+            <Radio size={20} />
+            <h3 className={cardStyles.title}>Channel {stream.channel_id}</h3>
           </div>
-          <div className="flex items-center gap-1">
-            {isConnected ? (
-              <Wifi className="w-4 h-4 text-green-500" title="Connected" />
-            ) : (
-              <WifiOff className="w-4 h-4 text-red-500" title="Disconnected" />
-            )}
-          </div>
+          <span className={`pill ${isConnected ? 'pillSuccess' : 'pillDanger'}`}>
+            {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </div>
 
         {/* Device info */}
         {isConnected && stream.device_ip ? (
-          <div className="text-sm mb-3 space-y-1">
-            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-              <span className="font-medium">Device:</span> {stream.device_ip}:{stream.device_port}
-            </p>
-            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-              <span className="font-medium">Packets:</span> {stream.packet_count.toLocaleString()}
-            </p>
-            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-              <span className="font-medium">Data:</span> {(stream.byte_count / 1024 / 1024).toFixed(2)} MB
-            </p>
+          <div className="stack stackCompact">
+            <p className={cardStyles.description}><strong>Device:</strong> {stream.device_ip}:{stream.device_port}</p>
+            <p className={cardStyles.description}><strong>Packets:</strong> {stream.packet_count.toLocaleString()}</p>
+            <p className={cardStyles.description}><strong>Data:</strong> {(stream.byte_count / 1024 / 1024).toFixed(2)} MB</p>
           </div>
         ) : (
-          <div className="text-sm text-gray-500 mb-3 p-2 bg-opacity-50 rounded">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>No device connected</span>
-            </div>
+          <div className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
+            <AlertCircle size={16} className={noticeStyles.icon} />
+            <div className={noticeStyles.body}><p>No device connected</p></div>
           </div>
         )}
 
         {/* Buffer Timeline (when playing) */}
         {isPlaying && bufferInfo && bufferInfo.has_data && (
-          <div className="mb-4 space-y-3 p-3 rounded bg-white bg-opacity-10 backdrop-blur-sm border border-white border-opacity-20">
+          <div className={`${styles.timeline} stack stackCompact`}>
             {/* Mode indicator and time display */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                {playbackMode === 'live' ? (
-                  <div className="flex items-center gap-1 text-red-400">
-                    <Zap className="w-3 h-3" />
-                    <span>LIVE MODE</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-blue-400">
-                    <Clock className="w-3 h-3" />
-                    <span>PLAYBACK</span>
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                <div className={`font-mono text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>
-                  {getPlayingTimestamp(stream.channel_id)}
-                </div>
-                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Buffer: {bufferPercentage.toFixed(0)}%
-                </span>
+            <div className="rowBetween">
+              <span className={`pill ${playbackMode === 'live' ? 'pillDanger' : 'pillAccent'}`}>
+                {playbackMode === 'live' ? <Zap size={12} /> : <Clock size={12} />}
+                {playbackMode === 'live' ? 'LIVE MODE' : 'PLAYBACK'}
+              </span>
+              <div className={styles.timelineMeta}>
+                <div className={styles.timestamp}>{getPlayingTimestamp(stream.channel_id)}</div>
+                <span>Buffer: {bufferPercentage.toFixed(0)}%</span>
               </div>
             </div>
 
             {/* Duration info */}
-            <div className="text-xs space-y-1">
-              <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                Available: {formatTime(bufferInfo.buffer_duration_ms / 1000)} 
-                {' / '} Max: 30:00
+            <div className="stack stackCompact">
+              <p className={cardStyles.description}>
+                Available: {formatTime(bufferInfo.buffer_duration_ms / 1000)} {' / '} Max: 30:00
               </p>
-              <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+              <p className={cardStyles.description}>
                 From: {new Date(bufferInfo.oldest_timestamp).toLocaleTimeString()}
               </p>
             </div>
 
             {/* Playback bar with buffer visualization */}
-            <div className="space-y-1">
+            <div className="stack stackCompact">
               <div
-                className={`relative h-3 rounded-full cursor-pointer group overflow-hidden ${
-                  isDarkMode ? 'bg-gray-700 bg-opacity-50' : 'bg-gray-200 bg-opacity-50'
-                }`}
+                className={styles.timelineTrack}
                 onClick={(e) => {
                   if (!bufferInfo) return;
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -617,15 +587,12 @@ const StreamsSection = ({ isDarkMode}) => {
                 }}
               >
                 {/* Buffer fill background */}
-                <div
-                  className="absolute h-full rounded-full bg-gradient-to-r from-green-400 to-blue-500 opacity-60 transition-all"
-                  style={{ width: `${bufferPercentage}%` }}
-                />
-                
+                <div className={styles.bufferFill} style={{ width: `${bufferPercentage}%` }} />
+
                 {/* Playback position indicator */}
                 <div
-                  className="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-white shadow-lg transition-all hover:scale-125 border-2 border-blue-500 z-10"
-                  style={{ 
+                  className={styles.playhead}
+                  style={{
                     left: `${playbackPosition}%`,
                     // Clamp to prevent overflow
                     maxWidth: 'calc(100% - 4px)',
@@ -634,151 +601,55 @@ const StreamsSection = ({ isDarkMode}) => {
                 />
               </div>
               {/* Timeline labels */}
-              <div className="flex justify-between text-xs opacity-60">
+              <div className={styles.timelineLabels}>
                 <span>{formatTime(bufferInfo.buffer_duration_ms / 1000 * (playbackPosition / 100))}</span>
                 <span>{formatTime(bufferInfo.buffer_duration_ms / 1000)}</span>
               </div>
             </div>
 
             {/* Control buttons */}
-            <div className="flex gap-2 justify-between flex-wrap">
-              <div className="flex gap-2">
-                {!isPlaying || isPaused ? (
-                  <button
-                    onClick={resumeStream}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                      isDarkMode
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
-                    }`}
-                  >
-                    <Play className="w-3 h-3" />
-                    Resume
-                  </button>
-                ) : (
-                  <button
-                    onClick={pauseStream}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                      isDarkMode
-                        ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                        : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                    }`}
-                  >
-                    <Pause className="w-3 h-3" />
-                    Pause
-                  </button>
-                )}
-              </div>
-
-              <button
-                onClick={() => seekToTime(Math.max(0, (bufferInfo.buffer_duration_ms / 1000) - 60))}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                  isDarkMode
-                    ? 'bg-gray-600 hover:bg-gray-500 text-white'
-                    : 'bg-gray-400 hover:bg-gray-500 text-white'
-                }`}
-              >
-                <SkipBack className="w-3 h-3" />
-                Back 1m
-              </button>
-              
-              <button
-                onClick={switchToLiveMode}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                  playbackMode === 'live'
-                    ? isDarkMode
-                      ? 'bg-red-600 text-white'
-                      : 'bg-red-500 text-white'
-                    : isDarkMode
-                    ? 'bg-gray-600 hover:bg-gray-500 text-white'
-                    : 'bg-gray-400 hover:bg-gray-500 text-white'
-                }`}
-              >
-                <Zap className="w-3 h-3" />
-                Live
-              </button>
-              
-              <button
-                onClick={() => seekToTime((bufferInfo.buffer_duration_ms / 1000) - 10)}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                  isDarkMode
-                    ? 'bg-gray-600 hover:bg-gray-500 text-white'
-                    : 'bg-gray-400 hover:bg-gray-500 text-white'
-                }`}
-              >
-                <SkipForward className="w-3 h-3" />
-                Latest
-              </button>
+            <div className="rowWrap">
+              {!isPlaying || isPaused ? (
+                <Button size="small" variant="success" onClick={resumeStream}><Play size={12} />Resume</Button>
+              ) : (
+                <Button size="small" variant="warning" onClick={pauseStream}><Pause size={12} />Pause</Button>
+              )}
+              <Button size="small" onClick={() => seekToTime(Math.max(0, (bufferInfo.buffer_duration_ms / 1000) - 60))}>
+                <SkipBack size={12} />Back 1m
+              </Button>
+              <Button size="small" variant={playbackMode === 'live' ? 'danger' : 'secondary'} onClick={switchToLiveMode}>
+                <Zap size={12} />Live
+              </Button>
+              <Button size="small" onClick={() => seekToTime((bufferInfo.buffer_duration_ms / 1000) - 10)}>
+                <SkipForward size={12} />Latest
+              </Button>
             </div>
           </div>
         )}
 
         {/* Control buttons */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="rowWrap">
           {isConnected && stream.buffer_packets > 0 ? (
             <>
               {!isPlaying ? (
-                <button
-                  onClick={() => playStream(stream.channel_id)}
-                  disabled={!isConnected}
-                  className={`flex items-center gap-2 px-3 py-2 rounded font-medium transition-all text-sm ${
-                    isDarkMode
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50'
-                  }`}
-                >
-                  <Play className="w-4 h-4" />
-                  Play (Live)
-                </button>
+                <Button variant="primary" onClick={() => playStream(stream.channel_id)} disabled={!isConnected}>
+                  <Play size={16} />Play (Live)
+                </Button>
               ) : (
-                <>
-                  <button
-                    onClick={stopStream}
-                    className={`flex items-center gap-2 px-3 py-2 rounded font-medium transition-all text-sm ${
-                      isDarkMode
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-red-500 hover:bg-red-600 text-white'
-                    }`}
-                  >
-                    <X className="w-4 h-4" />
-                    Stop
-                  </button>
-                </>
+                <Button variant="danger" onClick={stopStream}><X size={16} />Stop</Button>
               )}
-
-              <button
-                onClick={() => clearStreamBuffer(stream.channel_id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded font-medium transition-all text-sm ${
-                  isDarkMode
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                    : 'bg-gray-300 hover:bg-gray-400 text-gray-800'
-                }`}
-              >
-                <RotateCcw className="w-4 h-4" />
-                Clear
-              </button>
+              <Button onClick={() => clearStreamBuffer(stream.channel_id)}><RotateCcw size={16} />Clear</Button>
             </>
           ) : (
-            <button
-              disabled
-              className={`flex-1 py-2 rounded font-medium text-sm opacity-50 cursor-not-allowed ${
-                isDarkMode
-                  ? 'bg-gray-700 text-gray-400'
-                  : 'bg-gray-300 text-gray-600'
-              }`}
-            >
-              No Audio Data
-            </button>
+            <Button disabled>No Audio Data</Button>
           )}
         </div>
 
         {/* Connection time */}
         {stream.first_connection_time && (
-          <div className="text-xs mt-3 pt-3 border-t border-gray-600 flex items-center gap-2">
-            <Headphones className="w-3 h-3" />
-            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>
-              Connected {new Date(stream.first_connection_time).toLocaleTimeString()}
-            </span>
+          <div className={styles.connectionTime}>
+            <Headphones size={12} />
+            <span>Connected {new Date(stream.first_connection_time).toLocaleTimeString()}</span>
           </div>
         )}
       </div>
@@ -786,85 +657,63 @@ const StreamsSection = ({ isDarkMode}) => {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="stack stackLarge">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Volume2 className="w-6 h-6 text-blue-500" />
-        <h2 className="text-2xl font-bold">UDP Audio Streams</h2>
+      <div className="row">
+        <Volume2 size={24} />
+        <h2>UDP Audio Streams</h2>
       </div>
 
       {/* Description */}
-      <p
-        className={`text-sm ${
-          isDarkMode ? 'text-gray-400' : 'text-gray-600'
-        }`}
-      >
+      <p className={cardStyles.description}>
         Monitor and play live or historical audio from connected devices. Buffer keeps last 30 minutes in memory.
       </p>
 
       {/* Loading state */}
       {loading && (
-        <div className="flex justify-center py-8">
-          <div className="text-center">
-            <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Loading stream status...</p>
+        <div className="centeredContent">
+          <div className="stack stackCompact">
+            <span className="spinner spinnerLarge" aria-hidden="true" />
+            <p>Loading stream status...</p>
           </div>
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <div
-          className={`p-4 rounded-lg border-2 flex items-center gap-3 ${
-            isDarkMode
-              ? 'bg-red-900 border-red-700 text-red-100'
-              : 'bg-red-100 border-red-300 text-red-800'
-          }`}
-        >
-          <AlertCircle className="w-5 h-5" />
-          <p>{error}</p>
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+          <AlertCircle size={20} className={noticeStyles.icon} />
+          <div className={noticeStyles.body}><p>{error}</p></div>
         </div>
       )}
 
       {/* Stream cards grid */}
       {!loading && streams.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {streams.map((stream) => renderStreamCard(stream))}
-        </div>
+        <div className="gridTwo">{streams.map((stream) => renderStreamCard(stream))}</div>
       )}
 
       {/* Empty state */}
       {!loading && streams.length === 0 && !error && (
-        <div
-          className={`p-6 rounded-lg border-2 text-center ${
-            isDarkMode
-              ? 'border-gray-700 bg-gray-800'
-              : 'border-gray-300 bg-gray-100'
-          }`}
-        >
-          <Volume2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-            No streams configured. Configure UDP streaming in system settings.
-          </p>
+        <div className={`${cardStyles.card} centeredContent`}>
+          <div className="stack stackCompact">
+            <Volume2 size={36} />
+            <p className={cardStyles.description}>No streams configured. Configure UDP streaming in system settings.</p>
+          </div>
         </div>
       )}
 
       {/* Info box */}
-      <div
-        className={`p-4 rounded-lg border-l-4 ${
-          isDarkMode
-            ? 'bg-blue-900 border-blue-600 text-blue-100'
-            : 'bg-blue-100 border-blue-500 text-blue-900'
-        }`}
-      >
-        <p className="text-sm font-medium mb-2">30-Minute Rolling Buffer:</p>
-        <ul className="text-sm space-y-1 ml-4">
-          <li>• Real-time audio via WebSocket connection</li>
-          <li>• Last 30 minutes automatically kept in memory</li>
-          <li>• Click timeline to seek to past moments</li>
-          <li>• Switch between live and playback modes</li>
-          <li>• Client-side audio buffering for smooth playback</li>
-        </ul>
+      <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+        <div className={noticeStyles.body}>
+          <p><strong>30-Minute Rolling Buffer:</strong></p>
+          <ul>
+            <li>Real-time audio via WebSocket connection</li>
+            <li>Last 30 minutes automatically kept in memory</li>
+            <li>Click timeline to seek to past moments</li>
+            <li>Switch between live and playback modes</li>
+            <li>Client-side audio buffering for smooth playback</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

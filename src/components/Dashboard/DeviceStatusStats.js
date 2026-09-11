@@ -1,21 +1,27 @@
 import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Activity, 
-  Wifi, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  Upload, 
+import {
+  Activity,
+  Wifi,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Upload,
   Radio,
   XCircle,
   RefreshCw,
   TrendingDown,
   FileText,
-  List,
+  List as ListIcon,
 } from 'lucide-react';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import listStyles from '../ui/List.module.css';
+import navStyles from '../ui/Navigation.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import styles from './DeviceStatusStats.module.css';
 
-const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
+const DeviceStatusStats = ({ mac, channelName, onClose }) => {
   const [healthStats, setHealthStats] = useState(null);
   const [visualState, setVisualState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,33 +39,28 @@ const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
   const [cloudEvents, setCloudEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-
   const fetchDeviceStats = async (showSpinner = false) => {
     if (!mac) return;
-    
+
     try {
       if (showSpinner) setLoading(true);
       setError(null);
-      
+
       const [healthResponse, visualResponse] = await Promise.all([
         apiFetch(`/health/devices/${encodeURIComponent(mac)}?current=true`).catch(() => null),
-        apiFetch(`/v1/channel-visual-states/${encodeURIComponent(mac)}`).catch(() => null)
+        apiFetch(`/v1/channel-visual-states/${encodeURIComponent(mac)}`).catch(() => null),
       ]);
 
       if (healthResponse && healthResponse.ok) {
         const healthData = await healthResponse.json();
-        if (healthData.stats && healthData.stats.length > 0) {
-          setHealthStats(healthData.stats[0]);
-        } else {
-          setHealthStats(null);
-        }
+        setHealthStats(healthData.stats && healthData.stats.length > 0 ? healthData.stats[0] : null);
       }
 
       if (visualResponse && visualResponse.ok) {
         const visualData = await visualResponse.json();
         setVisualState(visualData.state);
       }
-      
+
       setLastUpdate(new Date());
     } catch (err) {
       console.error(`Error fetching device stats for ${mac}:`, err);
@@ -108,9 +109,7 @@ const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
     if (!mac) return;
     setEventsLoading(true);
     try {
-      const r = await apiFetch(
-        `/v1/devices/${encodeURIComponent(mac)}/events?limit=150`
-      );
+      const r = await apiFetch(`/v1/devices/${encodeURIComponent(mac)}/events?limit=150`);
       const data = r.ok ? await r.json() : { events: [] };
       setCloudEvents(data.events || []);
     } catch {
@@ -140,84 +139,65 @@ const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    } else {
-      return `${secs}s`;
-    }
+
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
   };
 
   const getStatusColor = (state) => {
     switch (state) {
       case 'recording':
-        return isDarkMode ? 'text-green-400' : 'text-green-600';
-      case 'idle':
-        return isDarkMode ? 'text-gray-400' : 'text-gray-600';
       case 'online':
-        return isDarkMode ? 'text-emerald-400' : 'text-emerald-600';
+        return 'var(--ui-success)';
       case 'offline':
-        return isDarkMode ? 'text-red-400' : 'text-red-600';
       case 'error':
-        return isDarkMode ? 'text-red-400' : 'text-red-600';
+        return 'var(--ui-danger)';
       case 'warning':
-        return isDarkMode ? 'text-yellow-400' : 'text-yellow-600';
+        return 'var(--ui-warning)';
       default:
-        return isDarkMode ? 'text-gray-400' : 'text-gray-600';
+        return 'var(--ui-muted)';
     }
   };
 
   const getStatusIcon = (state) => {
+    const color = getStatusColor(state);
+    const iconProps = { size: 16, color, 'aria-hidden': true };
+
     switch (state) {
       case 'recording':
-        return <Radio className="h-4 w-4 text-green-500 animate-pulse" />;
+        return <Radio {...iconProps} className={styles.pulse} />;
       case 'idle':
-        return <CheckCircle className="h-4 w-4 text-gray-500" />;
+        return <CheckCircle {...iconProps} />;
       case 'online':
-        return <Wifi className="h-4 w-4 text-emerald-500" />;
+        return <Wifi {...iconProps} />;
       case 'offline':
-        return <XCircle className="h-4 w-4 text-red-500" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle {...iconProps} />;
       case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+        return <AlertCircle {...iconProps} />;
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />;
+        return <Activity {...iconProps} />;
     }
   };
 
   const getStatusLabel = (state) => {
     switch (state) {
-      case 'recording':
-        return 'Recording';
-      case 'idle':
-        return 'Recording stopped / Idle';
-      case 'online':
-        return 'Online';
-      case 'offline':
-        return 'Offline';
-      case 'error':
-        return 'Error';
-      case 'warning':
-        return 'Warning';
-      default:
-        return 'Unknown';
+      case 'recording': return 'Recording';
+      case 'idle': return 'Recording stopped / Idle';
+      case 'online': return 'Online';
+      case 'offline': return 'Offline';
+      case 'error': return 'Error';
+      case 'warning': return 'Warning';
+      default: return 'Unknown';
     }
   };
 
-  const borderMuted = isDarkMode ? 'border-gray-700' : 'border-gray-200';
-  const cardBg = isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
-
   if (loading && !healthStats && visualState == null) {
     return (
-      <div className={`p-4 rounded-lg border ${cardBg}`}>
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
-        </div>
+      <div className={`${cardStyles.card} centeredContent`}>
+        <span className="spinner spinnerLarge" role="status" aria-label="Loading device status" />
       </div>
     );
   }
@@ -225,340 +205,233 @@ const DeviceStatusStats = ({ mac, channelName, isDarkMode, onClose }) => {
   const stats = healthStats || {};
   const currentState = visualState ?? 'unknown';
 
+  const statItems = [
+    { label: 'Connections', value: stats.connection_count || 0, icon: Wifi, color: 'var(--ui-accent)' },
+    { label: 'Events', value: stats.event_count || 0, icon: Activity, color: 'var(--ui-success)' },
+    { label: 'Uploads', value: stats.file_upload_count || 0, icon: Upload, color: 'var(--ui-accent)' },
+    {
+      label: 'Errors',
+      value: stats.error_count || 0,
+      icon: AlertCircle,
+      color: stats.error_count > 0 ? 'var(--ui-danger)' : 'var(--ui-muted)',
+    },
+    {
+      label: 'Disconnects',
+      value: stats.connection_loss_count || 0,
+      icon: TrendingDown,
+      color: stats.connection_loss_count > 0 ? 'var(--ui-warning)' : 'var(--ui-muted)',
+    },
+    { label: 'Uptime', value: formatUptime(stats.uptime_seconds), icon: Clock, color: 'var(--ui-accent)', compact: true },
+  ];
+
   return (
-    <div className={`p-4 rounded-lg border max-h-[85vh] overflow-y-auto ${cardBg}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Activity className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            Device Status
-          </h3>
-        </div>
-        <div className="flex items-center space-x-2">
+    <section className={cardStyles.card} aria-label="Device status">
+      <header className={cardStyles.header}>
+        <h3 className={cardStyles.title}>
+          <Activity size={20} color="var(--ui-accent)" aria-hidden="true" />
+          Device Status
+        </h3>
+        <div className="row">
           {lastUpdate && (
-            <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <span className={listStyles.metaSmall} title="Last refreshed">
               {lastUpdate.toLocaleTimeString()}
             </span>
           )}
-          <button
+          <Button
             type="button"
+            size="icon"
+            variant="ghost"
             onClick={() => fetchDeviceStats(true)}
-            className={`p-1 rounded transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+            aria-label="Refresh device status"
             title="Refresh"
           >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
           {onClose && (
-            <button
+            <Button
               type="button"
+              size="icon"
+              variant="ghost"
               onClick={onClose}
-              className={`p-1 rounded transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+              aria-label="Close device status"
             >
-              <XCircle className="h-4 w-4" />
-            </button>
+              <XCircle size={16} aria-hidden="true" />
+            </Button>
           )}
         </div>
-      </div>
+      </header>
 
       {channelName && (
-        <div className={`mb-4 pb-4 border-b ${borderMuted}`}>
-          <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            {channelName}
-          </div>
-          <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-            {mac}
-          </div>
+        <div className={listStyles.content}>
+          <div className={listStyles.title}>{channelName}</div>
+          <div className={`${listStyles.metaSmall} ${listStyles.identifier}`}>{mac}</div>
         </div>
       )}
 
-      <div className="mb-4">
-        <div className={`text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          Current Status
-        </div>
-        <div className={`flex items-center space-x-2 p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-          {getStatusIcon(currentState)}
-          <span className={`font-medium ${getStatusColor(currentState)}`}>
-            {getStatusLabel(currentState)}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <Wifi className={`h-4 w-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Connections
+      <section className="stack">
+        <h4 className={cardStyles.title}>Current Status</h4>
+        <div className={listStyles.item}>
+          <div className="row">
+            {getStatusIcon(currentState)}
+            <span style={{ color: getStatusColor(currentState), fontWeight: 600 }}>
+              {getStatusLabel(currentState)}
             </span>
           </div>
-          <div className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {stats.connection_count || 0}
-          </div>
         </div>
+      </section>
 
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <Activity className={`h-4 w-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Events
-            </span>
+      <div className="gridTwo">
+        {statItems.map(({ label, value, icon: Icon, color, compact }) => (
+          <div key={label} className={`${cardStyles.card} ${cardStyles.compact} ${cardStyles.surface}`}>
+            <div className="row">
+              <Icon size={16} color={color} aria-hidden="true" />
+              <span className={cardStyles.description}>{label}</span>
+            </div>
+            <div className={cardStyles.title} style={{ color, fontSize: compact ? '0.875rem' : undefined }}>
+              {value}
+            </div>
           </div>
-          <div className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {stats.event_count || 0}
-          </div>
-        </div>
-
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <Upload className={`h-4 w-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Uploads
-            </span>
-          </div>
-          <div className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {stats.file_upload_count || 0}
-          </div>
-        </div>
-
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <AlertCircle className={`h-4 w-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Errors
-            </span>
-          </div>
-          <div className={`text-lg font-bold ${stats.error_count > 0 ? (isDarkMode ? 'text-red-400' : 'text-red-600') : (isDarkMode ? 'text-white' : 'text-gray-900')}`}>
-            {stats.error_count || 0}
-          </div>
-        </div>
-
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <TrendingDown className={`h-4 w-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Disconnects
-            </span>
-          </div>
-          <div className={`text-lg font-bold ${stats.connection_loss_count > 0 ? (isDarkMode ? 'text-orange-400' : 'text-orange-600') : (isDarkMode ? 'text-white' : 'text-gray-900')}`}>
-            {stats.connection_loss_count || 0}
-          </div>
-        </div>
-
-        <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-          <div className="flex items-center space-x-2 mb-1">
-            <Clock className={`h-4 w-4 ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`} />
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Uptime
-            </span>
-          </div>
-          <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {formatUptime(stats.uptime_seconds)}
-          </div>
-        </div>
+        ))}
       </div>
 
       {(stats.first_activity || stats.last_activity) && (
-        <div className={`mt-4 pt-4 border-t ${borderMuted}`}>
-          <div className={`text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Activity
-          </div>
-          <div className="space-y-1">
+        <>
+          <hr className="divider" />
+          <section className="stack">
+          <h4 className={cardStyles.title}>Activity</h4>
+          <dl className={listStyles.list}>
             {stats.first_activity && (
-              <div className="flex justify-between text-xs">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>First Activity:</span>
-                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                  {new Date(stats.first_activity).toLocaleString()}
-                </span>
+              <div className={listStyles.item}>
+                <dt className={listStyles.meta}>First Activity</dt>
+                <dd className={listStyles.title}>{new Date(stats.first_activity).toLocaleString()}</dd>
               </div>
             )}
             {stats.last_activity && (
-              <div className="flex justify-between text-xs">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Last Activity:</span>
-                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                  {new Date(stats.last_activity).toLocaleString()}
-                </span>
+              <div className={listStyles.item}>
+                <dt className={listStyles.meta}>Last Activity</dt>
+                <dd className={listStyles.title}>{new Date(stats.last_activity).toLocaleString()}</dd>
               </div>
             )}
-          </div>
-        </div>
+          </dl>
+          </section>
+        </>
       )}
 
-      <div className={`mt-4 pt-4 border-t ${borderMuted}`}>
-        <div className={`text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          Device logs
-        </div>
-        <div className="flex gap-2 mb-3">
+      <hr className="divider" />
+      <section className="stack">
+        <h4 className={cardStyles.title}>Device logs</h4>
+        <div className={navStyles.subnav} role="tablist" aria-label="Device log source">
           <button
             type="button"
+            className={`${navStyles.tab} ${logsTab === 'uploaded' ? navStyles.active : ''}`}
             onClick={() => setLogsTab('uploaded')}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-              logsTab === 'uploaded'
-                ? isDarkMode
-                  ? 'bg-blue-900/50 text-blue-300'
-                  : 'bg-blue-100 text-blue-800'
-                : isDarkMode
-                  ? 'bg-gray-700 text-gray-400'
-                  : 'bg-gray-100 text-gray-600'
-            }`}
+            role="tab"
+            aria-selected={logsTab === 'uploaded'}
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText size={16} aria-hidden="true" />
             Uploaded files
           </button>
           <button
             type="button"
+            className={`${navStyles.tab} ${logsTab === 'events' ? navStyles.active : ''}`}
             onClick={() => setLogsTab('events')}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-              logsTab === 'events'
-                ? isDarkMode
-                  ? 'bg-blue-900/50 text-blue-300'
-                  : 'bg-blue-100 text-blue-800'
-                : isDarkMode
-                  ? 'bg-gray-700 text-gray-400'
-                  : 'bg-gray-100 text-gray-600'
-            }`}
+            role="tab"
+            aria-selected={logsTab === 'events'}
           >
-            <List className="h-3.5 w-3.5" />
+            <ListIcon size={16} aria-hidden="true" />
             Cloud events
           </button>
         </div>
 
         {logsTab === 'uploaded' && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                Files from device log upload
-              </span>
-              <button
-                type="button"
-                onClick={fetchLogFiles}
-                className={`text-xs ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}
-              >
-                Refresh
-              </button>
+          <div role="tabpanel">
+            <div className="rowBetween">
+              <span className={listStyles.metaSmall}>Files from device log upload</span>
+              <Button type="button" size="small" variant="ghost" onClick={fetchLogFiles}>Refresh</Button>
             </div>
             {logFilesLoading ? (
-              <div className="flex justify-center py-4">
-                <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
-              </div>
+              <div className="centeredContent"><span className="spinner" role="status" aria-label="Loading log files" /></div>
             ) : logFiles.length === 0 ? (
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                No uploaded log files yet.
-              </p>
+              <p className={listStyles.meta}>No uploaded log files yet.</p>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-2 max-h-56">
-                <ul className={`text-xs overflow-y-auto min-w-[140px] max-h-56 rounded border ${borderMuted} p-1`}>
+              <div className="splitPane">
+                <ul className={listStyles.list} aria-label="Uploaded log files">
                   {logFiles.map((f) => (
                     <li key={f.path}>
                       <button
                         type="button"
                         onClick={() => fetchLogContent(f.path)}
-                        className={`w-full text-left px-2 py-1 rounded truncate ${
-                          logContentPath === f.path
-                            ? isDarkMode
-                              ? 'bg-gray-700 text-white'
-                              : 'bg-gray-200 text-gray-900'
-                            : isDarkMode
-                              ? 'hover:bg-gray-700/50 text-gray-300'
-                              : 'hover:bg-gray-100 text-gray-700'
-                        }`}
+                        className={`${listStyles.item} ${listStyles.interactive} ${logContentPath === f.path ? listStyles.selected : ''}`}
                         title={f.path}
                       >
-                        {f.path}
+                        <span className={listStyles.identifier}>{f.path}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
-                <div
-                  className={`flex-1 min-h-[120px] max-h-56 overflow-auto rounded border p-2 font-mono text-[11px] whitespace-pre-wrap ${
-                    isDarkMode ? 'border-gray-600 bg-gray-900/50 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-800'
-                  }`}
-                >
+                <pre className={styles.codeViewer}>
                   {logContentLoading ? (
-                    <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="spinner spinnerSmall" role="status" aria-label="Loading log content" />
                   ) : logContent ? (
                     <>
                       {logContentTruncated && (
-                        <div className="text-amber-500 mb-1 text-[10px]">(last 512KB)</div>
+                        <span style={{ color: 'var(--ui-warning)' }}>(last 512KB){'\n'}</span>
                       )}
                       {logContent}
                     </>
                   ) : (
-                    <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>
-                      Select a file to view
-                    </span>
+                    <span style={{ color: 'var(--ui-muted)' }}>Select a file to view</span>
                   )}
-                </div>
+                </pre>
               </div>
             )}
           </div>
         )}
 
         {logsTab === 'events' && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                Recent POST /api/v1/events
-              </span>
-              <button
-                type="button"
-                onClick={fetchCloudEvents}
-                className={`text-xs ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}
-              >
-                Refresh
-              </button>
+          <div role="tabpanel">
+            <div className="rowBetween">
+              <span className={listStyles.metaSmall}>Recent POST /api/v1/events</span>
+              <Button type="button" size="small" variant="ghost" onClick={fetchCloudEvents}>Refresh</Button>
             </div>
             {eventsLoading ? (
-              <div className="flex justify-center py-4">
-                <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
-              </div>
+              <div className="centeredContent"><span className="spinner" role="status" aria-label="Loading cloud events" /></div>
             ) : cloudEvents.length === 0 ? (
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                No cloud events stored yet.
-              </p>
+              <p className={listStyles.meta}>No cloud events stored yet.</p>
             ) : (
-              <ul className={`max-h-64 overflow-y-auto text-xs space-y-1 rounded border ${borderMuted} p-2`}>
+              <ul className={listStyles.list}>
                 {cloudEvents.map((ev) => (
-                  <li
-                    key={ev.id}
-                    className={`border-b pb-1 last:border-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
-                  >
-                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                      <span className="font-mono text-[10px] text-gray-500">{ev.created_at}</span>
-                      <span
-                        className={`font-semibold ${
-                          ev.event_type === 'error' || ev.event_type === 'fatal_error'
-                            ? 'text-red-500'
-                            : ev.event_type === 'warning'
-                              ? 'text-yellow-500'
-                              : isDarkMode
-                                ? 'text-blue-400'
-                                : 'text-blue-600'
-                        }`}
-                      >
-                        {ev.event_type}
-                      </span>
+                  <li key={ev.id} className={listStyles.item}>
+                    <div className={listStyles.content}>
+                      <div className="rowBetween">
+                        <span className={listStyles.metaSmall}>{ev.created_at}</span>
+                        <span style={{ color: getStatusColor(ev.event_type), fontWeight: 600 }}>
+                          {ev.event_type}
+                        </span>
+                      </div>
+                      {ev.payload && (
+                        <pre className={`${styles.codeViewer} ${styles.compactCodeViewer}`}>
+                          {typeof ev.payload === 'string'
+                            ? ev.payload
+                            : JSON.stringify(ev.payload, null, 0).slice(0, 500)}
+                        </pre>
+                      )}
                     </div>
-                    {ev.payload && (
-                      <pre className="mt-0.5 text-[10px] opacity-90 overflow-x-auto max-w-full">
-                        {typeof ev.payload === 'string'
-                          ? ev.payload
-                          : JSON.stringify(ev.payload, null, 0).slice(0, 500)}
-                      </pre>
-                    )}
                   </li>
                 ))}
               </ul>
             )}
           </div>
         )}
-      </div>
+      </section>
 
       {error && (
-        <div className={`mt-4 p-2 rounded text-xs ${isDarkMode ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
-          {error}
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`} role="alert">
+          <AlertCircle className={noticeStyles.icon} aria-hidden="true" />
+          <div className={noticeStyles.body}>{error}</div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

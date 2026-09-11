@@ -2,6 +2,8 @@ import { api, apiFetch } from '../../utils/apiClient';
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import TeamsSidebar from "./Sidebar";
 import { X } from "lucide-react";
+import Button from '../ui/Button';
+import styles from '../ui/LiveCommunications.module.css';
 import TopBar from "./TopBar";
 import FooterPagination from "./FooterPagination";
 import FullscreenMessages from './FullscreenMessages';
@@ -59,14 +61,11 @@ function isCursorGreater(a, b) {
 }
 
 const LiveCommunications = ({
-  toggleTheme,
   channels,
   setChannels,
   timezone,
   timeFormat,
-  isDarkMode,
   setMessages,
-  setIsDarkMode,
   messages,
   keywords,
   reverseSort,
@@ -1167,7 +1166,7 @@ const LiveCommunications = ({
       }
 
       const { text, isKeyword, isSearch } = spans[i];
-      const className = `${isKeyword ? 'underline font-bold' : ''} ${isSearch ? 'bg-yellow-200' : ''}`.trim();
+      const className = [isKeyword ? styles.keywordHighlight : '', isSearch ? styles.searchHighlight : ''].filter(Boolean).join(' ');
 
       if (!currentSpan || currentSpan.props.className !== className) {
         if (currentSpan) result.push(currentSpan);
@@ -1351,50 +1350,34 @@ const LiveCommunications = ({
     }
   }, [isMobile]);
 
+
   return (
-    <div className={`flex h-screen flex-col md:flex-row overflow-hidden antialiased ${isDarkMode ? 'bg-slate-950' : 'bg-surface'}`}>
+    <div className={styles.shell}>
       {/* Mobile Header */}
       {isMobile && (
-        <div className={`sticky top-0 z-20 flex items-center justify-between border-b p-2 transition-colors duration-300 ${
-          isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200/80 bg-slate-50'
-        }`}>
-          <button 
+        <div className={styles.mobileHeader}>
+          <Button
             onClick={toggleSidebar}
-            className={`rounded-lg p-2 transition-colors duration-200 ${
-              isDarkMode 
-                ? 'text-blue-400 hover:bg-slate-800' 
-                : 'text-blue-900 hover:bg-slate-200/60'
-            }`}
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
           >
-            <span className="material-symbols-outlined text-[26px] leading-none">
+            <span className="material-symbols-outlined">
               {isSidebarOpen ? 'close' : 'menu'}
             </span>
-          </button>
-          <h1 className={`text-lg font-semibold ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}>{branding.organizationName}</h1>
-          <div className="w-8" /> {/* Spacer */}
+          </Button>
+          <h1 className={styles.mobileTitle}>{branding.organizationName}</h1>
+          <div className={styles.headerSpacer} /> {/* Spacer */}
         </div>
       )}
 
       {/* Sidebar — fixed rail on desktop (dashboard.html) */}
       <div
-        className={`sidebar-container z-40 h-full w-72 transition-transform duration-300 ease-in-out
-          ${isMobile 
-            ? `fixed left-0 top-0 ${
-                isDarkMode ? 'bg-slate-900' : 'bg-slate-50'
-              } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : 'fixed left-0 top-0 hidden md:block'
-          }
-          ${isFullscreen ? 'hidden' : ''}`}
-        >
+        className={`${styles.sidebarRail}${isSidebarOpen ? ` ${styles.sidebarRailOpen}` : ''}${isFullscreen ? ` ${styles.sidebarHidden}` : ''}`}
+      >
         <TeamsSidebar
-          isDarkMode={isDarkMode}
           timezone={timezone}
-          toggleTheme={toggleTheme}
-          setIsDarkMode={setIsDarkMode}
           channels={channels}
           setChannels={setChannels}
           channelColors={channelColors}
@@ -1415,38 +1398,25 @@ const LiveCommunications = ({
       </div>
 
       {/* Main workspace — offset for fixed sidebar on desktop */}
-      <div
-        className={`flex min-w-0 flex-1 flex-col overflow-hidden ${isFullscreen ? '' : 'md:ml-72'} ${
-          isDarkMode ? 'bg-slate-950' : 'bg-white'
-        }`}
-      >
+      <div className={`${styles.workspace}${isFullscreen ? '' : ` ${styles.workspaceWithSidebar}`}`}>
         <main
           id="dashboard-main"
-          className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+          className={styles.main}
           aria-label="Live dashboard"
         >
-        <a
-          href="#dashboard-feed"
-          className={`sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:px-4 focus:py-2.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-            isDarkMode
-              ? 'focus:bg-primary focus:text-white focus:ring-blue-400 focus:ring-offset-slate-950'
-              : 'focus:bg-primary focus:text-on-primary focus:ring-primary focus:ring-offset-white'
-          }`}
-        >
+        <a href="#dashboard-feed" className={styles.skipLink}>
           Skip to messages
         </a>
         {/* Top Bar */}
         {!isFullscreen && (
           <TopBar
-          toggleMultiSelectMode={toggleMultiSelectMode}
-          selectedMessages={selectedMessages}
-          setSelectedMessages={setSelectedMessages}
-          isMultiSelectMode={isMultiSelectMode}
-          setIsMultiSelectMode={setIsMultiSelectMode}
+            toggleMultiSelectMode={toggleMultiSelectMode}
+            selectedMessages={selectedMessages}
+            setSelectedMessages={setSelectedMessages}
+            isMultiSelectMode={isMultiSelectMode}
+            setIsMultiSelectMode={setIsMultiSelectMode}
             branding={branding}
             timezone={timezone}
-            isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
             timeFilter={timeFilter}
             setTimeFilter={setTimeFilter}
             showTime={showTime}
@@ -1469,7 +1439,6 @@ const LiveCommunications = ({
             setStartTime={setStartTime}
             endTime={endTime}
             setEndTime={setEndTime}
-            toggleTheme={toggleTheme}
             timeFormat={timeFormat}
             isVolumeOn={isVolumeOn}
             setIsVolumeOn={setLiveMode}
@@ -1479,9 +1448,9 @@ const LiveCommunications = ({
         )}
 
         {/* Notification Banner */}
-        <NotificationBanner isDarkMode={isDarkMode} />
+        <NotificationBanner />
 
-        <div id="dashboard-feed" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div id="dashboard-feed" className={styles.feed}>
         <FullscreenMessages
           toggleMultiSelectMode={toggleMultiSelectMode}
           setMessages={setMessages}
@@ -1489,7 +1458,6 @@ const LiveCommunications = ({
           setSelectedMessages={setSelectedMessages}
           isMultiSelectMode={isMultiSelectMode}
           setIsMultiSelectMode={setIsMultiSelectMode}
-          isDarkMode={isDarkMode}
           messages={isMobile ? mobileMessages : desktopMessages}
           totalMessages={totalFilteredMessages}
           channels={channels}
@@ -1524,8 +1492,6 @@ const LiveCommunications = ({
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             getFilteredMessages={isMobile ? getFilteredMessagesForMobile : getFilteredMessages}
-            isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
             getTotalPages={getTotalPages}
             recordsPerPage={recordsPerPage}
             setRecordsPerPage={setRecordsPerPage}
@@ -1543,8 +1509,8 @@ const LiveCommunications = ({
 
       {/* Mobile Overlay */}
       {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40"
+        <div
+          className={styles.mobileOverlay}
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -1560,51 +1526,41 @@ const LiveCommunications = ({
           setShowMfaReminder(false);
           sessionStorage.removeItem('mfa_reminder_dismissed');
         }}
-        isDarkMode={isDarkMode}
         user={user}
       />
 
       {/* New Message Full Card Popup */}
       {newMessagePopup && (
-        <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
-          style={{ animation: 'fadeIn 0.3s ease-in-out' }}
+        <div
+          className={styles.popupOverlay}
           onClick={closeNewMessagePopup}
         >
-          <div 
-            className={`relative w-full max-w-4xl rounded-lg shadow-2xl ${
-              isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-            }`}
-            style={{ animation: 'slideUp 0.3s ease-out' }}
+          <div
+            className={styles.popupCard}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
-            <button
+            <Button
               onClick={closeNewMessagePopup}
-              className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${
-                isDarkMode 
-                  ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              }`}
+              variant="ghost"
+              size="icon"
+              aria-label="Close new message"
+              style={{ position: 'absolute', top: 'var(--space-4)', right: 'var(--space-4)' }}
             >
-              <X size={24} />
-            </button>
+              <X size={24} aria-hidden="true" />
+            </Button>
 
             {/* Content */}
-            <div className="p-8 md:p-12">
+            <div className={styles.popupBody}>
               {/* Channel and Time Header */}
-              <div className={`mb-6 text-sm font-medium ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                <span className="font-semibold">{newMessagePopup.channel}</span>
-                <span className="mx-2">•</span>
+              <div className={styles.popupMeta}>
+                <strong>{newMessagePopup.channel}</strong>
+                <span> • </span>
                 <span>{newMessagePopup.time}</span>
               </div>
 
               {/* Message Text - Large and Prominent */}
-              <div className={`mb-8 text-2xl md:text-3xl lg:text-4xl font-normal leading-relaxed ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
+              <div className={styles.popupMessage}>
                 {newMessagePopup.message}
               </div>
 

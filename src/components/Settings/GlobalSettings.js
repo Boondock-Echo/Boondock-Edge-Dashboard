@@ -17,6 +17,11 @@ import {
 } from 'lucide-react';
 import SettingsSectionHeader from './SettingsSectionHeader';
 
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import Button from '../ui/Button';
 const LANGUAGES = [
   "english", "spanish", "french", "german", "italian", "portuguese",
   "chinese", "japanese", "korean", "arabic",
@@ -117,114 +122,36 @@ const TIMEZONES = [
   { value: "Africa/Casablanca", label: "Morocco Time" }
 ];
 
-const SelectCard = ({ selected, label, value, onClick, children, isDarkMode }) => (
-  <div
+const SelectCard = ({ selected, label, value, onClick, children }) => (
+  <button
+    type="button"
     onClick={onClick}
-    className={`relative p-4 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-102 ${
-      selected
-        ? isDarkMode
-          ? 'bg-blue-900/50 border-2 border-blue-400 shadow-lg'
-          : 'bg-blue-50 border-2 border-blue-500 shadow-lg'
-        : isDarkMode
-          ? 'bg-gray-800 border-2 border-gray-700 hover:border-gray-600'
-          : 'bg-white border-2 border-gray-200 hover:border-gray-300'
-    }`}
+    className={`${formStyles.choiceCard} ${selected ? formStyles.choiceCardSelected : ''}`}
+    aria-pressed={selected}
   >
-    {selected && (
-      <div className="absolute top-3 right-3 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-        <Check size={14} className="text-white" />
+    {selected && <Check className="iconSmall" />}
+    <span>{children}</span>
+  </button>
+);
+
+const Toggle = ({ checked, onChange, label, icon: Icon, description, metric, disabled = false }) => (
+  <div className={`${formStyles.choiceCard} ${checked ? formStyles.choiceCardSelected : ''}`}>
+    <div className="row grow">
+      <Icon className="iconMedium" />
+      <div className="grow">
+        <h4 className={cardStyles.title}>{label}</h4>
+        <p className="mutedText smallText">{description}</p>
+        {metric && <div className="row">{metric}</div>}
       </div>
-    )}
-    <div className={isDarkMode ? 'text-gray-200' : 'text-gray-900'}>
-      {children}
     </div>
+    <label className={formStyles.switch}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+      <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
+    </label>
   </div>
 );
-
-const Toggle = ({ checked, onChange, label, icon: Icon, description, metric, isDarkMode, disabled = false }) => (
-  <div className="group relative">
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => !disabled && onChange(!checked)}
-      className={`w-full p-5 rounded-xl border-2 transition-all duration-300 transform hover:scale-102 ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${
-        checked
-          ? isDarkMode
-            ? 'bg-blue-900/30 border-blue-400 shadow-lg'
-            : 'bg-blue-50 border-blue-500 shadow-lg'
-          : isDarkMode
-            ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-            : 'bg-white border-gray-200 hover:border-gray-300'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className={`p-3 rounded-xl transition-all duration-300 ${
-            checked
-              ? isDarkMode
-                ? 'bg-blue-500/20 shadow-inner'
-                : 'bg-blue-500 shadow-inner'
-              : isDarkMode
-                ? 'bg-gray-700'
-                : 'bg-gray-100'
-          }`}>
-            <Icon size={24} className={checked
-              ? isDarkMode
-                ? 'text-blue-300'
-                : 'text-white'
-              : isDarkMode
-                ? 'text-gray-400'
-                : 'text-gray-500'
-            } />
-          </div>
-          <div className="text-left">
-            <h4 className={`font-semibold text-lg ${
-              isDarkMode
-                ? checked
-                  ? 'text-blue-300'
-                  : 'text-gray-300'
-                : checked
-                  ? 'text-blue-900'
-                  : 'text-gray-700'
-            }`}>
-              {label}
-            </h4>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              {description}
-            </p>
-            {metric && (
-              <div className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                isDarkMode
-                  ? 'bg-blue-900/50 text-blue-300'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {metric}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="relative">
-          <div className={`w-12 h-6 rounded-full transition-colors duration-300 ${
-            checked
-              ? isDarkMode
-                ? 'bg-blue-500'
-                : 'bg-blue-500'
-              : isDarkMode
-                ? 'bg-gray-700'
-                : 'bg-gray-200'
-          }`}>
-            <div className={`absolute w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 top-0.5 ${
-              checked ? 'translate-x-6 left-1' : 'translate-x-0 left-1'
-            }`} />
-          </div>
-        </div>
-      </div>
-    </button>
-  </div>
-);
-
 // Time Zone Component
-const TimeZoneSelector = ({ selectedTimezone, onChange, isDarkMode }) => {
+const TimeZoneSelector = ({ selectedTimezone, onChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const filteredTimeZones = searchTerm
@@ -236,25 +163,21 @@ const TimeZoneSelector = ({ selectedTimezone, onChange, isDarkMode }) => {
   const selectedTZ = TIMEZONES.find(tz => tz.value === selectedTimezone) || TIMEZONES[0];
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-2 mb-3">
-        <Clock size={18} className="text-blue-500" />
-        <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+    <div >
+      <div className="row">
+        <Clock size={18} />
+        <label className={formStyles.label}>
           Time Zone
         </label>
       </div>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-300 ${
-          isDarkMode
-            ? 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
-            : 'bg-white border-gray-200 text-gray-900 hover:border-gray-300'
-        }`}
+        className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
       >
         <span>{selectedTZ.label}</span>
         <svg
-          className={`h-5 w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`}
+          className="iconMedium"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -263,25 +186,17 @@ const TimeZoneSelector = ({ selectedTimezone, onChange, isDarkMode }) => {
         </svg>
       </button>
       {isOpen && (
-        <div className={`absolute z-10 mt-1 w-full rounded-xl ${
-          isDarkMode
-            ? 'bg-gray-800 border border-gray-700 shadow-lg'
-            : 'bg-white border border-gray-200 shadow-lg'
-        }`}>
-          <div className="p-2">
+        <div >
+          <div >
             <input
               type="text"
               placeholder="Search time zones..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full p-2 rounded-lg border ${
-                isDarkMode
-                  ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'
-                  : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'
-              }`}
+              className={formStyles.input}
             />
           </div>
-          <div className="max-h-60 overflow-y-auto">
+          <div className="scrollPanel">
             {filteredTimeZones.map((tz) => (
               <button
                 key={tz.value}
@@ -290,15 +205,7 @@ const TimeZoneSelector = ({ selectedTimezone, onChange, isDarkMode }) => {
                   setIsOpen(false);
                   setSearchTerm('');
                 }}
-                className={`w-full text-left p-3 hover:opacity-80 transition-colors duration-200 ${
-                  selectedTimezone === tz.value
-                    ? isDarkMode
-                      ? 'bg-blue-900/40 text-blue-300'
-                      : 'bg-blue-50 text-blue-800'
-                    : isDarkMode
-                      ? 'text-gray-300 hover:bg-gray-700/50'
-                      : 'text-gray-900 hover:bg-gray-50'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
               >
                 {tz.label}
               </button>
@@ -343,8 +250,6 @@ const GlobalSettings = ({
   setNewKeyword = () => {},
   handleAddKeyword = () => {},
   handleRemoveKeyword = () => {},
-  isDarkMode = false,
-  toggleDarkMode = () => {},
   timezone = "Etc/UTC",
   timeFormat = "24h",
   setTimeFormat = () => {},
@@ -673,95 +578,73 @@ const GlobalSettings = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="stack stackLarge">
       {/* Header with Dark Mode Toggle */}
       {/* Display & Language Settings */}
       {showDisplayLanguage && (
-      <div className="space-y-6">
+      <div className="stack stackLarge">
         <SettingsSectionHeader
           icon={Globe}
           title="Display & Language"
           description="Customize how information is displayed, how the inbox behaves, and which language to use for transcriptions"
-          isDarkMode={isDarkMode}
           iconColor="blue"
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
+        <div className="gridTwo">
+          <div className="stack stackLarge">
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <Globe size={18} className="text-blue-500" />
+              <label className={formStyles.label}>
+                <div className="row">
+                  <Globe size={18} />
                   Target Language
                 </div>
               </label>
               <select
                 value={globalSettings.global_target_language || 'english'}
                 onChange={(e) => handleGlobalChange("global_target_language", e.target.value)}
-                className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-gray-800 border-gray-700 text-gray-200 focus:border-blue-400'
-                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
-                } focus:ring focus:ring-blue-200/50`}
+                className={formStyles.select}
               >
                 {LANGUAGES.map((lang) => (
-                  <option key={lang} value={lang} className={isDarkMode ? 'bg-gray-800' : 'bg-white'}>
+                  <option key={lang} value={lang} >
                     {lang.charAt(0).toUpperCase() + lang.slice(1)}
                   </option>
                 ))}
               </select>
-              <p className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="mutedText tinyText">
                 Select the primary language for transcription. Audio will be processed to detect and transcribe this language.
               </p>
             </div>
             <TimeZoneSelector
               selectedTimezone={globalSettings.global_timezone || "Etc/UTC"}
               onChange={(value) => handleGlobalChange("global_timezone", value)}
-              isDarkMode={isDarkMode}
-            />
-            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                />
+            <p className="mutedText tinyText">
               Set your local timezone. All timestamps in messages and recordings will be displayed in this timezone.
             </p>
           </div>
-          <div className="space-y-6">
+          <div className="stack stackLarge">
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock size={18} className="text-blue-500" />
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className="row">
+                <Clock size={18} />
+                <label className={formStyles.label}>
                   Time Format
                 </label>
               </div>
-              <div className="space-y-3">
+              <div className="stack">
                 <div
                   onClick={() => setTimeFormat("24h")}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
-                    timeFormat === "24h"
-                      ? isDarkMode
-                        ? 'bg-blue-900/50 border-blue-400 shadow-lg'
-                        : 'bg-blue-50 border-blue-500 shadow-lg'
-                      : isDarkMode
-                        ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`${cardStyles.card} ${cardStyles.compact}`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      timeFormat === "24h"
-                        ? isDarkMode
-                          ? 'border-blue-400 bg-blue-400'
-                          : 'border-blue-500 bg-blue-500'
-                        : isDarkMode
-                          ? 'border-gray-500'
-                          : 'border-gray-400'
-                    }`}>
+                  <div className="row">
+                    <div className="row">
                       {timeFormat === "24h" && (
-                        <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} />
+                        <div className={cardStyles.card} />
                       )}
                     </div>
                     <div>
-                      <h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <h4 className={cardStyles.title}>
                         24-Hour Format
                       </h4>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <p className="mutedText smallText">
                         Display time as 14:30:45
                       </p>
                     </div>
@@ -769,86 +652,54 @@ const GlobalSettings = ({
                 </div>
                 <div
                   onClick={() => setTimeFormat("12h")}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
-                    timeFormat === "12h"
-                      ? isDarkMode
-                        ? 'bg-blue-900/50 border-blue-400 shadow-lg'
-                        : 'bg-blue-50 border-blue-500 shadow-lg'
-                      : isDarkMode
-                        ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`${cardStyles.card} ${cardStyles.compact}`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      timeFormat === "12h"
-                        ? isDarkMode
-                          ? 'border-blue-400 bg-blue-400'
-                          : 'border-blue-500 bg-blue-500'
-                        : isDarkMode
-                          ? 'border-gray-500'
-                          : 'border-gray-400'
-                    }`}>
+                  <div className="row">
+                    <div className="row">
                       {timeFormat === "12h" && (
-                        <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} />
+                        <div className={cardStyles.card} />
                       )}
                     </div>
                     <div>
-                      <h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <h4 className={cardStyles.title}>
                         12-Hour Format
                       </h4>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <p className="mutedText smallText">
                         Display time as 2:30:45 PM
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-              <p className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="mutedText tinyText">
                 Choose how time is displayed throughout the application (24-hour or 12-hour with AM/PM).
               </p>
             </div>
             {/* Inbox behaviour (Super admin only) */}
             {user?.role === 'admin' && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Radio size={18} className="text-blue-500" />
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className="stack">
+                <div className="row">
+                  <Radio size={18} />
+                  <label className={formStyles.label}>
                     Inbox View
                   </label>
                 </div>
-                <div className="space-y-3">
+                <div className="stack">
                   <div
                     onClick={() => handleGlobalChange("global_inbox_view_mode", "pagination")}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
-                      inboxViewMode === "pagination"
-                        ? isDarkMode
-                          ? 'bg-blue-900/50 border-blue-400 shadow-lg'
-                          : 'bg-blue-50 border-blue-500 shadow-lg'
-                        : isDarkMode
-                          ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                          : 'bg-white border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`${cardStyles.card} ${cardStyles.compact}`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        inboxViewMode === "pagination"
-                          ? isDarkMode
-                            ? 'border-blue-400 bg-blue-400'
-                            : 'border-blue-500 bg-blue-500'
-                          : isDarkMode
-                            ? 'border-gray-500'
-                            : 'border-gray-400'
-                      }`}>
+                    <div className="row">
+                      <div className="row">
                         {inboxViewMode === "pagination" && (
-                          <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} />
+                          <div className={cardStyles.card} />
                         )}
                       </div>
                       <div>
-                        <h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <h4 className={cardStyles.title}>
                           Pagination (Recommended)
                         </h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <p className="mutedText smallText">
                           Show a fixed number of messages per page with classic pagination controls.
                         </p>
                       </div>
@@ -856,35 +707,19 @@ const GlobalSettings = ({
                   </div>
                   <div
                     onClick={() => handleGlobalChange("global_inbox_view_mode", "continuous")}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
-                      inboxViewMode === "continuous"
-                        ? isDarkMode
-                          ? 'bg-blue-900/50 border-blue-400 shadow-lg'
-                          : 'bg-blue-50 border-blue-500 shadow-lg'
-                        : isDarkMode
-                          ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                          : 'bg-white border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`${cardStyles.card} ${cardStyles.compact}`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        inboxViewMode === "continuous"
-                          ? isDarkMode
-                            ? 'border-blue-400 bg-blue-400'
-                            : 'border-blue-500 bg-blue-500'
-                          : isDarkMode
-                            ? 'border-gray-500'
-                            : 'border-gray-400'
-                      }`}>
+                    <div className="row">
+                      <div className="row">
                         {inboxViewMode === "continuous" && (
-                          <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} />
+                          <div className={cardStyles.card} />
                         )}
                       </div>
                       <div>
-                        <h4 className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <h4 className={cardStyles.title}>
                           Continuous Scrolling
                         </h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <p className="mutedText smallText">
                           Load more messages automatically as you scroll, ideal for monitoring in real time.
                         </p>
                       </div>
@@ -892,18 +727,14 @@ const GlobalSettings = ({
                   </div>
                 </div>
                 {/* Default records per page (pagination mode) */}
-                <div className="mt-3">
-                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <div >
+                  <label className={formStyles.label}>
                     Default Records per Page
                   </label>
                   <select
                     value={inboxRecordsPerPage}
                     onChange={(e) => handleGlobalChange("global_inbox_records_per_page", parseInt(e.target.value, 10))}
-                    className={`w-full md:w-40 p-2 rounded-xl border-2 text-sm ${
-                      isDarkMode
-                        ? 'bg-gray-800 border-gray-700 text-gray-200 focus:border-blue-400'
-                        : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
-                    } focus:ring focus:ring-blue-200/50`}
+                    className={formStyles.select}
                   >
                     {[10, 20, 50, 100].map((option) => (
                       <option key={option} value={option}>
@@ -911,7 +742,7 @@ const GlobalSettings = ({
                       </option>
                     ))}
                   </select>
-                  <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="mutedText tinyText">
                     This sets the default page size for the Live Communications inbox when using pagination. Users can still adjust their own preference.
                   </p>
                 </div>
@@ -939,31 +770,28 @@ const GlobalSettings = ({
               label="Message Sorting"
               icon={ArrowUpDown}
               description={reverseSort ? "Newest messages appear at the top of the list" : "Newest messages appear at the bottom of the list"}
-              isDarkMode={isDarkMode}
-            />
+                />
           </div>
         </div>
       </div>
       )}
       {/* Device Management */}
       {showDeviceManagement && (
-      <div className="space-y-6">
+      <div className="stack stackLarge">
         <SettingsSectionHeader
           icon={SmartphoneNfc}
           title="Device Management"
           description="Enable automatic detection and connection to compatible radio devices"
-          isDarkMode={isDarkMode}
           iconColor="purple"
         />
-        <div className="space-y-4">
+        <div className="stack">
           <Toggle
             checked={globalSettings.global_enable_uniden_scanners}
             onChange={(checked) => handleGlobalChange("global_enable_uniden_scanners", checked)}
             label="Enable Uniden Scanners"
             icon={SmartphoneNfc}
             description="Automatically scan for and connect to Uniden BC125AT scanners when the application starts. This keeps your scanner inventory up to date."
-            isDarkMode={isDarkMode}
-          />
+            />
           <Toggle
             checked={globalSettings.global_enable_edge_devices}
             onChange={(checked) => handleGlobalChange("global_enable_edge_devices", checked)}
@@ -971,76 +799,79 @@ const GlobalSettings = ({
             icon={Cpu}
             description="Automatically discover and connect to ESP32-based Boondock Edge recorders (Silicon Labs CP210x USB devices) when the service starts."
             metric="Requires restart"
-            isDarkMode={isDarkMode}
-          />
+            />
         </div>
       </div>
       )}
       {/* Transcription Services */}
       {showTranscriptionServices && (
-      <div className="space-y-6">
+      <div className="stack stackLarge">
         <SettingsSectionHeader
           icon={Radio}
           title="Transcription Services"
           description="Choose one transcription method. Only one method can be active at a time — if it fails, transcription is marked as failed with no automatic fallback."
-          isDarkMode={isDarkMode}
           iconColor="blue"
         />
-        <div className="space-y-4">
-          <fieldset className="grid gap-4 md:grid-cols-2">
-            <legend className="sr-only">Transcription service</legend>
-            {[
-              {
-                value: 'openai',
-                label: 'Boondock API',
-                description: "Use Boondock's cloud API service. Requires an internet connection.",
-                Icon: Cloud,
-                selected: selectedTranscriptionService === 'openai',
-              },
-              {
-                value: 'local',
-                label: 'Local Transcription',
-                description: 'Process audio on this device using faster-whisper. Works offline.',
-                Icon: Server,
-                selected: selectedTranscriptionService === 'local',
-              },
-            ].map(({ value, label, description, Icon, selected }) => (
-              <label
-                key={value}
-                className={`flex cursor-pointer items-start gap-4 rounded-xl border-2 p-5 transition-colors ${
-                  selected
-                    ? isDarkMode ? 'border-blue-500 bg-blue-950/30' : 'border-blue-500 bg-blue-50'
-                    : isDarkMode ? 'border-gray-700 bg-gray-800/50 hover:border-gray-600' : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="transcription-service"
-                  value={value}
-                  checked={Boolean(selected)}
-                  onChange={() => {
-                    setSelectedTranscriptionService(value);
-                    if (value === 'local') {
-                      handleGlobalChange('global_transcribe_method', 'local');
-                    }
-                  }}
-                  className="mt-1 h-4 w-4 accent-blue-600"
-                />
-                <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${selected ? 'text-blue-500' : 'text-gray-400'}`} />
-                <span>
-                  <span className={`block font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{label}</span>
-                  <span className={`mt-1 block text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{description}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+        <div className="stack">
+          <fieldset>
+            <legend className={formStyles.srOnly}>Transcription service</legend>
+            <div className="gridTwo">
+              {[
+                {
+                  value: 'openai',
+                  label: 'Boondock API',
+                  description:
+                    "Use Boondock's cloud API service. Requires an internet connection.",
+                  Icon: Cloud,
+                  selected: selectedTranscriptionService === 'openai',
+                },
+                {
+                  value: 'local',
+                  label: 'Local Transcription',
+                  description:
+                    'Process audio on this device using faster-whisper. Works offline.',
+                  Icon: Server,
+                  selected: selectedTranscriptionService === 'local',
+                },
+              ].map(({ value, label, description, Icon, selected }) => (
+                <label
+                  key={value}
+                  className={`${formStyles.choiceCard} ${
+                    selected ? formStyles.choiceCardSelected : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="transcription-service"
+                    value={value}
+                    checked={Boolean(selected)}
+                    onChange={() => {
+                      setSelectedTranscriptionService(value);
 
+                      if (value === 'local') {
+                        handleGlobalChange('global_transcribe_method', 'local');
+                      }
+                    }}
+                  />
+
+                  <Icon className="iconMedium" />
+
+                  <span className="stackCompact grow">
+                    <strong>{label}</strong>
+                    <div className="mutedText smallText">
+                      {description}
+                    </div>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           {selectedTranscriptionService === 'openai' && (
-            <div className={`rounded-xl border p-5 ${isDarkMode ? 'border-blue-800/60 bg-gray-800/50' : 'border-blue-200 bg-white'}`}>
-              <label htmlFor="transcription-api-key" className={`block text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            <div className={cardStyles.card}>
+              <label htmlFor="transcription-api-key" className={formStyles.label}>
                 Transcription API Key
               </label>
-              <p className={`mb-3 mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className="mutedText smallText">
                 Enter the API key used to authenticate requests to the Boondock transcription service.
               </p>
               <input
@@ -1060,45 +891,35 @@ const GlobalSettings = ({
                   }
                 }}
                 placeholder="Enter transcription API key"
-                className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-900 text-gray-100 placeholder-gray-500' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
-                }`}
+                className={formStyles.input}
               />
             </div>
           )}
 
             {/* Model Selection - Only show when Local Transcription is enabled */}
             {selectedTranscriptionService === 'local' && (
-              <div className={`ml-12 p-5 rounded-xl border-2 transition-all duration-300 ${
-                isDarkMode
-                  ? 'bg-gray-800/50 border-gray-700'
-                  : 'bg-gray-50 border-gray-200'
-              }`}>
-                <div className="space-y-4">
+              <div className={cardStyles.card}>
+                <div className="stack">
                   {/* Model Selection Slider */}
-                  <div className="space-y-4 mt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <DatabaseZap size={18} className="text-blue-500" />
-                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="stack">
+                <div className="rowBetween">
+                  <div className="row">
+                    <DatabaseZap size={18} />
+                    <label className={formStyles.label}>
                       Model Quality Level
                     </label>
                   </div>
                   {(() => {
                     const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model) || WHISPER_MODELS[1]; // Default to base.en
                     return (
-                      <span className={`text-sm font-semibold px-3 py-1 rounded-lg ${
-                        isDarkMode
-                          ? 'bg-blue-900/50 text-blue-300'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
+                      <span className="pill pillAccent">
                         {currentModel.label} ({currentModel.model})
                       </span>
                     );
                   })()}
                 </div>
                 {/* Slider */}
-                <div className="relative">
+                <div >
                   <input
                     type="range"
                     min="1"
@@ -1119,50 +940,20 @@ const GlobalSettings = ({
                         }
                       }
                     }}
-                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    style={{
-                      background: isDarkMode
-                        ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(((() => {
+                    className={formStyles.range}
+                    style={{ background: `linear-gradient(to right, var(--ui-accent) 0%, var(--ui-accent) ${(((() => {
                             const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model);
                             return currentModel ? currentModel.level : 2;
-                          })() - 1) / 4) * 100}%, #374151 ${(((() => {
+                          })() - 1) / 4) * 100}%, var(--ui-border) ${(((() => {
                             const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model);
                             return currentModel ? currentModel.level : 2;
-                          })() - 1) / 4) * 100}%, #374151 100%)`
-                        : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(((() => {
-                            const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model);
-                            return currentModel ? currentModel.level : 2;
-                          })() - 1) / 4) * 100}%, #e5e7eb ${(((() => {
-                            const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model);
-                            return currentModel ? currentModel.level : 2;
-                          })() - 1) / 4) * 100}%, #e5e7eb 100%)`
-                    }}
+                          })() - 1) / 4) * 100}%, var(--ui-border) 100%)` }}
                   />
-                  <style>{`
-                    .slider::-webkit-slider-thumb {
-                      appearance: none;
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: ${isDarkMode ? '#3b82f6' : '#3b82f6'};
-                      cursor: pointer;
-                      border: 2px solid ${isDarkMode ? '#1e3a8a' : '#ffffff'};
-                      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    }
-                    .slider::-moz-range-thumb {
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: ${isDarkMode ? '#3b82f6' : '#3b82f6'};
-                      cursor: pointer;
-                      border: 2px solid ${isDarkMode ? '#1e3a8a' : '#ffffff'};
-                      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    }
-                  `}</style>
+
                   {/* Level Labels */}
-                  <div className="flex justify-between mt-2">
+                  <div className='rowBetween'>
                     {WHISPER_MODELS.map((model) => (
-                      <button
+                      <Button
                         key={model.level}
                         type="button"
                         onClick={() => {
@@ -1171,19 +962,12 @@ const GlobalSettings = ({
                             handleGlobalChange("global_transcribe_method", "local");
                           }
                         }}
-                        className={`text-xs font-medium px-2 py-1 rounded transition-all ${
-                          globalSettings.global_model === model.value
-                            ? isDarkMode
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-blue-500 text-white'
-                            : isDarkMode
-                              ? 'text-gray-400 hover:text-gray-300'
-                              : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        variant={model.value === globalSettings.global_model? "primary" : "ghost"}
+                        size="small"
                         title={`${model.label} - ${model.model}`}
                       >
                         {model.level}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -1191,34 +975,28 @@ const GlobalSettings = ({
                 {(() => {
                   const currentModel = WHISPER_MODELS.find(m => m.value === globalSettings.global_model) || WHISPER_MODELS[1];
                   return (
-                    <div className={`mt-4 p-4 rounded-lg border-2 ${
-                      isDarkMode
-                        ? 'bg-gray-800/50 border-gray-700'
-                        : 'bg-gray-50 border-gray-200'
-                    }`}>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                      <div className="stack">
+                        <div className="rowBetween">
+                          <span className="mutedText smallText">
                             {currentModel.label} Quality
                           </span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            isDarkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-800'
-                          }`}>
+                          <span className="pill pillAccent">
                             {currentModel.model}
                           </span>
                         </div>
-                        <div className={`grid grid-cols-2 gap-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <div className="gridTwo">
                           <div>
-                            <span className="font-medium">Speed:</span> {currentModel.speed}
+                            <span>Speed:</span> {currentModel.speed}
                           </div>
                           <div>
-                            <span className="font-medium">Accuracy:</span> {currentModel.accuracy}
+                            <span>Accuracy:</span> {currentModel.accuracy}
                           </div>
                           <div>
-                            <span className="font-medium">Memory:</span> {currentModel.memory}
+                            <span>Memory:</span> {currentModel.memory}
                           </div>
                           <div>
-                            <span className="font-medium">CPU:</span> {currentModel.cpu}
+                            <span>CPU:</span> {currentModel.cpu}
                           </div>
                         </div>
                       </div>
@@ -1226,22 +1004,14 @@ const GlobalSettings = ({
                   );
                 })()}
                 {/* Hardware Recommendations */}
-                <div className={`mt-4 p-4 rounded-lg border-2 ${
-                  isDarkMode
-                    ? 'bg-yellow-900/20 border-yellow-700/50'
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${
-                      isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
-                    }`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold text-sm mb-1 ${
-                        isDarkMode ? 'text-yellow-300' : 'text-yellow-800'
-                      }`}>
+                <div className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
+                  <div className="row">
+                    <AlertTriangle size={18} className="iconSmall" />
+                    <div className="grow">
+                      <h5 className={cardStyles.title}>
                         Processing Power Notice
                       </h5>
-                      <p className={`text-xs ${isDarkMode ? 'text-yellow-200/80' : 'text-yellow-700'}`}>
+                      <p className="mutedText tinyText">
                         Higher quality levels consume significantly more processing power and memory.
                         <strong> Highest quality (Large model)</strong> requires 32 GB RAM, Multi-Core High CPU, and 250 TOPS GPU.
                         <strong> High quality (Medium model)</strong> requires 32 GB RAM, Multi-Core CPU, and 100 TOPS GPU.
@@ -1256,75 +1026,58 @@ const GlobalSettings = ({
               </div>
             )}
           {/* Channel Auto-Transcription Selection */}
-          <div className={`mt-6 p-5 rounded-xl border-2 transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-gray-800/50 border-gray-700'
-              : 'bg-gray-50 border-gray-200'
-          }`}>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Radio size={18} className="text-blue-500" />
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={cardStyles.card}>
+            <div className="stack">
+              <div className="row">
+                <Radio size={18} />
+                <label className={formStyles.label}>
                   Channel Auto-Transcription
                 </label>
               </div>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className="mutedText smallText">
                 Select which channels should be automatically transcribed when audio is recorded. Each channel defaults to enabled.
               </p>
               {channelsLoading ? (
-                <div className={`text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className="centeredContent mutedText smallText">
                   Loading channels...
                 </div>
               ) : channels.length === 0 ? (
-                <div className={`text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className="centeredContent mutedText smallText">
                   No channels available
                 </div>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="scrollPanel">
                   {channels.map((channel) => (
                     <div
                       key={channel.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
-                        isDarkMode
-                          ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-                          : 'bg-white border-gray-200 hover:border-gray-300'
-                      }`}
+                      className="rowBetween"
                     >
-                      <div className="flex items-center gap-3 flex-1">
+                      <div className="row">
                         <div
-                          className="w-4 h-4 rounded-full border-2 flex-shrink-0"
+                          className={cardStyles.card}
                           style={{
                             borderColor: channel.color || '#000000',
                             backgroundColor: channel.auto_transcribe !== false ? (channel.color || '#000000') : 'transparent'
                           }}
                         />
-                        <div className="flex-1 min-w-0">
-                          <div className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <div className="grow">
+                          <div >
                             {channel.name || `Channel ${channel.id}`}
                           </div>
                           {channel.mac && (
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            <div >
                               MAC: {channel.mac}
                             </div>
                           )}
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className={formStyles.switch}>
                         <input
                           type="checkbox"
                           checked={channel.auto_transcribe !== false}
                           onChange={(e) => handleChannelAutoTranscribeChange(channel.id, e.target.checked)}
-                          className="sr-only peer"
                         />
-                        <div className={`w-11 h-6 rounded-full peer transition-colors duration-200 ${
-                          channel.auto_transcribe !== false
-                            ? isDarkMode ? 'bg-blue-600' : 'bg-blue-500'
-                            : isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
-                        }`}>
-                          <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 mt-0.5 ml-0.5 ${
-                            channel.auto_transcribe !== false ? 'translate-x-5' : 'translate-x-0'
-                          }`} />
-                        </div>
+                        <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
                       </label>
                     </div>
                   ))}
@@ -1337,21 +1090,19 @@ const GlobalSettings = ({
       )}
       {/* Hotspot Configuration Section */}
       {showHotspotConfiguration && (
-      <div className="space-y-6">
+      <div className="stack stackLarge">
         {!omitHotspotSectionHeader && (
         <SettingsSectionHeader
           icon={Network}
           title="WiFi"
           description="Configure WiFi hotspot settings for Boondock Recorder devices"
-          isDarkMode={isDarkMode}
           iconColor="green"
         />
         )}
         {/* Enable / Disable hotspot */}
-        <div className="mt-6">
+        <div >
           <Toggle
-            isDarkMode={isDarkMode}
-            checked={!!hotspotStatus?.enabled}
+              checked={!!hotspotStatus?.enabled}
             disabled={hotspotActionLoading || hotspotStatus?.supported === false || (!hotspotStatus?.enabled && (!(hotspotConfig.host_ssid || '').trim() || !(hotspotConfig.host_password || '').trim()))}
             onChange={(enabled) => { if (enabled) handleStartHotspot(); else handleStopHotspot(); }}
             label="Enable hotspot"
@@ -1360,19 +1111,19 @@ const GlobalSettings = ({
           />
         </div>
         {/* Custom hotspot: SSID, password, host IP, port — saved and used for hotspot and Auto Config */}
-        <div className="mt-8">
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div >
+          <h3 className={cardStyles.title}>
             WiFi Settings
           </h3>
-          <p className={`text-xs mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className="mutedText tinyText">
             Set WiFi SSID and password here. They are used when you enable the hotspot and when you run Auto Config on recorder devices.
             {hotspotManualSave && ' Click Save to store changes before enabling the hotspot.'}
           </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="gridTwo">
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Network size={18} className="text-green-500" />
+            <label className={formStyles.label}>
+              <div className="row">
+                <Network size={18} />
                 WiFi SSID
               </div>
             </label>
@@ -1381,20 +1132,16 @@ const GlobalSettings = ({
               value={hotspotConfig.host_ssid || ''}
               onChange={(e) => updateHotspotField('host_ssid', e.target.value)}
               placeholder="Enter WiFi SSID"
-              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-300 placeholder-gray-500 focus:border-green-500'
-                  : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-green-500'
-              }`}
+              className={formStyles.input}
             />
-            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText tinyText">
               Network name for the hotspot and for Auto Config on recorders
             </p>
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Network size={18} className="text-green-500" />
+            <label className={formStyles.label}>
+              <div className="row">
+                <Network size={18} />
                 WiFi password
               </div>
             </label>
@@ -1403,20 +1150,16 @@ const GlobalSettings = ({
               value={hotspotConfig.host_password || ''}
               onChange={(e) => updateHotspotField('host_password', e.target.value)}
               placeholder="Enter WiFi password"
-              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-300 placeholder-gray-500 focus:border-green-500'
-                  : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-green-500'
-              }`}
+              className={formStyles.input}
             />
-            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText tinyText">
               Password for the hotspot and for Auto Config on recorders
             </p>
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Server size={18} className="text-green-500" />
+            <label className={formStyles.label}>
+              <div className="row">
+                <Server size={18} />
                 Host IP
               </div>
             </label>
@@ -1425,20 +1168,16 @@ const GlobalSettings = ({
               value={hotspotConfig.host_ip || ''}
               onChange={(e) => updateHotspotField('host_ip', e.target.value)}
               placeholder="e.g. 192.168.4.1 or 10.42.0.1"
-              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-300 placeholder-gray-500 focus:border-green-500'
-                  : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-green-500'
-              }`}
+              className={formStyles.input}
             />
-            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText tinyText">
               IP that recorders use to reach this server (used by Auto Config)
             </p>
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Server size={18} className="text-green-500" />
+            <label className={formStyles.label}>
+              <div className="row">
+                <Server size={18} />
                 Host port
               </div>
             </label>
@@ -1449,54 +1188,40 @@ const GlobalSettings = ({
               placeholder="e.g. 4000"
               min="1"
               max="65535"
-              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-300 placeholder-gray-500 focus:border-green-500'
-                  : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-green-500'
-              }`}
+              className={formStyles.input}
               disabled
             />
-            <p className={`mt-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText tinyText">
               Port that recorders use (used by Auto Config; 1–65535)
             </p>
           </div>
         </div>
         {hotspotManualSave && (
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="rowWrap">
             <button
               type="button"
               onClick={handleSaveHotspotConfiguration}
               disabled={hotspotSaveLoading || !hotspotDirty}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                hotspotSaveLoading || !hotspotDirty
-                  ? isDarkMode
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
+              className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.medium}`}
             >
               {hotspotSaveLoading ? 'Saving…' : 'Save WiFi Settings'}
             </button>
             {hotspotDirty && !hotspotSaveLoading && (
-              <span className={`text-xs ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+              <span className="mutedText tinyText">
                 Unsaved changes
               </span>
             )}
           </div>
         )}
         </div>
-        <div className={`mt-8 p-4 rounded-xl border-2 ${isDarkMode ? 'border-green-700 bg-green-900/20' : 'border-green-200 bg-green-50'}`}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className={`${noticeStyles.notice} ${noticeStyles.success}`}>
+          <div className="rowBetween">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="row">
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    hotspotStatus?.enabled
-                      ? 'bg-green-500'
-                      : 'bg-red-500'
-                  }`}
+                  className="pill pillSuccess"
                 />
-                <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                <span className="mutedText smallText">
                   Hotspot status:{' '}
                   {hotspotLoading
                     ? 'Checking...'
@@ -1507,7 +1232,7 @@ const GlobalSettings = ({
                         : 'Inactive'}
                 </span>
               </div>
-              <div className={`mt-2 text-xs space-y-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <div className="stack">
                 <p>
                   IP:{' '}
                   {hotspotStatus?.ip_address || globalSettings.host_ip || 'Not detected'}
@@ -1521,21 +1246,17 @@ const GlobalSettings = ({
                 )}
               </div>
               {hotspotError && (
-                <p className="mt-2 text-xs text-red-500">
+                <p className="mutedText tinyText">
                   {hotspotError}
                 </p>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <div className="rowWrap">
               <button
                 type="button"
                 onClick={fetchHotspotStatus}
                 disabled={hotspotLoading}
-                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors flex-shrink-0 ${
-                  isDarkMode
-                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Refresh
               </button>
@@ -1546,8 +1267,8 @@ const GlobalSettings = ({
       )}
       {/* Footer */}
       {!hotspotManualSave && (
-      <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-        <p className="text-sm">Configuration changes are saved automatically</p>
+      <div className="centeredContent mutedText smallText">
+        <p className="mutedText smallText">Configuration changes are saved automatically</p>
       </div>
       )}
     </div>

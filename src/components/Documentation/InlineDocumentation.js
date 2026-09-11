@@ -2,13 +2,33 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Loader2, Copy, Check } from 'lucide-react';
 import api from '../../utils/apiClient';
+import styles from '../ui/Documentation.module.css';
+
+const syntaxTheme = {
+  'code[class*="language-"]': {
+    color: 'var(--ui-text)',
+    background: 'var(--ui-surface)'
+  },
+  'pre[class*="language-"]': {
+    color: 'var(--ui-text)',
+    background: 'var(--ui-surface)'
+  },
+  comment: { color: 'var(--ui-muted)' },
+  punctuation: { color: 'var(--ui-muted)' },
+  property: { color: 'var(--ui-accent)' },
+  tag: { color: 'var(--ui-accent)' },
+  boolean: { color: 'var(--ui-warning)' },
+  number: { color: 'var(--ui-warning)' },
+  string: { color: 'var(--ui-success)' },
+  operator: { color: 'var(--ui-text)' },
+  keyword: { color: 'var(--ui-accent)' },
+  function: { color: 'var(--ui-success)' },
+};
 
 const InlineDocumentation = ({ 
   filename, 
-  isDarkMode,
   title 
 }) => {
   const [content, setContent] = useState('');
@@ -63,9 +83,9 @@ const InlineDocumentation = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      <div className={styles.loading}>
+        <Loader2 className={`${styles.iconLarge} spin`} />
+        <p className={styles.supportingText}>
           Loading documentation...
         </p>
       </div>
@@ -74,15 +94,9 @@ const InlineDocumentation = ({
 
   if (error) {
     return (
-      <div className={`
-        p-6 rounded-xl border-2
-        ${isDarkMode 
-          ? 'bg-red-900/20 border-red-800/50 text-red-400' 
-          : 'bg-red-50 border-red-200 text-red-600'
-        }
-      `}>
-        <p className="font-bold text-lg mb-2">⚠️ Error loading documentation</p>
-        <p className="text-sm">{typeof error === 'string' ? error : (error?.message || String(error))}</p>
+      <div className={styles.error}>
+        <p className={styles.heading4}>⚠️ Error loading documentation</p>
+        <p className={styles.bodyText}>{typeof error === 'string' ? error : (error?.message || String(error))}</p>
       </div>
     );
   }
@@ -92,80 +106,39 @@ const InlineDocumentation = ({
   }
 
   return (
-    <div 
-      className={`inline-documentation ${isDarkMode ? 'prose-invert' : ''}`}
-      style={{
-        maxWidth: '100%',
-        color: isDarkMode ? '#D1D5DB' : '#374151'
-      }}
-    >
+    <div className={`inline-documentation ${styles.article}`}>
       {title && (
-        <h2 className={`
-          text-2xl font-bold mb-6 pb-3 border-b
-          ${isDarkMode 
-            ? 'text-white border-gray-700' 
-            : 'text-gray-900 border-gray-200'
-          }
-        `}>
+        <h2 className={styles.heading2}>
           {title}
         </h2>
       )}
-      <div 
-        className={`prose prose-lg max-w-none ${isDarkMode ? 'prose-invert' : ''}`}
-        style={{ 
-          display: 'block',
-          width: '100%',
-          whiteSpace: 'normal',
-          wordWrap: 'normal',
-          fontFamily: 'inherit',
-          position: 'relative',
-          overflow: 'visible'
-        }}
-      >
+      <div className="documentation-viewer">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           skipHtml={true}
           components={{
             p: ({ children }) => (
-              <p className={`
-                ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}
-                leading-relaxed mb-4
-              `}>
+              <p className={styles.bodyText}>
                 {children}
               </p>
             ),
             h1: ({ children }) => (
-              <h1 className={`
-                text-3xl font-bold mb-6 pb-3 border-b
-                ${isDarkMode 
-                  ? 'text-white border-gray-700' 
-                  : 'text-gray-900 border-gray-200'
-                }
-              `}>
+              <h1 className={styles.heading1}>
                 {children}
               </h1>
             ),
             h2: ({ children }) => (
-              <h2 className={`
-                text-2xl font-bold mt-8 mb-4
-                ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}
-              `}>
+              <h2 className={styles.heading2}>
                 {children}
               </h2>
             ),
             h3: ({ children }) => (
-              <h3 className={`
-                text-xl font-bold mt-6 mb-3
-                ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}
-              `}>
+              <h3 className={styles.heading3}>
                 {children}
               </h3>
             ),
             h4: ({ children }) => (
-              <h4 className={`
-                text-lg font-semibold mt-4 mb-2
-                ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}
-              `}>
+              <h4 className={styles.heading4}>
                 {children}
               </h4>
             ),
@@ -183,16 +156,7 @@ const InlineDocumentation = ({
               }
               
               return (
-                <pre 
-                  className={`
-                    ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-800'}
-                    p-4 rounded-lg overflow-x-auto my-4
-                    font-mono text-sm
-                    border
-                    ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}
-                  `}
-                  {...props}
-                >
+                <pre className={styles.codeBlock} {...props}>
                   {children}
                 </pre>
               );
@@ -205,55 +169,42 @@ const InlineDocumentation = ({
               
               if (!inline && match) {
                 return (
-                  <div className="relative group my-4">
-                    <div className={`
-                      absolute top-3 right-3 z-10
-                      ${isDarkMode ? 'bg-gray-700/90' : 'bg-gray-200/90'}
-                      backdrop-blur-sm rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity
-                    `}>
-                      {copiedCode === codeIndex ? (
-                        <div className="flex items-center gap-1.5 px-2">
-                          <Check className="w-4 h-4 text-green-500" />
-                          <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Copied!
-                          </span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => copyToClipboard(codeString, codeIndex)}
-                          className={`
-                            ${isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
-                            transition-colors flex items-center gap-1.5 px-2
-                          `}
-                          title="Copy code"
-                        >
-                          <Copy className="w-4 h-4" />
-                          <span className="text-xs">Copy</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="rounded-xl overflow-hidden border shadow-lg"
-                      style={{
-                        borderColor: isDarkMode ? '#374151' : '#4B5563'
-                      }}
-                    >
+                  <div className={styles.codeWrap}>
+                    {copiedCode === codeIndex ? (
+                      <div className={styles.copyButton}>
+                        <Check className={`${styles.iconSmall} ${styles.successIcon}`} />
+                        <span className={styles.caption}>
+                          Copied!
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => copyToClipboard(codeString, codeIndex)}
+                        className={styles.copyButton}
+                        title="Copy code"
+                      >
+                        <Copy className={styles.iconSmall} />
+                        <span className={styles.caption}>Copy</span>
+                      </button>
+                    )}
+                    <div className={styles.screenshotFrame}>
                       <SyntaxHighlighter
                         language={language}
-                        style={isDarkMode ? vscDarkPlus : vs}
+                        style={syntaxTheme}
                         customStyle={{
                           margin: 0,
                           padding: '1.25rem',
                           fontSize: '0.875rem',
                           lineHeight: '1.5',
-                          borderRadius: '0.75rem',
-                          background: isDarkMode ? '#1F2937' : '#F9FAFB'
+                          borderRadius: 0,
+                          background: 'var(--ui-surface)'
                         }}
                         PreTag="div"
                         showLineNumbers={codeString.split('\n').length > 5}
                         lineNumberStyle={{
                           minWidth: '3em',
                           paddingRight: '1em',
-                          color: isDarkMode ? '#6B7280' : '#9CA3AF',
+                          color: 'var(--ui-muted)',
                           userSelect: 'none'
                         }}
                         {...props}
@@ -265,27 +216,14 @@ const InlineDocumentation = ({
                 );
               }
               return (
-                <code className={`
-                  ${isDarkMode 
-                    ? 'bg-gray-800/80 text-blue-400 border-gray-700' 
-                    : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }
-                  px-2 py-1 rounded-md text-sm font-mono
-                  border
-                `} {...props}>
+                <code className={styles.inlineCode} {...props}>
                   {children}
                 </code>
               );
             },
             table: ({ children }) => (
-              <div className="overflow-x-auto my-6 rounded-lg border shadow-sm">
-                <table className={`
-                  min-w-full border-collapse
-                  ${isDarkMode 
-                    ? 'border-gray-700' 
-                    : 'border-gray-200'
-                  }
-                `}>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
                   {children}
                 </table>
               </div>
@@ -295,45 +233,27 @@ const InlineDocumentation = ({
                 href={href} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className={`
-                  ${isDarkMode 
-                    ? 'text-blue-400 hover:text-blue-300' 
-                    : 'text-blue-600 hover:text-blue-700'
-                  }
-                  underline decoration-2 underline-offset-2
-                  transition-colors duration-200
-                  font-medium
-                `}
               >
                 {children}
               </a>
             ),
             blockquote: ({ children }) => (
-              <blockquote className={`
-                border-l-4 pl-6 py-3 my-6 rounded-r-lg
-                ${isDarkMode 
-                  ? 'border-blue-500 bg-gray-800/50 text-gray-300' 
-                  : 'border-blue-500 bg-blue-50 text-gray-700'
-                }
-              `}>
+              <blockquote className={styles.blockquote}>
                 {children}
               </blockquote>
             ),
             ul: ({ children }) => (
-              <ul className="list-disc list-outside ml-6 space-y-2 my-4">
+              <ul className={styles.unorderedList}>
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal list-outside ml-6 space-y-2 my-4">
+              <ol className={styles.orderedList}>
                 {children}
               </ol>
             ),
             hr: () => (
-              <hr className={`
-                my-8 border-t-2
-                ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}
-              `} />
+              <hr className="divider" />
             )
           }}
         >

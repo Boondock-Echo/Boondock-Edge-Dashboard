@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../utils/apiClient';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import tableStyles from '../ui/Table.module.css';
+import modalStyles from '../ui/Modal.module.css';
 import { Cpu, RefreshCw, Usb, AlertCircle, Edit3, Save as SaveIcon, Power, Upload, Trash2, Zap, Package, Mic,
   UploadCloud, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
@@ -26,7 +32,7 @@ function getSystemHealthBlock(serialPort) {
   return serialPort?.health?.system?.data || null;
 }
 
-const RecorderDevices = ({ isDarkMode, enabled }) => {
+const RecorderDevices = ({ enabled }) => {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,6 +65,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
   const [serialData, setSerialData] = useState({}); // Store parsed serial data (short, health, config, error logs) per port
   const flashProgressTimerRef = useRef(null);
   const messagesPollTimerRef = useRef(null);
+  const firmwareUploadDialogRef = useRef(null);
+  const flashDialogRef = useRef(null);
+  const firmwareEditDialogRef = useRef(null);
 
   const setDeviceBusyState = useCallback((port, action) => {
     setDeviceBusy((prev) => ({ ...prev, [port]: action }));
@@ -1078,35 +1087,39 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
   }, []);
 
 
-  const containerClasses = isDarkMode
-    ? 'bg-gray-900 text-gray-100'
-    : 'bg-white text-gray-900';
 
-  const cardClasses = isDarkMode
-    ? 'bg-gray-800 border border-gray-700'
-    : 'bg-white border border-gray-200';
+  useEffect(() => {
+    const dialog = firmwareUploadDialogRef.current;
+    if (!dialog) return;
+    if (firmwareUploadModal.open && !dialog.open) dialog.showModal();
+    if (!firmwareUploadModal.open && dialog.open) dialog.close();
+  }, [firmwareUploadModal.open]);
 
-  const badgeClasses = (status) => {
-    if (status === 'available') {
-      return isDarkMode
-        ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
-        : 'bg-emerald-100 text-emerald-700 border border-emerald-200';
-    }
-    return isDarkMode
-      ? 'bg-amber-900/40 text-amber-300 border border-amber-700/50'
-      : 'bg-amber-100 text-amber-700 border border-amber-200';
-  };
+  useEffect(() => {
+    const dialog = flashDialogRef.current;
+    if (!dialog) return;
+    if (flashModal.open && !dialog.open) dialog.showModal();
+    if (!flashModal.open && dialog.open) dialog.close();
+  }, [flashModal.open]);
+
+  useEffect(() => {
+    const dialog = firmwareEditDialogRef.current;
+    if (!dialog) return;
+    if (firmwareEditModal.open && !dialog.open) dialog.showModal();
+    if (!firmwareEditModal.open && dialog.open) dialog.close();
+  }, [firmwareEditModal.open]);
+
 
   return (
-    <div className={`rounded-2xl shadow-lg p-4 md:p-6 transition-colors duration-300 ${containerClasses}`}>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-2xl shadow-md ${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'}`}>
-            <Cpu size={24} className="text-white" />
+    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+      <div className="rowBetween">
+        <div className="row">
+          <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+            <Cpu size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Boondock Edge Recorders</h2>
-            <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <h2 className="pageTitle">Boondock Edge Recorders</h2>
+            <p className="mutedText smallText">
               Enumerate Boondock Edge Devices over Serial Port.
             </p>
           </div>
@@ -1114,27 +1127,19 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
         <button
           onClick={handleRefresh}
           disabled={refreshing || loading}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-            refreshing || loading
-              ? 'opacity-70 cursor-not-allowed'
-              : isDarkMode
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-blue-500 hover:bg-blue-600 text-white'
-          }`}
+          className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`iconSmall ${refreshing ? 'spin' : ''}`} />
           {refreshing ? 'Scanning…' : 'Refresh'}
         </button>
       </div>
 
       {!enabled && (
-        <div className={`rounded-xl border p-5 flex items-start gap-3 ${
-          isDarkMode ? 'border-amber-500/40 bg-amber-900/20 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700'
-        }`}>
-          <AlertCircle className="w-5 h-5 mt-0.5" />
+        <div className="row">
+          <AlertCircle className="iconMedium" />
           <div>
-            <h3 className="font-semibold">Discovery Disabled</h3>
-            <p className="text-sm">
+            <h3 className={cardStyles.title}>Discovery Disabled</h3>
+            <p className="mutedText smallText">
               Toggle <strong>Enable Boondock Edge devices</strong> in Global settings to enumerate ESP32 recorders.
             </p>
           </div>
@@ -1142,121 +1147,81 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
       )}
 
       {error && (
-        <div className={`mt-4 rounded-xl border p-4 ${
-          isDarkMode ? 'border-red-600/60 bg-red-900/30 text-red-200' : 'border-red-200 bg-red-50 text-red-700'
-        }`}>
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
           {typeof error === 'string' ? error : (error?.message || String(error))}
         </div>
       )}
 
       {notification && (
-        <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
-          notification.type === 'error'
-            ? isDarkMode
-              ? 'border-red-600/60 bg-red-900/40 text-red-200'
-              : 'border-red-200 bg-red-50 text-red-700'
-            : isDarkMode
-              ? 'border-emerald-600/50 bg-emerald-900/30 text-emerald-200'
-              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-        }`}>
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
           {notification.text}
         </div>
       )}
 
       {/* Monitor Messages Display */}
       {enabled && (
-        <div className={`mt-6 rounded-2xl border overflow-hidden ${
-          isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
-          <div className={`px-4 py-3 border-b ${
-            isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'
-          }`}>
-            <div className="flex items-center justify-between">
+        <div className={cardStyles.card}>
+          <div >
+            <div className="rowBetween">
               <div>
-                <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                <h3 className={cardStyles.title}>
                   Serial Messages
                 </h3>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className="mutedText smallText">
                   Real-time messages from monitored devices
                 </p>
               </div>
               {monitoredPorts.length > 0 && (
-                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <span className="font-medium">Monitoring:</span> {monitoredPorts.join(', ')}
+                <div >
+                  <span>Monitoring:</span> {monitoredPorts.join(', ')}
                 </div>
               )}
             </div>
           </div>
           
           {/* Command Buttons */}
-          <div className={`px-4 py-3 border-b ${
-            isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
-          }`}>
-            <div className="flex flex-wrap gap-2 mb-3">
+          <div >
+            <div className="rowWrap">
               <button
                 onClick={handleRefreshDeviceData}
                 disabled={sendingCommand || selectedPorts.length === 0}
                 title="Fetch latest config and health data from selected devices (sends 'config ?' then 'health ?' after 5 seconds)"
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  sendingCommand || selectedPorts.length === 0
-                    ? 'opacity-50 cursor-not-allowed bg-gray-500 text-white'
-                    : isDarkMode
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
               >
-                <RefreshCw className={`w-4 h-4 ${sendingCommand ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`iconSmall ${sendingCommand ? 'spin' : ''}`} />
                 Refresh
               </button>
               <button
                 onClick={handleReset}
                 disabled={resetting || monitoredPorts.length === 0}
                 title="Reconnect serial monitoring for all monitored devices (useful if connection is stuck)"
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  resetting || monitoredPorts.length === 0
-                    ? 'opacity-50 cursor-not-allowed bg-gray-500 text-white'
-                    : isDarkMode
-                      ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                      : 'bg-orange-500 hover:bg-orange-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.warning} ${buttonStyles.medium}`}
               >
-                <Usb className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+                <Usb className={`iconSmall ${resetting ? 'spin' : ''}`} />
                 Reset
               </button>
               <button
                 onClick={handleAutoConfig}
                 disabled={sendingCommand || selectedPorts.length === 0}
                 title="Set WiFi SSID/password, custom upload host/port, save, and reboot on selected devices (waits for device response after each command)"
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  sendingCommand || selectedPorts.length === 0
-                    ? 'opacity-50 cursor-not-allowed bg-gray-500 text-white'
-                    : isDarkMode
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.medium}`}
               >
-                <Zap className="w-4 h-4" />
+                <Zap className="iconSmall" />
                 Auto Config
               </button>
               <button
                 onClick={handleReboot}
                 disabled={sendingCommand || selectedPorts.length === 0}
                 title="Restart selected devices (sends 'reboot' command to trigger a full device restart)"
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  sendingCommand || selectedPorts.length === 0
-                    ? 'opacity-50 cursor-not-allowed bg-gray-500 text-white'
-                    : isDarkMode
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-red-500 hover:bg-red-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
               >
-                <Power className="w-4 h-4" />
+                <Power className="iconSmall" />
                 Reboot
               </button>
             </div>
             
             {/* Command Input */}
-            <div className="flex gap-2">
+            <div className="rowWrap">
               <input
                 type="text"
                 value={commandInput}
@@ -1269,22 +1234,12 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                 }}
                 placeholder="Enter custom command to send to selected ports..."
                 disabled={sendingCommand || selectedPorts.length === 0}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-                  isDarkMode
-                    ? 'bg-gray-900 text-gray-100 border-gray-600'
-                    : 'bg-white text-gray-900 border-gray-300'
-                } ${sendingCommand || selectedPorts.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={formStyles.input}
               />
               <button
                 onClick={handleSendCommand}
                 disabled={sendingCommand || !commandInput.trim() || selectedPorts.length === 0}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  sendingCommand || !commandInput.trim() || selectedPorts.length === 0
-                    ? 'opacity-50 cursor-not-allowed bg-gray-500 text-white'
-                    : isDarkMode
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
               >
                 {sendingCommand ? 'Sending...' : 'Send'}
               </button>
@@ -1293,12 +1248,12 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
             {/* Port Filter */}
             {monitoredPorts.length > 0 && (
               <div>
-                <label className={`text-sm font-medium block mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   Filter Ports (select ports to display messages):
                 </label>
-                <div className="flex flex-wrap gap-3">
+                <div className="rowWrap">
                   {monitoredPorts.map((port) => (
-                    <label key={port} className="flex items-center gap-2 cursor-pointer">
+                    <label key={port} className={formStyles.checkbox}>
                       <input
                         type="checkbox"
                         checked={selectedPorts.includes(port)}
@@ -1309,13 +1264,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                             setSelectedPorts(selectedPorts.filter(p => p !== port));
                           }
                         }}
-                        className={`w-4 h-4 rounded border-2 ${
-                          isDarkMode
-                            ? 'border-gray-600 bg-gray-700 text-blue-500'
-                            : 'border-gray-300 bg-white text-blue-600'
-                        }`}
+                        
                       />
-                      <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <span className="mutedText smallText">
                         {port}
                       </span>
                     </label>
@@ -1326,7 +1277,7 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
           </div>
           
           {/* Messages Display - Terminal Style */}
-          <div className="bg-black text-green-400 font-mono text-sm p-4 max-h-96 overflow-y-auto overflow-x-auto">
+          <div className={tableStyles.scroll}>
             {monitorMessages
               .filter(msg => selectedPorts.length === 0 || selectedPorts.includes(msg.port))
               .slice()
@@ -1335,17 +1286,17 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
               .map((msg, idx) => (
                 <div
                   key={`${msg.port}-${msg.timestamp}-${idx}`}
-                  className="whitespace-nowrap"
+                  
                 >
-                  <span className="text-cyan-400 font-semibold">{msg.port}</span>
-                  <span className="text-gray-500 mx-2">::</span>
-                  <span className="text-yellow-400">{msg.local_time}</span>
-                  <span className="text-gray-500 mx-2">::</span>
-                  <span className="text-green-400">{msg.message}</span>
+                  <span className="pill pillAccent">{msg.port}</span>
+                  <span className="mutedText smallText">::</span>
+                  <span className="pill pillWarning">{msg.local_time}</span>
+                  <span className="mutedText smallText">::</span>
+                  <span className="pill pillSuccess">{msg.message}</span>
                 </div>
               ))}
             {monitorMessages.filter(msg => selectedPorts.length === 0 || selectedPorts.includes(msg.port)).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="centeredContent mutedText smallText">
                 No messages to display. {selectedPorts.length === 0 ? 'Select ports to filter messages.' : 'Waiting for messages...'}
               </div>
             )}
@@ -1354,15 +1305,13 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
       )}
 
       {loading ? (
-        <div className="flex justify-center items-center h-40">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="row">
+          <span className="spinner spinnerSmall" aria-hidden="true" />
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="gridTwo">
           {devices.length === 0 ? (
-            <div className={`col-span-full rounded-xl border-dashed border-2 p-10 text-center ${
-              isDarkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-600'
-            }`}>
+            <div className={cardStyles.card}>
               No devices in inventory. Connect a device and refresh.
             </div>
           ) : (
@@ -1455,15 +1404,15 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
               }
 
               return (
-                <div key={device.port} className={`rounded-xl p-3 transition-all duration-300 hover:shadow-lg ${cardClasses}`}>
+                <div key={device.port} className={`${cardStyles.card} ${cardStyles.compact}`}>
                 {/* Compact Header with Uptime */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-50'} text-blue-500`}>
-                      <Usb className="w-3.5 h-3.5" />
+                <div className="rowBetween">
+                  <div className="row">
+                    <div className={cardStyles.card}>
+                      <Usb className="iconSmall" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold">{device.port}</h3>
+                      <h3 className={cardStyles.title}>{device.port}</h3>
                     </div>
                   </div>
                   
@@ -1475,42 +1424,38 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                     const seconds = totalSeconds % 60;
                     const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                     return (
-                      <div className="flex flex-col items-center justify-center flex-1">
-                        <div className={`text-xs font-medium mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <div className="row">
+                        <div >
                           ⏱️ Uptime
                         </div>
-                        <div className={`text-2xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                        <div >
                           {formattedTime}
                         </div>
                       </div>
                     );
                   })()}
                   
-                  <div className="flex items-center gap-1">
+                  <div className="row">
                     {/* Permanent Recording Icon */}
-                    <div className="flex items-center justify-center">
-                      <Mic className={`w-3.5 h-3.5 ${isRecording ? 'text-red-500 animate-flash' : 'text-gray-400'}`} />
+                    <div className="row">
+                      <Mic className="iconSmall" />
                     </div>
                     {/* Permanent Uploading Icon */}
-                    <div className="flex items-center justify-center">
-                      <UploadCloud className={`w-3.5 h-3.5 ${isUploading ? 'text-blue-500 animate-flash' : 'text-gray-400'}`} />
+                    <div className="row">
+                      <UploadCloud className="iconSmall" />
                     </div>
                     {device.status && (
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${badgeClasses(device.status)}`}>
+                      <span className="pill">
                         {device.status === 'available' ? '✅' : '⚠️'}
                       </span>
                     )}
                     {/* Delete Button */}
                     <button
                       onClick={() => handleDeleteRecorder(device.port)}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        isDarkMode 
-                          ? 'hover:bg-red-500/20 text-red-400 hover:text-red-300' 
-                          : 'hover:bg-red-50 text-red-500 hover:text-red-600'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.icon}`}
                       title={`Delete recorder on port ${device.port}`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="iconSmall" />
                     </button>
                   </div>
                 </div>
@@ -1535,28 +1480,28 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                   
                   // Always show KPIs, display "-" when data is missing
                   return (
-                    <div className="flex items-center justify-center gap-4 mb-1 flex-wrap">
-                      <div className="flex flex-col items-center">
-                        <div className={`text-xs font-medium mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <div className="rowWrap">
+                      <div className="row">
+                        <div >
                           Recordings
                         </div>
-                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                        <div >
                           {recordingCount !== undefined ? recordingCount : '-'}
                         </div>
                       </div>
-                      <div className="flex flex-col items-center">
-                        <div className={`text-xs font-medium mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <div className="row">
+                        <div >
                           Uploaded
                         </div>
-                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                        <div >
                           {uploadedCount !== undefined ? uploadedCount : '-'}
                         </div>
                       </div>
-                      <div className="flex flex-col items-center">
-                        <div className={`text-xs font-medium mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <div className="row">
+                        <div >
                           Recording time
                         </div>
-                        <div className={`text-3xl font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                        <div >
                           {formattedDuration || '-'}
                         </div>
                       </div>
@@ -1579,27 +1524,27 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                   }
                   
                   return (
-                    <div className="flex items-center justify-center gap-4 mb-2">
+                    <div className="row">
                       {totalPending !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Pending:</span>
-                          <span className={`text-sm font-semibold ${totalPending > 0 ? (isDarkMode ? 'text-orange-400' : 'text-orange-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}`}>
+                        <div className="row">
+                          <span className="mutedText smallText">Pending:</span>
+                          <span className="pill pillSuccess">
                             {totalPending}
                           </span>
                         </div>
                       )}
                       {missedFiles !== undefined && missedFiles > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Missed:</span>
-                          <span className={`text-sm font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                        <div className="row">
+                          <span className="mutedText smallText">Missed:</span>
+                          <span className="pill pillDanger">
                             {missedFiles}
                           </span>
                         </div>
                       )}
                       {nvsQueue !== undefined && nvsQueue > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>NVS:</span>
-                          <span className={`text-sm font-semibold ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                        <div className="row">
+                          <span className="mutedText smallText">NVS:</span>
+                          <span className="mutedText smallText">
                             {nvsQueue}
                           </span>
                         </div>
@@ -1610,94 +1555,92 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
 
                 {/* Device Identity - Compact */}
                 {(status.firmware || macAddress || ipAddress || wifiStatus !== undefined || matchedChannel || lastUpdate || rebootCounts[device.port] !== undefined) && (
-                  <div className={`p-1.5 rounded-lg mb-2 text-xs ${isDarkMode ? 'bg-gray-800/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
-                    <div className="grid grid-cols-2 gap-1">
+                  <div className={cardStyles.card}>
+                    <div className="gridTwo">
                       {status.firmware && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>🔧</span>
-                          <span className="font-medium">Firmware:</span>
-                          <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>{status.firmware}</span>
+                          <span>Firmware:</span>
+                          <span className="pill pillAccent">{status.firmware}</span>
                         </div>
                       )}
                       {macAddress && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>🆔</span>
-                          <span className="font-medium">MAC:</span>
-                          <span className={isDarkMode ? 'text-purple-400' : 'text-purple-600'}>{macAddress}</span>
+                          <span>MAC:</span>
+                          <span className="pill pillAccent">{macAddress}</span>
                         </div>
                       )}
                       {ipAddress && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>🌐</span>
-                          <span className="font-medium">IP:</span>
-                          <span className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}>{ipAddress}</span>
+                          <span>IP:</span>
+                          <span className="pill pillAccent">{ipAddress}</span>
                         </div>
                       )}
                       {wifiStatus !== undefined && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>📶</span>
-                          <span className="font-medium">WiFi:</span>
+                          <span>WiFi:</span>
                           {wifiStatus ? (
-                            <span className={isDarkMode ? 'text-green-400' : 'text-green-600'}>
+                            <span className="pill pillSuccess">
                               {rssiRating || 'Connected'}
                             </span>
                           ) : (
-                            <span className={isDarkMode ? 'text-red-400' : 'text-red-600'}>
+                            <span className="pill pillDanger">
                               Disconnected
                             </span>
                           )}
                         </div>
                       )}
                       {matchedChannel && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>📻</span>
-                          <span className="font-medium">Channel:</span>
-                          <span className={isDarkMode ? 'text-green-400' : 'text-green-600'}>{matchedChannel.name}</span>
+                          <span>Channel:</span>
+                          <span className="pill pillSuccess">{matchedChannel.name}</span>
                         </div>
                       )}
                       {rebootCounts[device.port] !== undefined && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>🔄</span>
-                          <span className="font-medium">Reboots:</span>
-                          <span className={isDarkMode ? 'text-orange-400' : 'text-orange-600'}>{rebootCounts[device.port]}</span>
+                          <span>Reboots:</span>
+                          <span className="pill pillWarning">{rebootCounts[device.port]}</span>
                         </div>
                       )}
                       {lastUpdate && (
-                        <div className="flex items-center gap-1">
+                        <div className="row">
                           <span>🕐</span>
-                          <span className="font-medium">Refreshed:</span>
-                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>{getTimeAgo(lastUpdate)}</span>
+                          <span>Refreshed:</span>
+                          <span className="mutedText smallText">{getTimeAgo(lastUpdate)}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
                 
-                <div className={`space-y-1.5 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <div className="stack">
                   {/* Audio Level Bar - Compact */}
                   {status.audio && Object.keys(status.audio).length > 0 && (minDb !== -80 || maxDb !== 0 || currentDb !== -80) && (
-                    <div className="mb-1.5">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-medium">🔊 Audio Level</span>
-                        <span className="text-xs">
-                          {typeof currentDb === 'number' ? currentDb.toFixed(1) : 'N/A'} dB <span className="text-gray-500">(min: {typeof minDb === 'number' ? minDb.toFixed(1) : 'N/A'}, max: {typeof maxDb === 'number' ? maxDb.toFixed(1) : 'N/A'})</span>
+                    <div >
+                      <div className="rowBetween">
+                        <span className="mutedText tinyText">🔊 Audio Level</span>
+                        <span className="mutedText tinyText">
+                          {typeof currentDb === 'number' ? currentDb.toFixed(1) : 'N/A'} dB <span className="mutedText smallText">(min: {typeof minDb === 'number' ? minDb.toFixed(1) : 'N/A'}, max: {typeof maxDb === 'number' ? maxDb.toFixed(1) : 'N/A'})</span>
                         </span>
                       </div>
-                      <div className="relative mb-1">
-                        <div className={`relative h-3 rounded-full overflow-hidden ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                        }`}>
+                      <div >
+                        <div >
                           {/* Bar below threshold (gray) */}
                           {thresholdPercent !== null && (
                             <div
-                              className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-300"
+                              
                               style={{ width: `${Math.min(thresholdPercent, currentPercent)}%` }}
                             />
                           )}
                           {/* Bar above threshold (orange) */}
                           {thresholdPercent !== null && currentPercent > thresholdPercent ? (
                             <div
-                              className="absolute top-0 h-full bg-orange-500 transition-all duration-300"
+                              
                               style={{ 
                                 left: `${thresholdPercent}%`,
                                 width: `${currentPercent - thresholdPercent}%`
@@ -1706,52 +1649,46 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                           ) : thresholdPercent === null ? (
                             // Fallback if no threshold: use old color logic
                             <div
-                              className={`absolute left-0 top-0 h-full transition-all duration-300 ${
-                                currentDb > -20 ? 'bg-red-500' : currentDb > -40 ? 'bg-orange-500' : 'bg-blue-500'
-                              }`}
+                              
                               style={{ width: `${currentPercent}%` }}
                             />
                           ) : (
                             // Current dB is below threshold, show gray
                             <div
-                              className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-300"
+                              
                               style={{ width: `${currentPercent}%` }}
                             />
                           )}
                           {/* Threshold marker */}
                           {thresholdPercent !== null && (
                             <div
-                              className={`absolute top-0 h-full w-0.5 ${
-                                isDarkMode ? 'bg-yellow-400' : 'bg-yellow-600'
-                              }`}
+                              
                               style={{ left: `${thresholdPercent}%` }}
                             />
                           )}
                           {/* Current audio level marker */}
                           <div
-                            className={`absolute top-0 h-full w-0.5 ${
-                              isDarkMode ? 'bg-white' : 'bg-gray-900'
-                            }`}
+                            
                             style={{ left: `${currentPercent}%` }}
                           />
                         </div>
                       </div>
                       {/* Threshold and Dynamic Range in one row */}
-                      <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="gridTwo">
                         {/* Threshold Setting */}
                         {threshold !== undefined && thresholdDb !== null && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-500">Threshold:</span>
-                            <span className={isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}>
+                          <div className="row">
+                            <span className="mutedText smallText">Threshold:</span>
+                            <span className="pill pillWarning">
                               {thresholdDb.toFixed(1)} dB ({threshold})
                             </span>
                           </div>
                         )}
                         {/* Dynamic Range Utilization */}
                         {(averageDynamicRange !== undefined && averageDynamicRange !== null) && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-500">Dynamic Range:</span>
-                            <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>
+                          <div className="row">
+                            <span className="mutedText smallText">Dynamic Range:</span>
+                            <span className="pill pillAccent">
                               {averageDynamicRange.toFixed(0)}%{dynamicRangeRating ? ` (${dynamicRangeRating})` : ''}
                             </span>
                           </div>
@@ -1762,63 +1699,47 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                   
                   {/* Device Status Info - Compact Grid */}
                   {(status.recorded !== undefined || status.uploaded !== undefined) && (
-                    <div className="mb-1.5">
-                      <div className={`grid grid-cols-2 gap-1 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} p-1.5 rounded-lg text-xs`}>
+                    <div >
+                      <div className="gridTwo">
                         {status.recorded !== undefined && (
-                          <div className="flex items-center gap-1">
+                          <div className="row">
                             <span>💾</span>
-                            <span className="font-medium">Recorded:</span>
-                            <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>{status.recorded}</span>
+                            <span>Recorded:</span>
+                            <span className="pill pillAccent">{status.recorded}</span>
                           </div>
                         )}
                         {status.uploaded !== undefined && (
-                          <div className="flex items-center gap-1">
+                          <div className="row">
                             <span>☁️</span>
-                            <span className="font-medium">Uploaded:</span>
-                            <span className={isDarkMode ? 'text-purple-400' : 'text-purple-600'}>{status.uploaded}</span>
+                            <span>Uploaded:</span>
+                            <span className="pill pillAccent">{status.uploaded}</span>
                           </div>
                         )}
                       </div>
                       
                       {/* Connectivity & Resources - Compact */}
-                      <div className="space-y-1">
+                      <div className="stack">
                         
                         {status.sdFree !== undefined && status.sdFree !== null && typeof status.sdFree === 'number' && (
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
-                            status.sdFree > 20 
-                              ? (isDarkMode ? 'bg-green-900/20 border border-green-700/30' : 'bg-green-50 border border-green-200')
-                              : (isDarkMode ? 'bg-red-900/20 border border-red-700/30' : 'bg-red-50 border border-red-200')
-                          }`}>
+                          <div className="row">
                             <span>💿</span>
-                            <span className="font-medium">SD Free:</span>
-                            <span className={
-                              status.sdFree > 20 
-                                ? (isDarkMode ? 'text-green-400' : 'text-green-600')
-                                : (isDarkMode ? 'text-red-400' : 'text-red-600')
-                            }>
+                            <span>SD Free:</span>
+                            <span className="pill pillSuccess">
                               {status.sdFree.toFixed(1)}%
                             </span>
                           </div>
                         )}
                         
                         {status.heap && status.heap.free !== undefined && status.heap.free !== null && status.heap.total !== undefined && status.heap.total !== null && typeof status.heap.free === 'number' && typeof status.heap.total === 'number' && status.heap.total > 0 && (
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
-                            isDarkMode ? 'bg-blue-900/20 border border-blue-700/30' : 'bg-blue-50 border border-blue-200'
-                          }`}>
+                          <div className="row">
                             <span>🧠</span>
-                            <span className="font-medium">Heap:</span>
-                            <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>
+                            <span>Heap:</span>
+                            <span className="pill pillAccent">
                               {(status.heap.free / 1024).toFixed(0)}KB / {(status.heap.total / 1024).toFixed(0)}KB
                             </span>
-                            <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-700/50 ml-1">
+                            <div className={cardStyles.card}>
                               <div 
-                                className={`h-full ${
-                                  (status.heap.free / status.heap.total) > 0.5 
-                                    ? 'bg-green-500' 
-                                    : (status.heap.free / status.heap.total) > 0.2 
-                                      ? 'bg-yellow-500' 
-                                      : 'bg-red-500'
-                                }`}
+                                
                                 style={{ width: `${(status.heap.free / status.heap.total) * 100}%` }}
                               />
                             </div>
@@ -1826,16 +1747,12 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         )}
                         
                         {status.recordings && (
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
-                            (status.recordings.error || 0) === 0
-                              ? (isDarkMode ? 'bg-green-900/20 border border-green-700/30' : 'bg-green-50 border border-green-200')
-                              : (isDarkMode ? 'bg-red-900/20 border border-red-700/30' : 'bg-red-50 border border-red-200')
-                          }`}>
+                          <div className="row">
                             <span>📼</span>
-                            <span className="font-medium">Recordings:</span>
-                            <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>{status.recordings.total}</span>
+                            <span>Recordings:</span>
+                            <span className="pill pillAccent">{status.recordings.total}</span>
                             {(status.recordings.error || 0) > 0 && (
-                              <span className={`ml-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                              <span className="pill pillDanger">
                                 ({status.recordings.error} errors ⚠️)
                               </span>
                             )}
@@ -1843,17 +1760,13 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         )}
                         
                         {status.api && (
-                          <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
-                            status.api.dead
-                              ? (isDarkMode ? 'bg-red-900/20 border border-red-700/30' : 'bg-red-50 border border-red-200')
-                              : (isDarkMode ? 'bg-green-900/20 border border-green-700/30' : 'bg-green-50 border border-green-200')
-                          }`}>
+                          <div className="row">
                             <span>{status.api.dead ? '💀' : '✅'}</span>
-                            <span className="font-medium">API:</span>
-                            <span className={status.api.dead ? (isDarkMode ? 'text-red-400' : 'text-red-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}>
+                            <span>API:</span>
+                            <span className="pill pillSuccess">
                               {status.api.dead ? 'Dead' : 'Alive'}
                             </span>
-                            <span className="text-gray-500 ml-1">
+                            <span className="mutedText smallText">
                               ({status.api.Events || 0} events, {status.api.Uploads || 0} uploads)
                             </span>
                           </div>
@@ -1863,7 +1776,7 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                   )}
                   
                   {/* Controls - Compact */}
-                  <div className="mt-1.5 pt-1.5 border-t border-gray-600/30 flex items-center justify-between">
+                  <div className="rowBetween">
                     <button
                       onClick={() => {
                         const isExpanding = !expandedDevices[device.port];
@@ -1878,73 +1791,63 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                           fetchSerialData(device.port);
                         }
                       }}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition ${
-                        isDarkMode
-                          ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                     >
-                      <Info className="w-3.5 h-3.5" />
+                      <Info className="iconSmall" />
                       More
                       {expandedDevices[device.port] ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
+                        <ChevronUp className="iconSmall" />
                       ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
+                        <ChevronDown className="iconSmall" />
                       )}
                     </button>
                     <button
                       onClick={() => setFlashModal({ open: true, port: device.port, firmwareId: '', flashing: false, error: null })}
                       disabled={disableActions || firmwares.length === 0}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition ${
-                        disableActions || firmwares.length === 0
-                          ? 'opacity-70 cursor-not-allowed'
-                          : isDarkMode
-                            ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                            : 'bg-purple-500 hover:bg-purple-600 text-white'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
-                      <Zap className="w-3.5 h-3.5" />
+                      <Zap className="iconSmall" />
                       {busyStatus === 'flash' ? 'Flashing…' : 'Flash Firmware'}
                     </button>
                   </div>
                   
                   {/* Expanded Details Section */}
                   {expandedDevices[device.port] && (
-                    <div className={`mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
-                      <div className={`p-3 rounded-lg text-xs ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                        <h4 className="font-semibold mb-3 text-sm">Device Details</h4>
+                    <div >
+                      <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                        <h4 className={cardStyles.title}>Device Details</h4>
                         
                         {/* Storage Information */}
                         {(status.storage || status.sd !== undefined || status.sdUsed !== undefined || status.sdTotal !== undefined) && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>💿</span> Storage
                             </h5>
-                            <div className="grid grid-cols-2 gap-2 ml-5">
+                            <div className="gridTwo">
                               {typeof status.storage === 'string' && status.storage && (
                                 <div>
-                                  <span className="text-gray-500">Type:</span>
-                                  <span className="ml-1">{status.storage}</span>
+                                  <span className="mutedText smallText">Type:</span>
+                                  <span>{status.storage}</span>
                                 </div>
                               )}
                               {status.sd !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">SD Available:</span>
-                                  <span className={`ml-1 ${status.sd ? 'text-green-500' : 'text-red-500'}`}>
+                                  <span className="mutedText smallText">SD Available:</span>
+                                  <span className="pill pillSuccess">
                                     {status.sd ? 'Yes' : 'No'}
                                   </span>
                                 </div>
                               )}
                               {status.sdTotal !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">SD Size:</span>
-                                  <span className="ml-1">{status.sdTotal}</span>
+                                  <span className="mutedText smallText">SD Size:</span>
+                                  <span>{status.sdTotal}</span>
                                 </div>
                               )}
                               {status.sdUsed !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">SD Used:</span>
-                                  <span className="ml-1">{status.sdUsed}</span>
+                                  <span className="mutedText smallText">SD Used:</span>
+                                  <span>{status.sdUsed}</span>
                                 </div>
                               )}
                             </div>
@@ -1953,45 +1856,45 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         
                         {/* Memory Information */}
                         {(status.heapTotal !== undefined || status.heapUsed !== undefined || status.heapMin !== undefined || status.heapBlock !== undefined || status.psramTotal !== undefined || status.psramUsed !== undefined) && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>🧠</span> Memory
                             </h5>
-                            <div className="grid grid-cols-2 gap-2 ml-5">
+                            <div className="gridTwo">
                               {status.heapTotal !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Heap Total:</span>
-                                  <span className="ml-1">{status.heapTotal}</span>
+                                  <span className="mutedText smallText">Heap Total:</span>
+                                  <span>{status.heapTotal}</span>
                                 </div>
                               )}
                               {status.heapUsed !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Heap Used:</span>
-                                  <span className="ml-1">{status.heapUsed}</span>
+                                  <span className="mutedText smallText">Heap Used:</span>
+                                  <span>{status.heapUsed}</span>
                                 </div>
                               )}
                               {status.heapMin !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Heap Min Free:</span>
-                                  <span className="ml-1">{status.heapMin}</span>
+                                  <span className="mutedText smallText">Heap Min Free:</span>
+                                  <span>{status.heapMin}</span>
                                 </div>
                               )}
                               {status.heapBlock !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Largest Heap Block:</span>
-                                  <span className="ml-1">{status.heapBlock}</span>
+                                  <span className="mutedText smallText">Largest Heap Block:</span>
+                                  <span>{status.heapBlock}</span>
                                 </div>
                               )}
                               {status.psramTotal !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">PSRAM Total:</span>
-                                  <span className="ml-1">{status.psramTotal}</span>
+                                  <span className="mutedText smallText">PSRAM Total:</span>
+                                  <span>{status.psramTotal}</span>
                                 </div>
                               )}
                               {status.psramUsed !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">PSRAM Used:</span>
-                                  <span className="ml-1">{status.psramUsed}</span>
+                                  <span className="mutedText smallText">PSRAM Used:</span>
+                                  <span>{status.psramUsed}</span>
                                 </div>
                               )}
                             </div>
@@ -2000,55 +1903,55 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         
                         {/* System Information */}
                         {(status.timeSet !== undefined || status.rtcEnabled !== undefined || status.currentTime || status.epochTime !== undefined || status.lastRecordingTime !== undefined || status.lastRecordingStart) && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>⏰</span> System
                             </h5>
-                            <div className="grid grid-cols-2 gap-2 ml-5">
+                            <div className="gridTwo">
                               {status.timeSet !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Time Set:</span>
-                                  <span className={`ml-1 ${status.timeSet ? 'text-green-500' : 'text-red-500'}`}>
+                                  <span className="mutedText smallText">Time Set:</span>
+                                  <span className="pill pillSuccess">
                                     {status.timeSet ? 'Yes' : 'No'}
                                   </span>
                                 </div>
                               )}
                               {status.rtcEnabled !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">RTC Enabled:</span>
-                                  <span className={`ml-1 ${status.rtcEnabled ? 'text-green-500' : 'text-red-500'}`}>
+                                  <span className="mutedText smallText">RTC Enabled:</span>
+                                  <span className="pill pillSuccess">
                                     {status.rtcEnabled ? 'Yes' : 'No'}
                                   </span>
                                 </div>
                               )}
                               {status.currentTime && (
                                 <div>
-                                  <span className="text-gray-500">Current Time:</span>
-                                  <span className="ml-1">{new Date(status.currentTime).toLocaleString()}</span>
+                                  <span className="mutedText smallText">Current Time:</span>
+                                  <span>{new Date(status.currentTime).toLocaleString()}</span>
                                 </div>
                               )}
                               {status.epochTime !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Epoch Time:</span>
-                                  <span className="ml-1">{status.epochTime}</span>
+                                  <span className="mutedText smallText">Epoch Time:</span>
+                                  <span>{status.epochTime}</span>
                                 </div>
                               )}
                               {status.lastRecordingTime !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Last Recording:</span>
-                                  <span className="ml-1">{status.lastRecordingTime}s ago</span>
+                                  <span className="mutedText smallText">Last Recording:</span>
+                                  <span>{status.lastRecordingTime}s ago</span>
                                 </div>
                               )}
                               {status.lastRecordingStart && (
                                 <div>
-                                  <span className="text-gray-500">Last Recording Start:</span>
-                                  <span className="ml-1">{new Date(status.lastRecordingStart).toLocaleString()}</span>
+                                  <span className="mutedText smallText">Last Recording Start:</span>
+                                  <span>{new Date(status.lastRecordingStart).toLocaleString()}</span>
                                 </div>
                               )}
                               {status.lastRecordingDuration !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Last Recording Duration:</span>
-                                  <span className="ml-1">{status.lastRecordingDuration}s</span>
+                                  <span className="mutedText smallText">Last Recording Duration:</span>
+                                  <span>{status.lastRecordingDuration}s</span>
                                 </div>
                               )}
                             </div>
@@ -2086,11 +1989,11 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                             Object.keys(mergedConfig).length > 0;
                           if (!hasConfig) return null;
                           return (
-                            <div className="mb-3">
-                              <h5 className="font-medium mb-2 flex items-center gap-1">
+                            <div >
+                              <h5 className={cardStyles.title}>
                                 <span>⚙️</span> Configuration Settings
                               </h5>
-                              <div className="space-y-3 ml-5">
+                              <div className="stack">
                                 {(wifiConfig ||
                                   ss ||
                                   ho ||
@@ -2105,9 +2008,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                   m.ip ||
                                   wifiConfig?.gw ||
                                   m.gw) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">📶 WiFi & Network</div>
-                                    <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                  <div className={cardStyles.card}>
+                                    <div >📶 WiFi & Network</div>
+                                    <div className="gridTwo">
                                       {ss && <div>SSID: {ss}</div>}
                                       {wifiConfig?.pw && <div>Password: {wifiConfig.pw === '***' ? '*** (hidden)' : 'Set'}</div>}
                                       {wifiConfig?.ct !== undefined && <div>Connect Timeout: {wifiConfig.ct} ms</div>}
@@ -2139,9 +2042,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                   m.ds !== undefined ||
                                   m.dsm !== undefined ||
                                   cg !== undefined) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">🔊 Audio / Recorder</div>
-                                    <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                  <div className={cardStyles.card}>
+                                    <div >🔊 Audio / Recorder</div>
+                                    <div className="gridTwo">
                                       {(audioConfig?.is ?? m.is) !== undefined && (
                                         <div>Sample Rate: {audioConfig?.is ?? m.is} Hz</div>
                                       )}
@@ -2171,9 +2074,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                   otherConfig?.scm !== undefined ||
                                   otherConfig?.scf !== undefined ||
                                   otherConfig?.scff !== undefined) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">💿 Storage & SD Card</div>
-                                    <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                  <div className={cardStyles.card}>
+                                    <div >💿 Storage & SD Card</div>
+                                    <div className="gridTwo">
                                       {usc !== undefined && <div>Use SD Card: {usc ? 'Yes' : 'No'}</div>}
                                       {rsc !== undefined && <div>Record to SD: {rsc ? 'Yes' : 'No'}</div>}
                                       {otherConfig?.scm !== undefined && (
@@ -2194,9 +2097,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                   oh !== undefined ||
                                   otherConfig?.tmh !== undefined ||
                                   otherConfig?.tmm !== undefined) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">⏰ RTC & Timezone</div>
-                                    <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                  <div className={cardStyles.card}>
+                                    <div >⏰ RTC & Timezone</div>
+                                    <div className="gridTwo">
                                       {rte !== undefined && <div>RTC Enabled: {rte ? 'Yes' : 'No'}</div>}
                                       {otherConfig?.rts !== undefined && (
                                         <div>RTC SDA Pin: {otherConfig.rts}</div>
@@ -2222,9 +2125,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 
                                 {/* System & Firmware */}
                                 {(otherConfig?.fw || mergedConfig.fw) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">🔧 System</div>
-                                    <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                  <div className={cardStyles.card}>
+                                    <div >🔧 System</div>
+                                    <div className="gridTwo">
                                       {(otherConfig?.fw || mergedConfig.fw) && <div>Firmware: {otherConfig?.fw || mergedConfig.fw}</div>}
                                     </div>
                                   </div>
@@ -2232,11 +2135,11 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 
                                 {/* Logging Settings */}
                                 {(otherConfig?.lsf !== undefined || otherConfig?.lse !== undefined || otherConfig?.lsw !== undefined || otherConfig?.lsi !== undefined || otherConfig?.lsd !== undefined || otherConfig?.lsev !== undefined || otherConfig?.lff !== undefined || otherConfig?.lfe !== undefined || otherConfig?.lfw !== undefined || otherConfig?.lfi !== undefined || otherConfig?.lfd !== undefined || otherConfig?.lfev !== undefined) && (
-                                  <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className="font-semibold mb-1">📝 Logging Settings</div>
-                                    <div className="space-y-1">
-                                      <div className="grid grid-cols-2 gap-1 text-gray-500">
-                                        <div className="font-medium text-xs mb-1">Serial Logging:</div>
+                                  <div className={cardStyles.card}>
+                                    <div >📝 Logging Settings</div>
+                                    <div className="stack">
+                                      <div className="gridTwo">
+                                        <div >Serial Logging:</div>
                                         <div></div>
                                         {otherConfig?.lsf !== undefined && <div>Fatal: {otherConfig.lsf ? 'On' : 'Off'}</div>}
                                         {otherConfig?.lse !== undefined && <div>Error: {otherConfig.lse ? 'On' : 'Off'}</div>}
@@ -2245,8 +2148,8 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                         {otherConfig?.lsd !== undefined && <div>Debug: {otherConfig.lsd ? 'On' : 'Off'}</div>}
                                         {otherConfig?.lsev !== undefined && <div>Event: {otherConfig.lsev ? 'On' : 'Off'}</div>}
                                       </div>
-                                      <div className="grid grid-cols-2 gap-1 text-gray-500 mt-2">
-                                        <div className="font-medium text-xs mb-1">File Logging:</div>
+                                      <div className="gridTwo">
+                                        <div >File Logging:</div>
                                         <div></div>
                                         {otherConfig?.lff !== undefined && <div>Fatal: {otherConfig.lff ? 'On' : 'Off'}</div>}
                                         {otherConfig?.lfe !== undefined && <div>Error: {otherConfig.lfe ? 'On' : 'Off'}</div>}
@@ -2267,12 +2170,12 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         {serialData[device.port]?.short?.data && (() => {
                           const shortData = serialData[device.port].short.data;
                           return (
-                            <div className="mb-3">
-                              <h5 className="font-medium mb-2 flex items-center gap-1">
+                            <div >
+                              <h5 className={cardStyles.title}>
                                 <span>📡</span> Short Status (Latest)
                               </h5>
-                              <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                <div className="grid grid-cols-2 gap-1 text-gray-500">
+                              <div className={cardStyles.card}>
+                                <div className="gridTwo">
                                   {shortData.tm && <div>Timestamp: {shortData.tm}</div>}
                                   {shortData.mc && <div>MAC: {shortData.mc}</div>}
                                   {shortData.si && <div>Session ID: {shortData.si}</div>}
@@ -2291,39 +2194,39 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         
                         {/* Audio Details */}
                         {status.audio && Object.keys(status.audio).length > 0 && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>🔊</span> Audio Details
                             </h5>
-                            <div className="grid grid-cols-2 gap-2 ml-5">
+                            <div className="gridTwo">
                               {status.audio.currentDb !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Current dB:</span>
-                                  <span className="ml-1">{status.audio.currentDb.toFixed(2)} dB</span>
+                                  <span className="mutedText smallText">Current dB:</span>
+                                  <span>{status.audio.currentDb.toFixed(2)} dB</span>
                                 </div>
                               )}
                               {status.audio.minDb !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Min dB:</span>
-                                  <span className="ml-1">{status.audio.minDb.toFixed(2)} dB</span>
+                                  <span className="mutedText smallText">Min dB:</span>
+                                  <span>{status.audio.minDb.toFixed(2)} dB</span>
                                 </div>
                               )}
                               {status.audio.maxDb !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Max dB:</span>
-                                  <span className="ml-1">{status.audio.maxDb.toFixed(2)} dB</span>
+                                  <span className="mutedText smallText">Max dB:</span>
+                                  <span>{status.audio.maxDb.toFixed(2)} dB</span>
                                 </div>
                               )}
                               {status.audio.avgDb !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Avg dB:</span>
-                                  <span className="ml-1">{status.audio.avgDb.toFixed(2)} dB</span>
+                                  <span className="mutedText smallText">Avg dB:</span>
+                                  <span>{status.audio.avgDb.toFixed(2)} dB</span>
                                 </div>
                               )}
                               {status.audio.currentDynamic !== undefined && (
                                 <div>
-                                  <span className="text-gray-500">Dynamic Range:</span>
-                                  <span className="ml-1">{status.audio.currentDynamic.toFixed(2)}%</span>
+                                  <span className="mutedText smallText">Dynamic Range:</span>
+                                  <span>{status.audio.currentDynamic.toFixed(2)}%</span>
                                 </div>
                               )}
                             </div>
@@ -2343,15 +2246,15 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                               ? null
                               : `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m ${sec % 60}s`;
                           return (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>📊</span> Health Metrics
                             </h5>
-                            <div className="ml-5 space-y-2">
+                            <div className="stack">
                               {sys && (
-                                <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="font-semibold mb-1">System health</div>
-                                  <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                <div className={cardStyles.card}>
+                                  <div >System health</div>
+                                  <div className="gridTwo">
                                     {typeof sys.st === 'string' && <div>Storage: {sys.st}</div>}
                                     {sys.sd !== undefined && <div>SD in use: {sys.sd ? 'Yes' : 'No'}</div>}
                                     {sys.ht && <div>Heap total: {sys.ht}</div>}
@@ -2370,9 +2273,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 r.td != null ||
                                 r.tr != null ||
                                 r.tu != null) && (
-                                <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="font-semibold mb-1">Recording session</div>
-                                  <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                <div className={cardStyles.card}>
+                                  <div >Recording session</div>
+                                  <div className="gridTwo">
                                     {r.rc != null && <div>Recording count: {r.rc}</div>}
                                     {r.uc != null && <div>Uploaded: {r.uc}</div>}
                                     {r.pq != null && <div>Pending queue: {r.pq}</div>}
@@ -2387,9 +2290,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 </div>
                               )}
                               {(r.am != null || r.ax != null || r.aa != null) && (
-                                <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="font-semibold mb-1">API response (ms)</div>
-                                  <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                <div className={cardStyles.card}>
+                                  <div >API response (ms)</div>
+                                  <div className="gridTwo">
                                     {r.am != null && <div>Min: {r.am}</div>}
                                     {r.ax != null && <div>Max: {r.ax}</div>}
                                     {r.aa != null && <div>Avg: {typeof r.aa === 'number' ? r.aa.toFixed(1) : r.aa}</div>}
@@ -2397,9 +2300,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 </div>
                               )}
                               {Array.isArray(r.st) && r.st.length > 0 && (
-                                <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="font-semibold mb-1">Task stacks</div>
-                                  <div className="space-y-1 text-gray-500">
+                                <div className={cardStyles.card}>
+                                  <div >Task stacks</div>
+                                  <div className="stack">
                                     {r.st.map((t, idx) => {
                                       const name = typeof t.n === 'object' ? JSON.stringify(t.n) : (t.n ?? '');
                                       const alloc = typeof t.a === 'object' ? JSON.stringify(t.a) : (t.a ?? '');
@@ -2415,18 +2318,18 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                 </div>
                               )}
                               {!sys && (health.ht || health.hf) && (
-                                <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="font-semibold mb-1">Memory</div>
-                                  <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                <div className={cardStyles.card}>
+                                  <div >Memory</div>
+                                  <div className="gridTwo">
                                     {health.ht && <div>Heap Total: {health.ht}</div>}
                                     {health.hf && <div>Heap Free: {health.hf}</div>}
                                   </div>
                                 </div>
                               )}
                               {(health.tv !== undefined || health.rt || (health.ut && !sys) || health.rs !== undefined || health.rd !== undefined) && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">System Time & Recent Activity</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >System Time & Recent Activity</div>
+                                        <div className="gridTwo">
                                           {health.tv !== undefined && <div>Time Valid: {health.tv ? 'Yes' : 'No'}</div>}
                                           {health.rt && <div>Recent Recording: {health.rt}</div>}
                                           {health.ut && !sys && typeof health.ut === 'string' && <div>Recent Upload: {health.ut}</div>}
@@ -2438,9 +2341,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     
                                     {/* Queue Metrics */}
                                     {health.qm && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Queue</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Queue</div>
+                                        <div className="gridTwo">
                                           {health.qm.mx !== undefined && <div>Max: {health.qm.mx}</div>}
                                           {health.qm.av !== undefined && <div>Avg: {health.qm.av.toFixed(2)}</div>}
                                           {health.qm.fl !== undefined && <div>Full: {health.qm.fl}</div>}
@@ -2450,9 +2353,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Network Quality */}
                                     {health.nq && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Network Quality</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Network Quality</div>
+                                        <div className="gridTwo">
                                           {health.nq.ar !== undefined && <div>Avg RSSI: {health.nq.ar.toFixed(1)} dBm</div>}
                                           {health.nq.mr !== undefined && <div>Min RSSI: {health.nq.mr} dBm</div>}
                                           {health.nq.xr !== undefined && <div>Max RSSI: {health.nq.xr} dBm</div>}
@@ -2462,9 +2365,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Storage Health */}
                                     {health.sh && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Storage Health</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Storage Health</div>
+                                        <div className="gridTwo">
                                           {health.sh.ut !== undefined && <div>Utilization: {health.sh.ut.toFixed(2)}%</div>}
                                           {health.sh.we !== undefined && <div>Write Errors: {health.sh.we}</div>}
                                           {health.sh.re !== undefined && <div>Read Errors: {health.sh.re}</div>}
@@ -2474,9 +2377,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Mutex Metrics */}
                                     {health.mm && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Mutex Metrics</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Mutex Metrics</div>
+                                        <div className="gridTwo">
                                           {health.mm.at !== undefined && <div>Attempts: {health.mm.at}</div>}
                                           {health.mm.to !== undefined && <div>Timeouts: {health.mm.to}</div>}
                                           {health.mm.rt !== undefined && <div>Timeout Rate: {health.mm.rt.toFixed(2)}%</div>}
@@ -2486,9 +2389,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* NVS Health */}
                                     {health.nv && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">NVS Health</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >NVS Health</div>
+                                        <div className="gridTwo">
                                           {health.nv.rd !== undefined && <div>Reads: {health.nv.rd}</div>}
                                           {health.nv.wr !== undefined && <div>Writes: {health.nv.wr}</div>}
                                           {health.nv.re !== undefined && <div>Read Errors: {health.nv.re}</div>}
@@ -2499,9 +2402,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Upload Queue Health */}
                                     {health.uq && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Upload Queue Health</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Upload Queue Health</div>
+                                        <div className="gridTwo">
                                           {health.uq.ad !== undefined && <div>Adds: {health.uq.ad}</div>}
                                           {health.uq.rm !== undefined && <div>Removes: {health.uq.rm}</div>}
                                           {health.uq.fa !== undefined && <div>Failed Adds: {health.uq.fa}</div>}
@@ -2513,9 +2416,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Upload Rate */}
                                     {health.ur && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Upload Rate</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >Upload Rate</div>
+                                        <div className="gridTwo">
                                           {health.ur.ov !== undefined && health.ur.ov >= 0 && <div>Success Rate: {health.ur.ov.toFixed(1)}%</div>}
                                           {health.ur.at !== undefined && <div>Attempts: {health.ur.at}</div>}
                                           {health.ur.sc !== undefined && <div>Success: {health.ur.sc}</div>}
@@ -2524,13 +2427,13 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Endpoint Health */}
                                     {health.endpoints && Array.isArray(health.endpoints) && health.endpoints.length > 0 && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Endpoint Health</div>
-                                        <div className="space-y-1">
+                                      <div className={cardStyles.card}>
+                                        <div >Endpoint Health</div>
+                                        <div className="stack">
                                           {health.endpoints.map((endpoint, idx) => (
-                                            <div key={idx} className="text-gray-500">
-                                              <div className="font-medium">{endpoint.ho || 'Unknown'}</div>
-                                              <div className="grid grid-cols-2 gap-1 text-xs mt-1">
+                                            <div key={idx} >
+                                              <div >{endpoint.ho || 'Unknown'}</div>
+                                              <div className="gridTwo">
                                                 {endpoint.sr !== undefined && endpoint.sr >= 0 && (
                                                   <div>Success Rate: {endpoint.sr.toFixed(1)}%</div>
                                                 )}
@@ -2545,12 +2448,12 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Task Health */}
                                     {health.th && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Task Health</div>
-                                        <div className="space-y-1">
+                                      <div className={cardStyles.card}>
+                                        <div >Task Health</div>
+                                        <div className="stack">
                                           {Object.entries(health.th).map(([taskName, taskData]) => (
-                                            <div key={taskName} className="text-gray-500">
-                                              <span className="font-medium capitalize">{taskName}:</span>
+                                            <div key={taskName} >
+                                              <span>{taskName}:</span>
                                               {' '}
                                               {taskData.rn ? 'Running' : 'Stopped'}
                                               {taskData.ut !== undefined && ` (${taskData.ut.toFixed(1)}% stack)`}
@@ -2562,13 +2465,13 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Upload Pending Metrics */}
                                     {health.up && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">Upload Pending</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
-                                          {health.up.tp !== undefined && <div>Total Pending: <span className={health.up.tp > 0 ? 'text-orange-500 font-semibold' : ''}>{health.up.tp}</span></div>}
+                                      <div className={cardStyles.card}>
+                                        <div >Upload Pending</div>
+                                        <div className="gridTwo">
+                                          {health.up.tp !== undefined && <div>Total Pending: <span className={health.up.tp > 0 ? 'pill pillWarning' : ''}>{health.up.tp}</span></div>}
                                           {health.up.fq !== undefined && <div>FreeRTOS Queue: {health.up.fq}</div>}
                                           {health.up.nq !== undefined && <div>NVS Queue: {health.up.nq}</div>}
-                                          {health.up.mf !== undefined && <div>Missed Files: <span className={health.up.mf > 0 ? 'text-red-500 font-semibold' : ''}>{health.up.mf}</span></div>}
+                                          {health.up.mf !== undefined && <div>Missed Files: <span className="pill pillDanger">{health.up.mf}</span></div>}
                                           {health.up.fs !== undefined && <div>Folder Scan: {health.up.fs ? '✓' : '⏳'}</div>}
                                           {health.up.os !== undefined && <div>Overnight Scan: {health.up.os ? '✓' : '⏳'}</div>}
                                           {health.up.nr !== undefined && <div>NVS Restore: {health.up.nr ? '✓' : '⏳'}</div>}
@@ -2580,9 +2483,9 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                                     )}
                                     {/* Yearly Summary - SD Card Recording Statistics */}
                                     {health.yr !== undefined && (
-                                      <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                        <div className="font-semibold mb-1">📅 {health.yr} Recording Summary</div>
-                                        <div className="grid grid-cols-2 gap-1 text-gray-500">
+                                      <div className={cardStyles.card}>
+                                        <div >📅 {health.yr} Recording Summary</div>
+                                        <div className="gridTwo">
                                           {health.yf !== undefined && <div>Total Files: {health.yf.toLocaleString()}</div>}
                                           {health.ys && <div>Total Size: {health.ys}</div>}
                                           {health.yh !== undefined && <div>Total Hours: {health.yh.toLocaleString()}</div>}
@@ -2598,37 +2501,25 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         
                         {/* Error/Warning/Fatal Logs */}
                         {serialData[device.port]?.errorLogs && serialData[device.port].errorLogs.length > 0 && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>⚠️</span> Last {serialData[device.port].errorLogs.length} Errors/Warnings
                             </h5>
-                            <div className="ml-5 space-y-1">
+                            <div className="stack">
                               {serialData[device.port].errorLogs.map((log, index) => (
                                 <div 
                                   key={index} 
-                                  className={`text-xs p-2 rounded ${
-                                    log.type === 'fatal' 
-                                      ? (isDarkMode ? 'bg-red-900/30 border border-red-700/50' : 'bg-red-50 border border-red-200')
-                                      : log.type === 'error'
-                                      ? (isDarkMode ? 'bg-orange-900/20 border border-orange-700/30' : 'bg-orange-50 border border-orange-200')
-                                      : (isDarkMode ? 'bg-yellow-900/20 border border-yellow-700/30' : 'bg-yellow-50 border border-yellow-200')
-                                  }`}
+                                  
                                 >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className={`font-semibold uppercase ${
-                                      log.type === 'fatal' 
-                                        ? (isDarkMode ? 'text-red-400' : 'text-red-600')
-                                        : log.type === 'error'
-                                        ? (isDarkMode ? 'text-orange-400' : 'text-orange-600')
-                                        : (isDarkMode ? 'text-yellow-400' : 'text-yellow-600')
-                                    }`}>
+                                  <div className="rowBetween">
+                                    <span className="pill pillDanger">
                                       {log.type}
                                     </span>
-                                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                                    <span className="mutedText smallText">
                                       {new Date(log.timestamp).toLocaleString()}
                                     </span>
                                   </div>
-                                  <div className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                  <div >
                                     {log.message}
                                   </div>
                                 </div>
@@ -2639,21 +2530,21 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                         
                         {/* Reboot History */}
                         {rebootHistory[device.port] && rebootHistory[device.port].length > 0 && (
-                          <div className="mb-3">
-                            <h5 className="font-medium mb-2 flex items-center gap-1">
+                          <div >
+                            <h5 className={cardStyles.title}>
                               <span>🔄</span> Last 5 Reboots
                             </h5>
-                            <div className="ml-5 space-y-1">
+                            <div className="stack">
                               {rebootHistory[device.port].map((reboot, index) => (
-                                <div key={index} className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-500">Reboot #{rebootHistory[device.port].length - index}:</span>
-                                    <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                <div key={index} className={cardStyles.card}>
+                                  <div className="rowBetween">
+                                    <span className="mutedText smallText">Reboot #{rebootHistory[device.port].length - index}:</span>
+                                    <span className="mutedText smallText">
                                       {new Date(reboot.timestamp).toLocaleString()}
                                     </span>
                                   </div>
                                   {reboot.mac_address && (
-                                    <div className="text-xs mt-1 text-gray-400">
+                                    <div >
                                       MAC: {reboot.mac_address}
                                     </div>
                                   )}
@@ -2673,131 +2564,96 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
         </div>
       )}
 
-
-
-
       {/* Firmware Management Section - At the bottom */}
-      <div className="mt-12">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-2xl shadow-md ${isDarkMode ? 'bg-purple-600' : 'bg-purple-500'}`}>
-              <Package size={24} className="text-white" />
+      <div >
+        <div className="rowBetween">
+          <div className="row">
+            <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+              <Package size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Firmware Management</h2>
-              <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <h2 className="pageTitle">Firmware Management</h2>
+              <p className="mutedText smallText">
                 Upload and manage ESP32 firmware files.
               </p>
             </div>
           </div>
           <button
             onClick={() => setFirmwareUploadModal({ open: true, name: '', files: {}, uploading: false, error: null })}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-              isDarkMode
-                ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                : 'bg-purple-500 hover:bg-purple-600 text-white'
-            }`}
+            className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="iconSmall" />
             Upload Firmware
           </button>
         </div>
 
         {firmwares.length === 0 ? (
-          <div className={`rounded-xl border-dashed border-2 p-10 text-center ${
-            isDarkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-600'
-          }`}>
+          <div className={cardStyles.card}>
             No firmware uploaded yet. Click "Upload Firmware" to add a firmware group.
           </div>
         ) : (
-          <div className={`rounded-2xl border overflow-hidden ${cardClasses}`}>
-            <table className="w-full">
-              <thead className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+          <div className={cardStyles.card}>
+            <table className={tableStyles.table}>
+              <thead >
                 <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <th className={tableStyles.header}>
                     Name
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <th className={tableStyles.header}>
                     Description
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <th className={tableStyles.header}>
                     Files
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <th className={tableStyles.header}>
                     Created
                   </th>
-                  <th className={`px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <th className={tableStyles.header}>
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+              <tbody >
                 {firmwares.map((firmware) => (
-                  <tr key={firmware.id} className={`${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'}`}>
-                    <td className={`px-6 py-4 whitespace-nowrap ${
-                      isDarkMode ? 'text-gray-200' : 'text-gray-900'
-                    }`}>
-                      <div className="font-medium">{firmware.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{firmware.id}</div>
+                  <tr key={firmware.id} className={tableStyles.rowInteractive}>
+                    <td className={tableStyles.cellMuted}>
+                      <div >{firmware.name}</div>
+                      <div >{firmware.id}</div>
                     </td>
-                    <td className={`px-6 py-4 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="text-sm max-w-md">
-                        {firmware.description || <span className="text-gray-500 italic">No description</span>}
+                    <td className={tableStyles.cellMuted}>
+                      <div >
+                        {firmware.description || <span className="mutedText smallText">No description</span>}
                       </div>
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="flex flex-col gap-1 text-sm">
+                    <td className={tableStyles.cellMuted}>
+                      <div className="rowWrap">
                         {Object.entries(firmware.files).map(([file, exists]) => (
-                          <div key={file} className="flex items-center gap-2">
-                            <span className={exists ? 'text-emerald-500' : 'text-red-500'}>
+                          <div key={file} className="row">
+                            <span className="pill pillDanger">
                               {exists ? '✓' : '✗'}
                             </span>
-                            <span className={exists ? '' : 'text-gray-500'}>{file}</span>
+                            <span className="mutedText smallText">{file}</span>
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
+                    <td className={tableStyles.cellMuted}>
                       {firmware.created_at ? new Date(firmware.created_at).toLocaleDateString() : 'Unknown'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className={tableStyles.cellMuted}>
+                      <div className="row">
                         <button
                           onClick={() => handleEditFirmware(firmware)}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-                            isDarkMode
-                              ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                              : 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                          }`}
+                          className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Edit3 className="iconSmall" />
                           Modify
                         </button>
                         <button
                           onClick={() => handleDeleteFirmware(firmware.id)}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-                            isDarkMode
-                              ? 'bg-red-600 hover:bg-red-500 text-white'
-                              : 'bg-red-500 hover:bg-red-600 text-white'
-                          }`}
+                          className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="iconSmall" />
                           Delete
                         </button>
                       </div>
@@ -2812,132 +2668,104 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
 
       {/* Firmware Upload Modal */}
       {firmwareUploadModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl border ${
-            isDarkMode ? 'border-gray-700 bg-gray-900 text-gray-100' : 'border-gray-200 bg-white text-gray-900'
-          }`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/60">
-              <h3 className="text-xl font-semibold">Upload Firmware</h3>
+        <dialog
+          ref={firmwareUploadDialogRef}
+          className={modalStyles.dialog}
+          onCancel={(event) => { event.preventDefault(); if (!firmwareUploadModal.uploading) setFirmwareUploadModal({ open: false, name: '', files: {}, uploading: false, error: null }); }}
+        >
+          <div className={modalStyles.body}>
+            <div className="rowBetween">
+              <h3 className={cardStyles.title}>Upload Firmware</h3>
               <button
                 onClick={() => setFirmwareUploadModal({ open: false, name: '', files: {}, uploading: false, error: null })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                  isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Close
               </button>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="stack">
               <div>
-                <label className="block text-sm font-medium mb-2">Firmware Name</label>
+                <label className={formStyles.label}>Firmware Name</label>
                 <input
                   type="text"
                   value={firmwareUploadModal.name}
                   onChange={(e) => setFirmwareUploadModal((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g., Production v1.0"
-                  className={`w-full rounded-lg border px-3 py-2 ${
-                    isDarkMode
-                      ? 'bg-gray-950 text-gray-100 border-gray-700'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
+                  className={formStyles.input}
                 />
               </div>
               {['bootloader.bin', 'partitions.bin', 'firmware.bin'].map((fileType) => (
                 <div key={fileType}>
-                  <label className="block text-sm font-medium mb-2">{fileType}</label>
+                  <label className={formStyles.label}>{fileType}</label>
                   <input
                     type="file"
                     accept=".bin"
                     onChange={(e) => handleFirmwareFileChange(fileType, e.target.files[0])}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                      isDarkMode
-                        ? 'bg-gray-950 text-gray-100 border-gray-700'
-                        : 'bg-gray-50 text-gray-900 border-gray-300'
-                    }`}
+                    className={formStyles.file}
                   />
                 </div>
               ))}
               {firmwareUploadModal.error && (
-                <div className={`rounded-lg border px-3 py-2 text-sm ${
-                  isDarkMode
-                    ? 'border-red-600/60 bg-red-900/40 text-red-200'
-                    : 'border-red-200 bg-red-50 text-red-700'
-                }`}>
+                <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
                   {firmwareUploadModal.error}
                 </div>
               )}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="rowWrap">
                 <button
                   onClick={() => setFirmwareUploadModal({ open: false, name: '', files: {}, uploading: false, error: null })}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleUploadFirmware}
                   disabled={firmwareUploadModal.uploading}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                    firmwareUploadModal.uploading
-                      ? 'bg-purple-700/70 text-white cursor-not-allowed'
-                      : isDarkMode
-                        ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                        : 'bg-purple-500 hover:bg-purple-600 text-white'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload className="iconSmall" />
                   {firmwareUploadModal.uploading ? 'Uploading…' : 'Upload'}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
 
       {/* Flash Firmware Modal */}
       {flashModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl border ${
-            isDarkMode ? 'border-gray-700 bg-gray-900 text-gray-100' : 'border-gray-200 bg-white text-gray-900'
-          }`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/60">
-              <h3 className="text-xl font-semibold">Flash Firmware</h3>
+        <dialog
+          ref={flashDialogRef}
+          className={modalStyles.dialog}
+          onCancel={(event) => { event.preventDefault(); if (!(flashModal.flashing && flashProgress.status === 'running')) handleCloseFlashModal(); }}
+        >
+          <div className={modalStyles.body}>
+            <div className="rowBetween">
+              <h3 className={cardStyles.title}>Flash Firmware</h3>
               <button
                 onClick={handleCloseFlashModal}
                 disabled={flashModal.flashing && flashProgress.status === 'running'}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                  isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                } ${flashModal.flashing && flashProgress.status === 'running' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 {flashModal.flashing && flashProgress.status === 'running' ? 'Flashing...' : 'Close'}
               </button>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="stack">
               <div>
-                <label className="block text-sm font-medium mb-2">Port</label>
+                <label className={formStyles.label}>Port</label>
                 <input
                   type="text"
                   value={flashModal.port || ''}
                   disabled
-                  className={`w-full rounded-lg border px-3 py-2 ${
-                    isDarkMode
-                      ? 'bg-gray-950 text-gray-400 border-gray-700'
-                      : 'bg-gray-50 text-gray-500 border-gray-300'
-                  }`}
+                  className={formStyles.input}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Firmware</label>
+                <label className={formStyles.label}>Firmware</label>
                 <select
                   value={flashModal.firmwareId}
                   onChange={(e) => setFlashModal((prev) => ({ ...prev, firmwareId: e.target.value }))}
                   disabled={flashModal.flashing}
-                  className={`w-full rounded-lg border px-3 py-2 ${
-                    isDarkMode
-                      ? 'bg-gray-950 text-gray-100 border-gray-700'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  } ${flashModal.flashing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={formStyles.select}
                 >
                   <option value="">Select firmware...</option>
                   {firmwares.map((fw) => (
@@ -2950,72 +2778,39 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
 
               {/* Progress Section */}
               {flashModal.flashing && (
-                <div className="space-y-3">
+                <div className="stack">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Progress</span>
-                      <span className="text-sm text-gray-500">{flashProgress.progress}%</span>
+                    <div className="rowBetween">
+                      <span className="mutedText smallText">Progress</span>
+                      <span className="mutedText smallText">{flashProgress.progress}%</span>
                     </div>
-                    <div className={`w-full h-3 rounded-full overflow-hidden ${
-                      isDarkMode ? 'bg-gray-800' : 'bg-gray-200'
-                    }`}>
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          flashProgress.status === 'completed'
-                            ? 'bg-emerald-500'
-                            : flashProgress.status === 'failed'
-                            ? 'bg-red-500'
-                            : 'bg-purple-500'
-                        }`}
-                        style={{ width: `${flashProgress.progress}%` }}
-                      />
-                    </div>
+                    <progress className="fullWidth" max="100" value={flashProgress.progress}>
+                      {flashProgress.progress}%
+                    </progress>
                   </div>
                   {flashProgress.message && (
-                    <div className={`rounded-lg border px-3 py-2 text-sm ${
-                      flashProgress.status === 'completed'
-                        ? isDarkMode
-                          ? 'border-emerald-600/60 bg-emerald-900/40 text-emerald-200'
-                          : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : flashProgress.status === 'failed'
-                        ? isDarkMode
-                          ? 'border-red-600/60 bg-red-900/40 text-red-200'
-                          : 'border-red-200 bg-red-50 text-red-700'
-                        : isDarkMode
-                        ? 'border-blue-600/60 bg-blue-900/40 text-blue-200'
-                        : 'border-blue-200 bg-blue-50 text-blue-700'
-                    }`}>
+                    <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
                       {flashProgress.message}
                     </div>
                   )}
                   {flashProgress.output && (
-                    <div className={`rounded-lg border p-3 text-xs font-mono max-h-40 overflow-y-auto ${
-                      isDarkMode
-                        ? 'bg-gray-950 text-gray-300 border-gray-700'
-                        : 'bg-gray-50 text-gray-800 border-gray-300'
-                    }`}>
-                      <pre className="whitespace-pre-wrap">{flashProgress.output}</pre>
+                    <div className="scrollPanel">
+                      <pre className="codeBlock">{flashProgress.output}</pre>
                     </div>
                   )}
                 </div>
               )}
 
               {flashModal.error && (
-                <div className={`rounded-lg border px-3 py-2 text-sm ${
-                  isDarkMode
-                    ? 'border-red-600/60 bg-red-900/40 text-red-200'
-                    : 'border-red-200 bg-red-50 text-red-700'
-                }`}>
+                <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
                   {flashModal.error}
                 </div>
               )}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="rowWrap">
                 <button
                   onClick={handleCloseFlashModal}
                   disabled={flashModal.flashing && flashProgress.status === 'running'}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  } ${flashModal.flashing && flashProgress.status === 'running' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   {flashProgress.status === 'completed' || flashProgress.status === 'failed' ? 'Close' : 'Cancel'}
                 </button>
@@ -3023,106 +2818,80 @@ const RecorderDevices = ({ isDarkMode, enabled }) => {
                   <button
                     onClick={handleFlashFirmware}
                     disabled={flashModal.flashing || !flashModal.firmwareId}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                      flashModal.flashing || !flashModal.firmwareId
-                        ? 'bg-purple-700/70 text-white cursor-not-allowed'
-                        : isDarkMode
-                          ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                          : 'bg-purple-500 hover:bg-purple-600 text-white'
-                    }`}
+                    className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                   >
-                    <Zap className="w-4 h-4" />
+                    <Zap className="iconSmall" />
                     {flashProgress.status === 'completed' ? 'Flash Again' : 'Flash'}
                   </button>
                 )}
               </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
 
       {/* Firmware Edit Modal */}
       {firmwareEditModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl border ${
-            isDarkMode ? 'border-gray-700 bg-gray-900 text-gray-100' : 'border-gray-200 bg-white text-gray-900'
-          }`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/60">
-              <h3 className="text-xl font-semibold">Edit Firmware</h3>
+        <dialog
+          ref={firmwareEditDialogRef}
+          className={modalStyles.dialog}
+          onCancel={(event) => { event.preventDefault(); if (!firmwareEditModal.saving) setFirmwareEditModal({ open: false, firmware: null, name: '', description: '', saving: false, error: null }); }}
+        >
+          <div className={modalStyles.body}>
+            <div className="rowBetween">
+              <h3 className={cardStyles.title}>Edit Firmware</h3>
               <button
                 onClick={() => setFirmwareEditModal({ open: false, firmware: null, name: '', description: '', saving: false, error: null })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                  isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Close
               </button>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="stack">
               <div>
-                <label className="block text-sm font-medium mb-2">Firmware Name</label>
+                <label className={formStyles.label}>Firmware Name</label>
                 <input
                   type="text"
                   value={firmwareEditModal.name}
                   onChange={(e) => setFirmwareEditModal((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g., Production v1.0"
-                  className={`w-full rounded-lg border px-3 py-2 ${
-                    isDarkMode
-                      ? 'bg-gray-950 text-gray-100 border-gray-700'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
+                  className={formStyles.input}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
+                <label className={formStyles.label}>Description</label>
                 <textarea
                   value={firmwareEditModal.description}
                   onChange={(e) => setFirmwareEditModal((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter firmware description..."
                   rows={4}
-                  className={`w-full rounded-lg border px-3 py-2 ${
-                    isDarkMode
-                      ? 'bg-gray-950 text-gray-100 border-gray-700'
-                      : 'bg-gray-50 text-gray-900 border-gray-300'
-                  }`}
+                  className={formStyles.textarea}
                 />
               </div>
               {firmwareEditModal.error && (
-                <div className={`rounded-lg border px-3 py-2 text-sm ${
-                  isDarkMode
-                    ? 'border-red-600/60 bg-red-900/40 text-red-200'
-                    : 'border-red-200 bg-red-50 text-red-700'
-                }`}>
+                <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
                   {firmwareEditModal.error}
                 </div>
               )}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="rowWrap">
                 <button
                   onClick={() => setFirmwareEditModal({ open: false, firmware: null, name: '', description: '', saving: false, error: null })}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveFirmwareEdit}
                   disabled={firmwareEditModal.saving}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                    firmwareEditModal.saving
-                      ? 'bg-purple-700/70 text-white cursor-not-allowed'
-                      : isDarkMode
-                        ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                        : 'bg-purple-500 hover:bg-purple-600 text-white'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                 >
-                  <SaveIcon className="w-4 h-4" />
+                  <SaveIcon className="iconSmall" />
                   {firmwareEditModal.saving ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );

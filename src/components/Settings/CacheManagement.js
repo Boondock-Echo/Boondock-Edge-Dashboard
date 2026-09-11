@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import listStyles from '../ui/List.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
 const CACHE_KEYS = {
   CHANNELS: 'cached_channels',
@@ -9,7 +13,7 @@ const CACHE_KEYS = {
   LAST_FETCH: 'last_fetch_time'
 };
 
-const CacheManagement = ({ isDarkMode }) => {
+const CacheManagement = () => {
   const [cacheStats, setCacheStats] = useState({});
   const [isClearing, setIsClearing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
@@ -128,89 +132,80 @@ const CacheManagement = ({ isDarkMode }) => {
   const isHighUsage = usagePercentage > 80;
 
   return (
-    <div className={`p-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">Cache Management</h2>
-        <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+    <div className="stackLarge">
+      <div>
+        <h2>Cache Management</h2>
+        <p className={cardStyles.description}>
           Manage local storage cache to optimize performance and prevent storage issues.
         </p>
       </div>
 
       {/* Storage Usage Overview */}
-      <div className={`mb-6 p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Storage Usage</h3>
-          <button
-            onClick={refreshStats}
-            className={`p-2 rounded-md ${isDarkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
-            title="Refresh stats"
-          >
+      <div className={cardStyles.card}>
+        <div className={cardStyles.header}>
+          <h3 className={cardStyles.title}>Storage Usage</h3>
+          <Button onClick={refreshStats} size="icon" title="Refresh stats" aria-label="Refresh cache stats">
             <RefreshCw size={16} />
-          </button>
+          </Button>
         </div>
         
-        <div className="mb-4">
-          <div className="flex justify-between text-sm mb-2">
+        <div className="stackCompact">
+          <div className="rowBetween">
             <span>Used: {formatBytes(totalSize)}</span>
             <span>Available: ~{formatBytes(availableStorage)}</span>
           </div>
-          <div className={`w-full bg-gray-200 rounded-full h-2 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-200'}`}>
-            <div 
-              className={`h-2 rounded-full transition-all duration-300 ${
-                isHighUsage ? 'bg-red-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-            ></div>
+          <div className="meter" role="progressbar" aria-valuenow={Math.min(usagePercentage, 100)} aria-valuemin="0" aria-valuemax="100">
+            <div className="meterFill" style={{ width: `${Math.min(usagePercentage, 100)}%` }} />
           </div>
-          <div className="flex items-center mt-2 text-sm">
+          <div className="row">
             {isHighUsage ? (
-              <AlertTriangle className="text-red-500 mr-1" size={14} />
+              <AlertTriangle size={14} />
             ) : (
-              <CheckCircle className="text-green-500 mr-1" size={14} />
+              <CheckCircle size={14} />
             )}
-            <span className={isHighUsage ? 'text-red-500' : 'text-green-500'}>
+            <span className={`pill ${isHighUsage ? 'pillDanger' : 'pillSuccess'}`}>
               {usagePercentage.toFixed(1)}% used
             </span>
           </div>
         </div>
 
         {isHighUsage && (
-          <div className={`p-3 rounded-md ${isDarkMode ? 'bg-red-900/20 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
-            <div className="flex items-center">
-              <AlertTriangle className="text-red-500 mr-2" size={16} />
-              <span className="text-sm text-red-600">
-                High storage usage detected. Consider clearing cache to prevent storage errors.
-              </span>
+          <div className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
+            <AlertTriangle className={noticeStyles.icon} size={16} />
+            <div className={noticeStyles.body}>
+              <p>High storage usage detected. Consider clearing cache to prevent storage errors.</p>
             </div>
           </div>
         )}
       </div>
 
       {/* Cache Items */}
-      <div className={`mb-6 p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-        <h3 className="text-lg font-semibold mb-4">Cache Items</h3>
-        <div className="space-y-3">
+      <div className={cardStyles.card}>
+        <h3 className={cardStyles.title}>Cache Items</h3>
+        <div className={listStyles.list}>
           {Object.entries(cacheStats).map(([name, stats]) => {
             if (name === 'total') return null;
             return (
-              <div key={name} className={`flex items-center justify-between p-3 rounded-md ${isDarkMode ? 'bg-gray-600' : 'bg-gray-50'}`}>
-                <div>
-                  <div className="font-medium capitalize">{name.replace(/_/g, ' ')}</div>
-                  <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div key={name} className={listStyles.item}>
+                <div className={listStyles.content}>
+                  <div className={listStyles.title}>{name.replace(/_/g, ' ')}</div>
+                  <div className={listStyles.meta}>
                     {stats.itemCount} items • {formatBytes(stats.size)}
                   </div>
                 </div>
                 {stats.size > 0 && (
-                  <button
+                  <Button
                     onClick={() => {
                       localStorage.removeItem(stats.key);
                       refreshStats();
                     }}
-                    className={`p-1 rounded ${isDarkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'}`}
+                    size="icon"
+                    variant="danger"
                     title="Clear this cache item"
+                    aria-label={`Clear ${name} cache`}
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 )}
               </div>
             );
@@ -219,43 +214,37 @@ const CacheManagement = ({ isDarkMode }) => {
       </div>
 
       {/* Actions */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-        <h3 className="text-lg font-semibold mb-4">Actions</h3>
-        <div className="space-y-3">
-          <button
+      <div className={cardStyles.card}>
+        <h3 className={cardStyles.title}>Actions</h3>
+        <div className="stack">
+          <Button
             onClick={clearCache}
             disabled={isClearing || totalSize === 0}
-            className={`w-full flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
-              isClearing || totalSize === 0
-                ? `${isDarkMode ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-400'} cursor-not-allowed`
-                : `${isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white`
-            }`}
+            variant="danger"
           >
             {isClearing ? (
               <>
-                <RefreshCw className="animate-spin mr-2" size={16} />
+                <RefreshCw className="spin" size={16} />
                 Clearing...
               </>
             ) : (
               <>
-                <Trash2 className="mr-2" size={16} />
+                <Trash2 size={16} />
                 Clear All Cache
               </>
             )}
-          </button>
+          </Button>
           
-          <div className={`p-3 rounded-md ${isDarkMode ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
-            <div className="flex items-start">
-              <Info className="text-blue-500 mr-2 mt-0.5" size={16} />
-              <div className="text-sm">
-                <div className="font-medium text-blue-700 mb-1">Cache Information</div>
-                <ul className={`space-y-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>
-                  <li>• Cache helps improve app performance by storing frequently accessed data</li>
-                  <li>• Messages are automatically limited to prevent storage issues</li>
-                  <li>• Cache is automatically cleared when it becomes too old</li>
-                  <li>• Last refreshed: {new Date(lastRefresh).toLocaleString()}</li>
-                </ul>
-              </div>
+          <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+            <Info className={noticeStyles.icon} size={16} />
+            <div className={noticeStyles.body}>
+              <p><strong>Cache Information</strong></p>
+              <ul>
+                <li>Cache helps improve app performance by storing frequently accessed data</li>
+                <li>Messages are automatically limited to prevent storage issues</li>
+                <li>Cache is automatically cleared when it becomes too old</li>
+                <li>Last refreshed: {new Date(lastRefresh).toLocaleString()}</li>
+              </ul>
             </div>
           </div>
         </div>

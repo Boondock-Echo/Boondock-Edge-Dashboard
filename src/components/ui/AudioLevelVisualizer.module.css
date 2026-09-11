@@ -1,0 +1,136 @@
+.root {
+  width: min(100%, 64rem);
+  margin-inline: auto;
+}
+
+.root[data-visualizer-theme="dark"] {
+  color-scheme: dark;
+}
+
+.root[data-visualizer-theme="light"] {
+  color-scheme: light;
+}
+
+.headerIcon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  color: var(--ui-button-text);
+  background: var(--ui-accent);
+  border-radius: var(--radius-md);
+}
+
+.controlsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(10rem, 1fr);
+  gap: var(--space-4);
+}
+
+.triggerControl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.monoValue,
+.metricValue {
+  color: var(--ui-accent);
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.monoValue { font-size: 1.25rem; }
+.metricValue { font-size: 1.875rem; }
+
+.dropdownAnchor { position: relative; }
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: var(--layer-popover);
+  min-width: 6rem;
+  overflow: hidden;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 20%);
+}
+
+.dropdownOption {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  color: var(--ui-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.dropdownOption:hover { background: var(--ui-surface-hover); }
+
+.visualizer {
+  position: relative;
+  overflow: hidden;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+
+.scale {
+  position: absolute;
+  top: 3rem;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  width: 2.5rem;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-2);
+  color: var(--ui-muted);
+  font-family: monospace;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.visualizerToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.canvasFrame {
+  height: 16rem;
+  margin-left: 2.5rem;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.metricCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.footer {
+  margin-top: var(--space-6);
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+@media (max-width: 48rem) {
+  .controlsGrid { grid-template-columns: 1fr; }
+  .triggerControl { grid-template-columns: 1fr; }
+}

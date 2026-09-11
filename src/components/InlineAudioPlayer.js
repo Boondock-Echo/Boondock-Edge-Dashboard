@@ -134,15 +134,15 @@ const InlineAudioPlayer = ({
       <div className={`${styles.player} ${className}`} onClick={(event) => event.stopPropagation()}>
         {displayedTimestamp && (
           <div className={styles.timestamp}>
-            <span className="font-semibold">Timestamp: </span><span className="ml-1">{displayedTimestamp}</span>
+            <strong>Timestamp:</strong> <span>{displayedTimestamp}</span>
           </div>
         )}
         <div className={styles.controls}>
-          {showTransport && <Button size="icon" onClick={() => skip(-5)} aria-label="Back 5 seconds"><span className="material-symbols-outlined text-[18px]">replay_5</span></Button>}
+          {showTransport && <Button size="icon" onClick={() => skip(-5)} aria-label="Back 5 seconds"><span className="material-symbols-outlined iconSmall">replay_5</span></Button>}
           <button type="button" onClick={toggle} className={styles.playToggle} aria-label={isPlaying ? 'Pause audio' : 'Play audio'}>
-            <span className="material-symbols-outlined text-[22px] text-white">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
+            <span className="material-symbols-outlined iconMedium">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
           </button>
-          {showTransport && <Button size="icon" onClick={() => skip(5)} aria-label="Forward 5 seconds"><span className="material-symbols-outlined text-[18px]">forward_5</span></Button>}
+          {showTransport && <Button size="icon" onClick={() => skip(5)} aria-label="Forward 5 seconds"><span className="material-symbols-outlined iconSmall">forward_5</span></Button>}
           <span className={styles.time}>{formatAudioTime(playbackTime)}</span>
           <div className={styles.timeline}>
             {showWaveform && waveform.length > 0 && <div className={styles.waveform} onClick={seekFromPointer}><canvas ref={canvasRef} className={styles.waveformCanvas} /></div>}
@@ -151,7 +151,7 @@ const InlineAudioPlayer = ({
             </div>
           </div>
           <span className={styles.time}>{formatAudioTime(playbackDuration)}</span>
-          {onClose && <Button size="icon" onClick={onClose} aria-label="Close player"><span className="material-symbols-outlined text-[18px]">close</span></Button>}
+          {onClose && <Button size="icon" onClick={onClose} aria-label="Close player"><span className="material-symbols-outlined iconSmall">close</span></Button>}
         </div>
       </div>
     );

@@ -2,66 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CalendarCheck, Database, MessageSquare, ChevronLeft, ChevronRight, Radio } from 'lucide-react';
 import api from '../../utils/apiClient';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import {
   SettingsPageHero,
   SettingsSectionWidth,
-  settingsMainCardClass,
 } from '../Settings/SettingsSectionLayout';
 import { SettingsSubnav, SettingsSubnavTab } from '../Settings/SettingsSubnav';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import styles from '../ui/TerminalLogs.module.css';
 
 /** Log sub-tabs (must match `logTypes` keys below). Synced to `?tab=Logs&logsTab=` when embedded in Settings. */
 const LOG_TAB_IDS = ['error', 'warning', 'transcription', 'database', 'event', 'device'];
 
-const LogEntry = ({ log, logTypes, isDarkMode }) => {
+const LogEntry = ({ log, logTypes }) => {
   const logType = logTypes[log.level] || logTypes.error;
   const Icon = logType.icon;
 
   return (
-    <div className={`border-l-2 ${logType.borderColor} ${isDarkMode ? logType.bgColorDark : logType.bgColorLight} p-4 font-mono`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          {Icon && <Icon className={`w-4 h-4 ${logType.color}`} />}
-          <span className={`text-xs ${logType.color} font-bold tracking-wider`}>
+    <div className={`${styles.logEntry} ${styles[logType.tone] || styles.logNeutral}`}>
+      <div className="rowBetween">
+        <div className="row">
+          {Icon && <Icon />}
+          <span className={styles.logMeta}>
             {log.timestamp}
           </span>
         </div>
-        <span className={`px-2 py-1 rounded text-xs ${logType.color} font-bold tracking-wider`}>
+        <span className="pill">
           {logType.label}
         </span>
       </div>
-      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-1 tracking-wider`}>
+      <div className={styles.logMeta}>
         SYSTEM/{log.logger}
       </div>
-      <div className={`${isDarkMode ? 'text-gray-200' : 'text-gray-800'} font-mono text-sm whitespace-pre-wrap break-words`}>
+      <div className={styles.logMessage}>
         {log.message}
       </div>
     </div>
   );
 };
 
-const LoadingSpinner = ({ isDarkMode }) => (
-  <div className={`flex flex-col items-center justify-center min-h-[600px] ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-    <div className={`text-xl ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-4 font-mono`}>INITIALIZING SYSTEMS...</div>
-    <div className="w-16 h-16 border-t-4 border-red-500 border-solid rounded-full animate-spin"></div>
+const LoadingSpinner = () => (
+  <div className={styles.empty}>
+    <div>INITIALIZING SYSTEMS...</div>
+    <span className="spinner spinnerLarge" aria-hidden="true" />
   </div>
 );
 
-const ErrorDisplay = ({ error, onRetry, isDarkMode }) => (
-  <div className={`flex flex-col items-center justify-center min-h-[600px] ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-    <div className="text-xl text-red-500 mb-4 font-mono">SYSTEM FAILURE: {error}</div>
-    <button
-      onClick={onRetry}
-      className="px-4 py-2 bg-red-500/20 border border-red-500 text-red-500 rounded hover:bg-red-500/30 transition-colors font-mono"
-    >
-      RETRY_CONNECTION
-    </button>
+const ErrorDisplay = ({ error, onRetry }) => (
+  <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+    <div className={noticeStyles.body}>
+      <p>SYSTEM FAILURE: {error}</p>
+      <Button variant="danger" size="small" onClick={onRetry}>RETRY_CONNECTION</Button>
+    </div>
   </div>
 );
 
 const F1TerminalLogs = ({
-  isDarkMode = true,
   timezone,
   timeFormat,
   syncLogsTabToUrl = false,
@@ -96,51 +94,33 @@ const F1TerminalLogs = ({
   const logTypes = {
     error: {
       label: 'CRITICAL',
-      color: 'text-red-500',
-      bgColorDark: 'bg-red-500/10',
-      bgColorLight: 'bg-red-100',
-      borderColor: 'border-red-500/50',
-      icon: AlertCircle
+      icon: AlertCircle,
+      tone: 'logError'
     },
     warning: {
       label: 'WARNINGS',
-      color: 'text-yellow-500',
-      bgColorDark: 'bg-yellow-500/10',
-      bgColorLight: 'bg-yellow-100',
-      borderColor: 'border-yellow-500/50',
-      icon: AlertTriangle
+      icon: AlertTriangle,
+      tone: 'logWarning'
     },
     transcription: {
       label: 'COMMS',
-      color: 'text-blue-500',
-      bgColorDark: 'bg-blue-500/10',
-      bgColorLight: 'bg-blue-100',
-      borderColor: 'border-blue-500/50',
-      icon: MessageSquare
+      icon: MessageSquare,
+      tone: 'logInfo'
     },
     database: {
       label: 'DATABASE',
-      color: 'text-green-500',
-      bgColorDark: 'bg-green-500/10',
-      bgColorLight: 'bg-green-100',
-      borderColor: 'border-green-500/50',
-      icon: Database
+      icon: Database,
+      tone: 'logSuccess'
     },
     event: {
       label: 'EVENTS',
-      color: 'text-purple-500',
-      bgColorDark: 'bg-purple-500/10',
-      bgColorLight: 'bg-purple-100',
-      borderColor: 'border-purple-500/50',
-      icon: CalendarCheck
+      icon: CalendarCheck,
+      tone: 'logInfo'
     },
     device: {
       label: 'DEVICES',
-      color: 'text-teal-500',
-      bgColorDark: 'bg-teal-500/10',
-      bgColorLight: 'bg-teal-100',
-      borderColor: 'border-teal-500/50',
-      icon: Radio
+      icon: Radio,
+      tone: 'logNeutral'
     },
   };
 
@@ -300,11 +280,11 @@ const F1TerminalLogs = ({
   }, [deviceLogs, selectedDevicePort]);
 
   if (loading && !Object.keys(logs).length) {
-    return <LoadingSpinner isDarkMode={isDarkMode} />;
+    return <LoadingSpinner />;
   }
 
   if (error) {
-    return <ErrorDisplay error={error} onRetry={fetchLogs} isDarkMode={isDarkMode} />;
+    return <ErrorDisplay error={error} onRetry={fetchLogs} />;
   }
 
   const activeSearch = searchTerm.toLowerCase();
@@ -386,40 +366,33 @@ const F1TerminalLogs = ({
     const ty = getDeviceLogType(entry);
 
     if (ty === 'fatal' || ty === 'error') {
-      return isDarkMode ? 'text-red-400' : 'text-red-600';
+      return styles.logError;
     }
     if (ty === 'warning') {
-      return isDarkMode ? 'text-purple-300' : 'text-purple-600';
+      return styles.logWarning;
     }
 
     // default styling
-    return isDarkMode ? 'text-gray-200' : 'text-gray-800';
+    return styles.logNeutral;
   };
 
-  const mainCard = settingsMainCardClass(isDarkMode);
+  const mainCard = cardStyles.card;
 
   return (
     <SettingsSectionWidth>
       <SettingsPageHero
-        isDarkMode={isDarkMode}
         title="Logs"
         description="View and filter system and device activity by log type."
-        icon={<span className="material-symbols-outlined text-2xl">history_edu</span>}
+        icon={<span className="material-symbols-outlined">history_edu</span>}
         trailing={
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 animate-pulse rounded-full bg-green-500" />
-            <span className={`font-mono text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              LIVE
-            </span>
-          </div>
+          <span className="pill pillSuccess">LIVE</span>
         }
       />
-      <div className={`rounded-xl border p-6 md:p-8 ${mainCard}`}>
-        <SettingsSubnav isDarkMode={isDarkMode} embedded aria-label="Log type tabs">
+      <div className={mainCard}>
+        <SettingsSubnav embedded aria-label="Log type tabs">
           {Object.entries(logTypes).map(([type, { label, color, icon: Icon }]) => (
             <SettingsSubnavTab
               key={type}
-              isDarkMode={isDarkMode}
               active={selectedType === type}
               onClick={() => {
                 setSelectedType(type);
@@ -427,16 +400,12 @@ const F1TerminalLogs = ({
                   setSearchParams({ tab: 'Logs', logsTab: type });
                 }
               }}
-              className="flex items-center gap-2"
+              className="row"
             >
-              <Icon className={`h-4 w-4 ${color}`} />
+              <Icon />
               <span>{label}</span>
               {getTabCount(type) > 0 && (
-                <span
-                  className={`ml-1 rounded-full px-2 py-0.5 text-xs ${
-                    isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
+                <span className="pill">
                   {getTabCount(type)}
                 </span>
               )}
@@ -445,61 +414,32 @@ const F1TerminalLogs = ({
         </SettingsSubnav>
 
         {/* Date Navigation + Search Row */}
-        <div className={`mt-2 p-3 flex flex-wrap gap-3 items-center justify-between ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100/50'} rounded-md`}>
+        <div className={styles.toolbar}>
           {/* Date controls (left aligned) */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={goToPreviousDay}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded transition-colors font-mono text-xs ${
-                isDarkMode 
-                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              title="Previous Day"
-            >
-              <ChevronLeft className="w-3 h-3" />
+          <div className="row">
+            <Button variant="secondary" size="small" onClick={goToPreviousDay} title="Previous Day">
+              <ChevronLeft />
               <span>PREV</span>
-            </button>
+            </Button>
             
-            <div className="flex items-center space-x-2">
-              <CalendarCheck className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-              <span className={`text-sm font-mono font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            <div className="row">
+              <CalendarCheck />
+              <span className={styles.logMeta}>
                 {formatDateDisplay(currentDate)}
               </span>
               {currentDate !== getTodayDate() && (
-                <button
-                  onClick={goToToday}
-                  className={`px-2 py-0.5 text-[10px] rounded transition-colors font-mono ${
-                    isDarkMode 
-                      ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/50' 
-                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300'
-                  }`}
-                  title="Go to Today"
-                >
-                  TODAY
-                </button>
+                <Button variant="accent" size="small" onClick={goToToday} title="Go to Today">TODAY</Button>
               )}
             </div>
             
-            <button
-              onClick={goToNextDay}
-              disabled={currentDate >= getTodayDate()}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded transition-colors font-mono text-xs ${
-                currentDate >= getTodayDate()
-                  ? 'opacity-50 cursor-not-allowed'
-                  : isDarkMode 
-                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              title="Next Day"
-            >
+            <Button variant="secondary" size="small" onClick={goToNextDay} disabled={currentDate >= getTodayDate()} title="Next Day">
               <span>NEXT</span>
-              <ChevronRight className="w-3 h-3" />
-            </button>
+              <ChevronRight />
+            </Button>
           </div>
 
           {/* Search (right side, same row) */}
-          <div className="flex items-center gap-2 flex-1 min-w-[220px] justify-end">
+          <div className="row grow">
             <input
               type="text"
               value={searchInput}
@@ -511,40 +451,18 @@ const F1TerminalLogs = ({
                 }
               }}
               placeholder={`Search ${logTypes[selectedType]?.label || 'logs'}...`}
-              className={`w-full max-w-xs px-3 py-1.5 text-xs rounded-md border outline-none ${
-                isDarkMode
-                  ? 'bg-gray-900 border-gray-700 text-gray-200 placeholder-gray-500'
-                  : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400'
-              }`}
+              className={formStyles.input}
             />
-            <button
-              onClick={handleSearch}
-              className={`px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              Search
-            </button>
+            <Button variant="primary" size="small" onClick={handleSearch}>Search</Button>
             {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className={`px-2 py-1 text-[11px] rounded-md font-medium border transition-colors ${
-                  isDarkMode
-                    ? 'border-gray-600 text-gray-300 hover:bg-gray-800'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Clear
-              </button>
+              <Button variant="secondary" size="small" onClick={clearSearch}>Clear</Button>
             )}
           </div>
         </div>
 
         {/* Logs Display */}
         {selectedType !== 'device' && (
-          <div className={`h-[600px] overflow-y-auto border ${
-            isDarkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-200 bg-gray-50'
-          } rounded-md`}>
+          <div className={styles.logList}>
             {getFilteredStandardLogs().length > 0 ? (
               getFilteredStandardLogs().map((log, index) => (
                 <LogEntry 
@@ -554,13 +472,12 @@ const F1TerminalLogs = ({
                     level: selectedType
                   }}
                   logTypes={logTypes}
-                  isDarkMode={isDarkMode}
                 />
               ))
             ) : (
-              <div className="p-8 text-center text-gray-500 font-mono">
-                <div className="mx-auto h-12 w-12 text-gray-600 mb-4">NO_DATA</div>
-                <p className="tracking-wider">NO_{logTypes[selectedType]?.label}_DETECTED</p>
+              <div className={styles.empty}>
+                <div>NO_DATA</div>
+                <p>NO_{logTypes[selectedType]?.label}_DETECTED</p>
               </div>
             )}
           </div>
@@ -568,42 +485,28 @@ const F1TerminalLogs = ({
 
         {/* Device (COM port) Logs */}
         {selectedType === 'device' && (
-          <div className={`h-[600px] overflow-y-auto border ${
-            isDarkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-200 bg-gray-50'
-          } rounded-md`}>
+          <div className={styles.logList}>
             {Object.keys(getFilteredDeviceLogs()).length === 0 && (
-              <div className="p-8 text-center text-gray-500 font-mono">
-                <div className="mx-auto h-12 w-12 text-gray-600 mb-4">NO_DATA</div>
-                <p className="tracking-wider">NO_DEVICE_LOGS_DETECTED</p>
+              <div className={styles.empty}>
+                <div>NO_DATA</div>
+                <p>NO_DEVICE_LOGS_DETECTED</p>
               </div>
             )}
 
             {Object.keys(getFilteredDeviceLogs()).length > 0 && (
-              <div className="h-full flex flex-col">
+              <div className={styles.deviceLog}>
                 {/* Port Tabs (sticky inside scroll) */}
-                <div className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-900/80' : 'border-gray-200 bg-gray-50'} sticky top-0 z-10 px-4 py-2`}>
-                  <nav className="flex flex-wrap gap-3" aria-label="Device log tabs">
+                <div className={styles.deviceTabs}>
+                  <nav className="rowWrap" aria-label="Device log tabs">
                     {Object.entries(getFilteredDeviceLogs()).map(([port, entries]) => (
                       <button
                         key={port}
                         onClick={() => setSelectedDevicePort(port)}
-                        className={`
-                          flex items-center gap-2 py-2 px-2 border-b-2 text-xs font-mono transition-colors
-                          ${selectedDevicePort === port
-                            ? isDarkMode
-                              ? 'border-teal-500 text-teal-400'
-                              : 'border-teal-600 text-teal-600'
-                            : isDarkMode
-                              ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
-                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                          }
-                        `}
+                        className={`pill pillInteractive ${selectedDevicePort === port ? "pillActive" : ""}`}
                       >
-                        <Radio className="w-3 h-3 text-teal-500" />
+                        <Radio />
                         <span>{port}</span>
-                        <span className={`ml-1 text-[10px] rounded-full px-2 py-0.5 ${
-                          isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span className="pill">
                           {entries.length}
                         </span>
                       </button>
@@ -613,10 +516,10 @@ const F1TerminalLogs = ({
 
                 {/* Active Port Log (no repeated title) */}
                 {selectedDevicePort && getFilteredDeviceLogs()[selectedDevicePort] && (
-                  <div className="flex-1 px-4 py-3 font-mono text-xs space-y-1">
+                  <div className={styles.deviceEntries}>
                     {getFilteredDeviceLogs()[selectedDevicePort].map((entry, idx) => (
-                      <div key={`${selectedDevicePort}-${idx}`} className="flex gap-2">
-                        <span className="text-gray-500 whitespace-nowrap">
+                      <div key={`${selectedDevicePort}-${idx}`} className={styles.deviceLine}>
+                        <span className={styles.timestamp}>
                           {entry.timestamp || '--'}
                         </span>
                         <span className={getDeviceLogClass(entry)}>

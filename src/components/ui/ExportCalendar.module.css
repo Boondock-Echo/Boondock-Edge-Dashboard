@@ -1,0 +1,121 @@
+.calendar {
+  margin-bottom: var(--space-4);
+}
+
+.headerIcon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ui-muted);
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.weekday {
+  padding-block: var(--space-2);
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.emptyDay,
+.day {
+  min-height: 2.5rem;
+}
+
+.day {
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+  background: color-mix(in srgb, var(--ui-surface) 70%, transparent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.day:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dayAvailable {
+  color: var(--ui-accent);
+  background: var(--ui-accent-subtle);
+  cursor: pointer;
+}
+
+.dayAvailable:hover {
+  background: var(--ui-accent-subtle-hover);
+}
+
+.dayAvailable:focus-visible,
+.hour:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.hoursPanel {
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background: var(--ui-surface);
+  border-radius: var(--radius-lg);
+}
+
+.hoursTitle {
+  margin: 0 0 var(--space-2);
+  color: var(--ui-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hoursGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.hour {
+  padding: var(--space-2) var(--space-3);
+  color: var(--ui-text);
+  font-size: 0.875rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.hour:hover {
+  background: var(--ui-surface-hover);
+}
+
+.hourSelected {
+  color: var(--ui-button-text);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+}
+
+.hourSelected:hover {
+  background: var(--ui-accent-hover);
+}
+
+.emptyMessage,
+.recordingCount {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+}
+
+.recordingCount {
+  margin-top: var(--space-4);
+  color: var(--ui-text);
+}
+
+@media (max-width: 48rem) {
+  .hoursGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

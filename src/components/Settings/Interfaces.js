@@ -1,3 +1,6 @@
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import { useState, useEffect, useCallback } from 'react';
 import { Network, Lightbulb, Power, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle2, Play,
   Square, Edit2, X, Check } from 'lucide-react';
@@ -5,7 +8,7 @@ import { gpioService, LED_PATTERNS } from '../services/gpioService';
 import { toast } from 'react-toastify';
 import SettingsSectionHeader from './SettingsSectionHeader';
 
-const Interfaces = ({ isDarkMode }) => {
+const Interfaces = ({ }) => {
   // Configuration state
   const [ledEnabled, setLedEnabled] = useState(() => {
     const stored = localStorage.getItem('ledStatusIndicatorsEnabled');
@@ -262,68 +265,63 @@ const Interfaces = ({ isDarkMode }) => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="stack">
       <SettingsSectionHeader
         icon={Network}
         title="Interfaces"
         description="Configure GPIO interfaces for LED status indicators and relay control"
-        isDarkMode={isDarkMode}
         iconColor="blue"
       />
 
-      <div className="space-y-6">
+      <div className="stack">
         {/* Current Configuration Summary */}
         {connectionStatus === 'connected' && (
-          <div className={`p-5 rounded-xl border-2 mb-6 transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-green-900/20 border-green-700/50'
-              : 'bg-green-50 border-green-200'
-          }`}>
-            <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+          <div className={cardStyles.card}>
+            <h3 className="pageTitle">
               Current Configuration
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="gridThree">
               {/* LED GPIO */}
-              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb size={16} className="text-blue-500" />
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className={cardStyles.card}>
+                <div className="row">
+                  <Lightbulb size={16}  />
+                  <span className="mutedText smallText">
                     LED GPIO Pin
                   </span>
                 </div>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                <p >
                   {ledGPIO !== null ? `GPIO ${ledGPIO}` : 'Not Set'}
                 </p>
               </div>
               
               {/* LED Mode */}
-              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb size={16} className="text-blue-500" />
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className={cardStyles.card}>
+                <div className="row">
+                  <Lightbulb size={16}  />
+                  <span className="mutedText smallText">
                     LED Mode
                   </span>
                 </div>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                <p >
                   {ledMode === 'source' ? 'Source' : ledMode === 'sink' ? 'Sink' : 'Unknown'}
                 </p>
-                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="mutedText smallText">
                   {ledMode === 'source' ? 'Active High' : ledMode === 'sink' ? 'Active Low' : ''}
                 </p>
               </div>
               
               {/* Relays Count */}
-              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Power size={16} className="text-purple-500" />
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className={cardStyles.card}>
+                <div className="row">
+                  <Power size={16}  />
+                  <span className="mutedText smallText">
                     Configured Relays
                   </span>
                 </div>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                <p >
                   {Object.keys(relays).length}
                 </p>
-                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="mutedText smallText">
                   {Object.keys(relays).length === 0 
                     ? 'No relays configured' 
                     : Object.keys(relays).length === 1 
@@ -336,32 +334,28 @@ const Interfaces = ({ isDarkMode }) => {
         )}
 
         {/* API Configuration */}
-        <div className="space-y-6">
+        <div className="stack">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="rowBetween">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Network size={18} className="text-blue-500" />
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <div className="row">
+                  <Network size={18}  />
+                  <label className={formStyles.label}>
                     GPIO Service Connection
                   </label>
                 </div>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="mutedText smallText">
                   GPIO service calls are handled by the backend server. Configure GPIO_SERVICE_URL on the server if needed.
                 </p>
               </div>
               <button
                 onClick={testConnection}
                 disabled={loading}
-                className={`px-4 py-3 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-                  loading
-                    ? `${isDarkMode ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-400'} cursor-not-allowed`
-                    : `${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white hover:shadow-lg`
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                 title="Test Connection"
               >
                 {loading ? (
-                  <RefreshCw size={16} className="animate-spin" />
+                  <RefreshCw size={16}  />
                 ) : (
                   <RefreshCw size={16} />
                 )}
@@ -370,27 +364,27 @@ const Interfaces = ({ isDarkMode }) => {
             </div>
             
             {/* Connection Status */}
-            <div className="mt-3 flex items-center gap-2">
+            <div className="row">
               {connectionStatus === 'connected' && (
                 <>
-                  <CheckCircle2 size={16} className="text-green-500" />
-                  <span className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                  <CheckCircle2 size={16}  />
+                  <span className="mutedText smallText">
                     Connected to GPIO service
                   </span>
                 </>
               )}
               {connectionStatus === 'disconnected' && (
                 <>
-                  <AlertCircle size={16} className="text-red-500" />
-                  <span className={`text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                  <AlertCircle size={16}  />
+                  <span className="mutedText smallText">
                     GPIO service unavailable
                   </span>
                 </>
               )}
               {connectionStatus === 'unknown' && (
                 <>
-                  <AlertCircle size={16} className="text-gray-500" />
-                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <AlertCircle size={16}  />
+                  <span className="mutedText smallText">
                     Connection status unknown
                   </span>
                 </>
@@ -399,94 +393,49 @@ const Interfaces = ({ isDarkMode }) => {
           </div>
 
           {/* LED Status Indicators Toggle */}
-          <div className={`p-5 rounded-xl border-2 transition-all duration-300 ${
-            ledEnabled
-              ? isDarkMode
-                ? 'bg-blue-900/30 border-blue-400 shadow-lg'
-                : 'bg-blue-50 border-blue-500 shadow-lg'
-              : isDarkMode
-                ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-                : 'bg-white border-gray-200 hover:border-gray-300'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-xl transition-all duration-300 ${
-                  ledEnabled
-                    ? isDarkMode
-                      ? 'bg-blue-500/20 shadow-inner'
-                      : 'bg-blue-500 shadow-inner'
-                    : isDarkMode
-                      ? 'bg-gray-700'
-                      : 'bg-gray-100'
-                }`}>
-                  <Lightbulb size={24} className={ledEnabled
-                    ? isDarkMode
-                      ? 'text-blue-300'
-                      : 'text-white'
-                    : isDarkMode
-                      ? 'text-gray-400'
-                      : 'text-gray-500'
-                  } />
+          <div className={cardStyles.card}>
+            <div className="rowBetween">
+              <div className="row">
+                <div className={cardStyles.card}>
+                  <Lightbulb size={24}  />
                 </div>
-                <div className="text-left">
-                  <h4 className={`font-semibold text-lg ${
-                    isDarkMode
-                      ? ledEnabled
-                        ? 'text-blue-300'
-                        : 'text-gray-300'
-                      : ledEnabled
-                        ? 'text-blue-900'
-                        : 'text-gray-700'
-                  }`}>
+                <div >
+                  <h4 className="pageTitle">
                     Enable LED Status Indicators
                   </h4>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="mutedText smallText">
                     LED status indicators are automatically managed by the backend server (startup → ready → active heartbeat)
                   </p>
                 </div>
               </div>
-              <div className="relative">
+              <div >
                 <button
                   onClick={() => handleLEDEnabledToggle(!ledEnabled)}
-                  className={`w-12 h-6 rounded-full transition-colors duration-300 ${
-                    ledEnabled
-                      ? isDarkMode
-                        ? 'bg-blue-500'
-                        : 'bg-blue-500'
-                      : isDarkMode
-                        ? 'bg-gray-700'
-                        : 'bg-gray-200'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.icon}`}
                 >
-                  <div className={`absolute w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 top-0.5 ${
-                    ledEnabled ? 'translate-x-6 left-1' : 'translate-x-0 left-1'
-                  }`} />
+                  <div  />
                 </button>
               </div>
             </div>
           </div>
 
           {/* LED GPIO & Mode Configuration */}
-          <div className={`p-5 rounded-xl border-2 transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-gray-800/50 border-gray-700'
-              : 'bg-white border-gray-200'
-          }`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Lightbulb size={18} className="text-blue-500" />
-              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+          <div className={cardStyles.card}>
+            <div className="row">
+              <Lightbulb size={18}  />
+              <h3 className="pageTitle">
                 LED GPIO & Mode
               </h3>
             </div>
-            <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText smallText">
               Configure which GPIO pin drives the status LED and whether it operates as a source (active high) or sink (active low).
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="gridTwo">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   LED GPIO Pin (1-40)
                 </label>
-                <div className="flex items-center gap-3">
+                <div className="row">
                   <input
                     type="number"
                     value={ledGPIO ?? ''}
@@ -494,44 +443,32 @@ const Interfaces = ({ isDarkMode }) => {
                     placeholder="e.g., 13"
                     min="1"
                     max="40"
-                    className={`flex-1 p-3 rounded-xl border-2 transition-all duration-300 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-500 focus:border-blue-400'
-                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                    }`}
+                    className={formStyles.input}
                   />
                   <button
                     onClick={handleUpdateLedGPIO}
                     disabled={loading || ledGPIO == null || ledGPIO === ''}
-                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-                      loading || ledGPIO == null || ledGPIO === ''
-                        ? `${isDarkMode ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-400'} cursor-not-allowed`
-                        : `${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`
-                    }`}
+                    className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                   >
                     Save
                   </button>
                 </div>
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   LED Mode
                 </label>
-                <div className="flex items-center gap-3">
+                <div className="row">
                   <select
                     value={ledMode}
                     onChange={(e) => handleUpdateLedMode(e.target.value)}
-                    className={`flex-1 p-3 rounded-xl border-2 transition-all duration-300 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-gray-200 focus:border-blue-400'
-                        : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
-                    }`}
+                    className={formStyles.select}
                   >
                     <option value="source">Source (GPIO → LED → Ground, active high)</option>
                     <option value="sink">Sink (3.3V → LED → GPIO, active low)</option>
                   </select>
                 </div>
-                <p className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="mutedText smallText">
                   Use <strong>Source</strong> when the GPIO drives current into the LED (LED to ground). Use <strong>Sink</strong> when the LED is tied to 3.3V and the GPIO sinks current.
                 </p>
               </div>
@@ -539,22 +476,18 @@ const Interfaces = ({ isDarkMode }) => {
           </div>
 
           {/* LED Pattern Testing */}
-          <div className={`p-5 rounded-xl border-2 transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-gray-800/50 border-gray-700'
-              : 'bg-white border-gray-200'
-          }`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Play size={18} className="text-blue-500" />
-              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+          <div className={cardStyles.card}>
+            <div className="row">
+              <Play size={18}  />
+              <h3 className="pageTitle">
                 Test LED Patterns
               </h3>
             </div>
-            <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText smallText">
               Test different LED flashing patterns to verify your GPIO service is working correctly
             </p>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="gridThree">
               {[
                 { pattern: LED_PATTERNS.STARTUP, label: 'Startup', description: '3s on/off' },
                 { pattern: LED_PATTERNS.FAST, label: 'Fast', description: '0.25s blink' },
@@ -582,17 +515,13 @@ const Interfaces = ({ isDarkMode }) => {
                     }
                   }}
                   disabled={loading || connectionStatus === 'disconnected'}
-                  className={`p-3 rounded-xl border-2 transition-all duration-300 text-left ${
-                    loading || connectionStatus === 'disconnected'
-                      ? `${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-500' : 'bg-gray-100 border-gray-300 text-gray-400'} cursor-not-allowed`
-                      : `${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-gray-700' : 'bg-white border-gray-200 hover:border-blue-500 hover:bg-blue-50'} cursor-pointer`
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                   title={description}
                 >
-                  <div className={`font-medium text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                  <div >
                     {label}
                   </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <div >
                     {description}
                   </div>
                 </button>
@@ -600,7 +529,7 @@ const Interfaces = ({ isDarkMode }) => {
             </div>
             
             {/* Stop LED Button */}
-            <div className="mt-4">
+            <div >
               <button
                 onClick={async () => {
                   setLoading(true);
@@ -616,11 +545,7 @@ const Interfaces = ({ isDarkMode }) => {
                   }
                 }}
                 disabled={loading || connectionStatus === 'disconnected'}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-                  loading || connectionStatus === 'disconnected'
-                    ? `${isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-400'} cursor-not-allowed`
-                    : `${isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white`
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
               >
                 <Square size={16} />
                 Stop LED
@@ -630,14 +555,10 @@ const Interfaces = ({ isDarkMode }) => {
 
           {/* Error Message */}
           {error && (
-            <div className={`p-4 rounded-xl border-2 ${
-              isDarkMode
-                ? 'bg-red-900/20 border-red-700 text-red-300'
-                : 'bg-red-50 border-red-200 text-red-700'
-            }`}>
-              <div className="flex items-center gap-2">
+            <div className={cardStyles.card}>
+              <div className="row">
                 <AlertCircle size={20} />
-                <span className="text-sm">{typeof error === 'string' ? error : (error?.message || String(error))}</span>
+                <span className="mutedText smallText">{typeof error === 'string' ? error : (error?.message || String(error))}</span>
               </div>
             </div>
           )}
@@ -645,34 +566,26 @@ const Interfaces = ({ isDarkMode }) => {
       </div>
 
       {/* Relay Management */}
-      <div className={`rounded-2xl shadow-lg p-8 transition-all duration-300 border ${
-        isDarkMode
-          ? 'bg-gray-900/60 border-gray-800'
-          : 'bg-white border-gray-200'
-      }`}>
-        <div className="flex items-center gap-4 mb-8">
-          <div className={`p-3 rounded-2xl shadow-md ${isDarkMode ? 'bg-purple-600' : 'bg-purple-500'}`}>
-            <Power size={24} className="text-white" />
+      <div >
+        <div className="row">
+          <div className={cardStyles.card}>
+            <Power size={24}  />
           </div>
           <div>
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+            <h2 className="pageTitle">
               Relay Management
             </h2>
-            <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mutedText smallText">
               Configure and control GPIO relays
             </p>
           </div>
         </div>
 
         {/* Add Relay Button */}
-        <div className="mb-6">
+        <div >
           <button
             onClick={() => setShowAddRelay(!showAddRelay)}
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-              isDarkMode
-                ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                : 'bg-purple-500 hover:bg-purple-600 text-white'
-            }`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
             <Plus size={16} />
             Add Relay
@@ -681,17 +594,13 @@ const Interfaces = ({ isDarkMode }) => {
 
         {/* Add Relay Form */}
         {showAddRelay && (
-          <div className={`mb-6 p-5 rounded-xl border-2 ${
-            isDarkMode
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-200'
-          }`}>
-            <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+          <div className={cardStyles.card}>
+            <h3 className="pageTitle">
               Add New Relay
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="gridTwo">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   Relay Name
                 </label>
                 <input
@@ -699,15 +608,11 @@ const Interfaces = ({ isDarkMode }) => {
                   value={newRelayName}
                   onChange={(e) => setNewRelayName(e.target.value)}
                   placeholder="e.g., Relay1"
-                  className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-500 focus:border-purple-400'
-                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-purple-500'
-                  }`}
+                  className={formStyles.input}
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   GPIO Pin (1-40)
                 </label>
                 <input
@@ -717,43 +622,31 @@ const Interfaces = ({ isDarkMode }) => {
                   placeholder="e.g., 18"
                   min="1"
                   max="40"
-                  className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-500 focus:border-purple-400'
-                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-purple-500'
-                  }`}
+                  className={formStyles.input}
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   Normal State
                 </label>
                 <select
                   value={newRelayNormalState}
                   onChange={(e) => setNewRelayNormalState(e.target.value)}
-                  className={`w-full p-3 rounded-xl border-2 transition-all duration-300 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-gray-200 focus:border-purple-400'
-                      : 'bg-white border-gray-200 text-gray-900 focus:border-purple-500'
-                  }`}
+                  className={formStyles.select}
                 >
                   <option value="off">Normal Off (default OFF state)</option>
                   <option value="on">Normal On (default ON state)</option>
                 </select>
-                <p className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="mutedText smallText">
                   The default state when the relay is initialized or reset.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-4">
+            <div className="row">
               <button
                 onClick={handleAddRelay}
                 disabled={loading || !newRelayName.trim() || !newRelayGPIO}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-                  loading || !newRelayName.trim() || !newRelayGPIO
-                    ? `${isDarkMode ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-400'} cursor-not-allowed`
-                    : `${isDarkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white`
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Add Relay
               </button>
@@ -764,11 +657,7 @@ const Interfaces = ({ isDarkMode }) => {
                   setNewRelayGPIO('');
                   setNewRelayNormalState('off');
                 }}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Cancel
               </button>
@@ -778,39 +667,27 @@ const Interfaces = ({ isDarkMode }) => {
 
         {/* Relays Summary */}
         {connectionStatus === 'connected' && Object.keys(relays).length > 0 && (
-          <div className={`p-4 rounded-xl border-2 mb-6 transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-purple-900/20 border-purple-700/50'
-              : 'bg-purple-50 border-purple-200'
-          }`}>
-            <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+          <div className={cardStyles.card}>
+            <h3 className="pageTitle">
               Configured Relays
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="gridThree">
               {Object.entries(relays).map(([name, relay]) => (
                 <div
                   key={name}
-                  className={`p-3 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-800/50 border-gray-700'
-                      : 'bg-white border-gray-200'
-                  }`}
+                  className={cardStyles.card}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="rowBetween">
                     <div>
-                      <p className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <p className="mutedText smallText">
                         {name}
                       </p>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p className="mutedText smallText">
                         GPIO {relay.gpio}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        relay.state
-                          ? isDarkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
-                          : isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
-                      }`}>
+                    <div >
+                      <span className="mutedText smallText">
                         {relay.state ? 'ON' : 'OFF'}
                       </span>
                     </div>
@@ -822,35 +699,27 @@ const Interfaces = ({ isDarkMode }) => {
         )}
 
         {/* Relays List */}
-        <div className="space-y-4">
+        <div className="stack">
           {Object.keys(relays).length === 0 ? (
-            <div className={`p-6 rounded-xl text-center ${
-              isDarkMode
-                ? 'bg-gray-800/50 text-gray-400'
-                : 'bg-white text-gray-500'
-            }`}>
-              <Power size={32} className="mx-auto mb-2 opacity-50" />
+            <div className={cardStyles.card}>
+              <Power size={32}  />
               <p>No relays configured. Click "Add Relay" to create one.</p>
             </div>
           ) : (
             Object.entries(relays).map(([name, relay]) => (
               <div
                 key={name}
-                className={`p-5 rounded-xl border-2 transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-gray-800 border-gray-700'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={cardStyles.card}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                <div className="rowBetween">
+                  <div >
+                    <h3 className="pageTitle">
                       {name}
                     </h3>
-                    <div className="flex items-center gap-4 text-sm flex-wrap">
+                    <div className="rowWrap">
                       {editingRelay?.name === name ? (
-                        <div className="flex items-center gap-2">
-                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>GPIO:</span>
+                        <div className="row">
+                          <span className="mutedText smallText">GPIO:</span>
                           <input
                             type="number"
                             min="1"
@@ -864,93 +733,61 @@ const Interfaces = ({ isDarkMode }) => {
                                 setEditingRelay(null);
                               }
                             }}
-                            className={`w-20 p-1 rounded border-2 ${
-                              isDarkMode
-                                ? 'bg-gray-700 border-gray-600 text-gray-200'
-                                : 'bg-white border-gray-300 text-gray-900'
-                            }`}
+                            className={formStyles.input}
                             autoFocus
                           />
                           <button
                             onClick={() => handleUpdateRelayGPIO(name, editingRelay.gpio)}
-                            className={`p-1 rounded ${
-                              isDarkMode ? 'text-green-400 hover:bg-gray-700' : 'text-green-600 hover:bg-gray-100'
-                            }`}
+                            className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.icon}`}
                             title="Save"
                           >
                             <Check size={16} />
                           </button>
                           <button
                             onClick={() => setEditingRelay(null)}
-                            className={`p-1 rounded ${
-                              isDarkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-gray-100'
-                            }`}
+                            className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.icon}`}
                             title="Cancel"
                           >
                             <X size={16} />
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                        <div className="row">
+                          <span className="mutedText smallText">
                             GPIO: {relay.gpio}
                           </span>
                           <button
                             onClick={() => setEditingRelay({ name, gpio: relay.gpio })}
                             disabled={loading}
-                            className={`p-1 rounded transition-colors ${
-                              isDarkMode
-                                ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.icon}`}
                             title="Edit GPIO"
                           >
                             <Edit2 size={14} />
                           </button>
                         </div>
                       )}
-                      <span className={`font-medium ${
-                        relay.state
-                          ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                          : isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                      }`}>
+                      <span className="mutedText smallText">
                         {relay.state ? 'ON' : 'OFF'}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        relay.normal_state === 'on'
-                          ? isDarkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
-                          : isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span className="mutedText smallText">
                         Normal: {relay.normal_state === 'on' ? 'ON' : 'OFF'}
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="rowWrap">
                     <button
                       onClick={() => handleControlRelay(name, relay.state ? 'off' : 'on')}
                       disabled={loading}
-                      className={`px-3 md:px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-1 md:gap-2 text-sm md:text-base flex-shrink-0 ${
-                        relay.state
-                          ? isDarkMode
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-red-500 hover:bg-red-600 text-white'
-                          : isDarkMode
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-green-500 hover:bg-green-600 text-white'
-                      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                     >
                       <span>🔋</span>
-                      <span className="hidden sm:inline">{relay.state ? 'Disconnect Battery' : 'Connect Battery'}</span>
-                      <span className="sm:hidden">{relay.state ? 'Disconnect' : 'Connect'}</span>
+                      <span >{relay.state ? 'Disconnect Battery' : 'Connect Battery'}</span>
+                      <span >{relay.state ? 'Disconnect' : 'Connect'}</span>
                     </button>
                     <button
                       onClick={() => handleControlRelay(name, 'toggle')}
                       disabled={loading}
-                      className={`px-3 md:px-4 py-2 rounded-xl font-medium transition-all duration-300 flex-shrink-0 ${
-                        isDarkMode
-                          ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                       title="Toggle"
                     >
                       ↕
@@ -959,15 +796,7 @@ const Interfaces = ({ isDarkMode }) => {
                       value={relay.normal_state || 'off'}
                       onChange={(e) => handleUpdateNormalState(name, e.target.value)}
                       disabled={loading}
-                      className={`px-2 md:px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition-all duration-300 border-2 flex-shrink-0 ${
-                        relay.normal_state === 'on'
-                          ? isDarkMode
-                            ? 'bg-blue-900/50 border-blue-700 text-blue-300'
-                            : 'bg-blue-100 border-blue-300 text-blue-700'
-                          : isDarkMode
-                            ? 'bg-gray-700 border-gray-600 text-gray-200'
-                            : 'bg-white border-gray-300 text-gray-700'
-                      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={formStyles.select}
                       title="Set Normal State (default state when initialized)"
                     >
                       <option value="off">Normal Off</option>
@@ -976,11 +805,7 @@ const Interfaces = ({ isDarkMode }) => {
                     <button
                       onClick={() => handleRemoveRelay(name)}
                       disabled={loading}
-                      className={`px-3 md:px-4 py-2 rounded-xl font-medium transition-all duration-300 flex-shrink-0 ${
-                        isDarkMode
-                          ? 'bg-red-900/50 hover:bg-red-800/50 text-red-300'
-                          : 'bg-red-50 hover:bg-red-100 text-red-600'
-                      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                       title="Remove Relay"
                     >
                       <Trash2 size={16} />
@@ -994,17 +819,13 @@ const Interfaces = ({ isDarkMode }) => {
 
         {/* Refresh Button */}
         {Object.keys(relays).length > 0 && (
-          <div className="mt-6">
+          <div >
             <button
               onClick={loadRelays}
               disabled={loading}
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-                isDarkMode
-                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={16}  />
               Refresh Relays
             </button>
           </div>
@@ -1015,4 +836,3 @@ const Interfaces = ({ isDarkMode }) => {
 };
 
 export default Interfaces;
-

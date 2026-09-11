@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BookOpen, HelpCircle } from 'lucide-react';
+import styles from '../ui/Documentation.module.css';
 
-const FloatingDocumentationIcon = ({ isDarkMode = false }) => {
+const FloatingDocumentationIcon = () => {
   const location = useLocation();
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -202,63 +203,28 @@ const FloatingDocumentationIcon = ({ isDarkMode = false }) => {
       onTouchStart={handleDragStart}
       onMouseEnter={() => !isDragging && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`
-        fixed z-50 rounded-full p-3 shadow-lg 
-        ${isDragging 
-          ? 'cursor-move scale-105' 
-          : 'transition-all duration-300 hover:scale-110 cursor-pointer'
-        }
-        focus:outline-none focus:ring-2 focus:ring-offset-2
-        ${isDarkMode 
-          ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white' 
-          : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white'
-        }
-      `}
+      className={`${styles.floatingButton} ${isDragging ? styles.dragging : ''}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        boxShadow: isDragging 
-          ? '0 15px 35px -5px rgba(0, 0, 0, 0.4), 0 15px 15px -5px rgba(0, 0, 0, 0.3)' 
-          : '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
-        width: '56px',
-        height: '56px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: isDragging ? 'none' : 'all 0.3s ease-in-out',
       }}
       aria-label="View documentation for this page (drag to move)"
       title="View page-specific documentation (drag to move)"
     >
       {isHovered ? (
-        <HelpCircle className="w-6 h-6" />
+        <HelpCircle className={styles.iconLarge} />
       ) : (
-        <BookOpen className="w-6 h-6" />
+        <BookOpen className={styles.iconLarge} />
       )}
       
       {/* Tooltip */}
       {isHovered && (
         <div
-          className={`
-            absolute left-14 px-3 py-2 rounded-lg text-sm font-medium
-            whitespace-nowrap pointer-events-none
-            ${isDarkMode 
-              ? 'bg-gray-800 text-white border border-gray-700' 
-              : 'bg-white text-gray-900 border border-gray-200 shadow-md'
-            }
-          `}
-          style={{
-            animation: 'fadeIn 0.2s ease-in-out',
-          }}
+          className={styles.tooltip}
         >
           View Documentation
           <div
-            className={`
-              absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2
-              w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent
-              ${isDarkMode ? 'border-r-4 border-r-gray-800' : 'border-r-4 border-r-white'}
-            `}
-            style={{ left: '-4px' }}
+            className={styles.tooltipArrow}
           />
         </div>
       )}

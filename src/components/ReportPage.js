@@ -1,10 +1,15 @@
 import { apiFetch } from '../utils/apiClient';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Clock, AlertTriangle } from 'lucide-react';
 import ReportsManagement from './Settings/ReportsManagement';
+import Button from './ui/Button';
+import pageStyles from './ui/Page.module.css';
+import cardStyles from './ui/Card.module.css';
+import formStyles from './ui/Form.module.css';
+import modalStyles from './ui/Modal.module.css';
 
-const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
+const ReportPage = ({ timeFormat = "24h" }) => {
   const navigate = useNavigate();
   const [densityMode, setDensityMode] = useState(() => localStorage.getItem('reports_density_mode') || 'comfortable');
   const [timezone, setTimezone] = useState(() => {
@@ -42,21 +47,6 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
     endTime: '',
     severity: 'low'
   });
-
-  const themeClasses = {
-    pageBg: isDarkMode ? 'bg-slate-950' : 'bg-slate-50',
-    headerBg: isDarkMode ? 'bg-slate-900/85' : 'bg-white/85',
-    cardBg: isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80',
-    primaryText: isDarkMode ? 'text-slate-100' : 'text-slate-900',
-    secondaryText: isDarkMode ? 'text-slate-300' : 'text-slate-600',
-    mutedText: isDarkMode ? 'text-slate-400' : 'text-slate-500',
-    accent: isDarkMode ? 'text-blue-300' : 'text-[#003178]',
-    iconSoftBg: isDarkMode ? 'bg-blue-500/15' : 'bg-blue-50',
-    highText: isDarkMode ? 'text-red-300' : 'text-[#720009]',
-    highBg: isDarkMode ? 'bg-red-500/15' : 'bg-red-50',
-    greenText: isDarkMode ? 'text-emerald-300' : 'text-emerald-600',
-    border: isDarkMode ? 'border-slate-800' : 'border-slate-200',
-  };
 
 
   // Fetch timezone from settings
@@ -348,68 +338,70 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
     setIsDeleteModalOpen(true);
   };
 
-  return (
-    <div className={`min-h-screen ${themeClasses.pageBg}`}>
-      <div className={`sticky top-0 z-30 ${themeClasses.headerBg} border-b ${themeClasses.border} backdrop-blur-md`}>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-5">
-              <button
-                onClick={() => navigate(-1)}
-                className={`p-2.5 rounded-xl border ${themeClasses.border} ${themeClasses.cardBg} transition-all duration-200 hover:scale-[1.02]`}
-                aria-label="Go back"
-              >
-                <ArrowLeft className={`w-5 h-5 ${themeClasses.primaryText}`} />
-              </button>
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${themeClasses.iconSoftBg}`}>
-                  <FileText className={`w-8 h-8 ${themeClasses.accent}`} />
-                </div>
-                <div>
-                  <h1 className={`text-2xl font-extrabold tracking-tight ${themeClasses.primaryText}`}>
-                    Incident Reports
-                  </h1>
-                  <p className={`text-sm mt-1 ${themeClasses.mutedText}`}>
-                    {loading ? 'Loading statistics...' : `${reportsData.totalReports} total reports`}
-                  </p>
-                </div>
-              </div>
-            </div>
+  const updateDialogRef = useRef(null);
+  const deleteDialogRef = useRef(null);
 
-            <div className="hidden md:flex items-center gap-3">
-              <div className={`px-3 py-1.5 rounded-lg border ${themeClasses.border} ${themeClasses.cardBg}`}>
-                <div className="flex items-center gap-2 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setDensityMode('comfortable')}
-                    className={`px-2 py-1 rounded ${densityMode === 'comfortable' ? (isDarkMode ? 'bg-slate-700 text-slate-100' : 'bg-slate-200 text-slate-800') : themeClasses.mutedText}`}
-                  >
-                    Comfortable
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDensityMode('compact')}
-                    className={`px-2 py-1 rounded ${densityMode === 'compact' ? (isDarkMode ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-100 text-[#003178]') : themeClasses.mutedText}`}
-                  >
-                    Compact
-                  </button>
-                </div>
-              </div>
-              <div className={`px-4 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.cardBg}`}>
-                <div className="flex items-center gap-2">
-                  <Clock className={`w-4 h-4 ${themeClasses.accent}`} />
-                  <span className={`text-sm font-medium ${themeClasses.primaryText}`}>{timezone}</span>
-                </div>
-              </div>
+  useEffect(() => {
+    const dialog = updateDialogRef.current;
+    if (!dialog) return;
+    if (isUpdateModalOpen && selectedIncident && !dialog.open) dialog.showModal();
+    if ((!isUpdateModalOpen || !selectedIncident) && dialog.open) dialog.close();
+  }, [isUpdateModalOpen, selectedIncident]);
+
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) return;
+    if (isDeleteModalOpen && incidentToDelete && !dialog.open) dialog.showModal();
+    if ((!isDeleteModalOpen || !incidentToDelete) && dialog.open) dialog.close();
+  }, [isDeleteModalOpen, incidentToDelete]);
+
+  return (
+    <main className={pageStyles.page}>
+      <header className={pageStyles.stickyHeader}>
+        <div className={pageStyles.wideContainer}>
+          <div className="row">
+            <Button size="icon" onClick={() => navigate(-1)} aria-label="Go back">
+              <ArrowLeft size={20} />
+            </Button>
+            <div className={pageStyles.headerIcon}>
+              <FileText size={24} />
+            </div>
+            <div>
+              <h1 className={pageStyles.title}>Incident Reports</h1>
+              <p className={pageStyles.subtitle}>
+                {loading ? 'Loading statistics...' : `${reportsData.totalReports} total reports`}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-14">
-        <div className={`rounded-2xl border shadow-sm overflow-hidden ${themeClasses.cardBg}`}>
-          <ReportsManagement 
-            isDarkMode={isDarkMode} 
+          <div className="rowWrap">
+            <div className="row">
+              <Button
+                size="small"
+                variant={densityMode === 'comfortable' ? 'primary' : 'secondary'}
+                onClick={() => setDensityMode('comfortable')}
+              >
+                Comfortable
+              </Button>
+              <Button
+                size="small"
+                variant={densityMode === 'compact' ? 'primary' : 'secondary'}
+                onClick={() => setDensityMode('compact')}
+              >
+                Compact
+              </Button>
+            </div>
+            <span className="pill pillAccent">
+              <Clock size={16} />
+              {timezone}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <div className="contentWide">
+        <div className={`${cardStyles.card} ${cardStyles.flush}`}>
+          <ReportsManagement
             densityMode={densityMode}
             isUpdateModalOpen={isUpdateModalOpen}
             setIsUpdateModalOpen={setIsUpdateModalOpen}
@@ -425,116 +417,86 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
 
       {/* MODAL - Rendered at page level to avoid positioning issues */}
       {isUpdateModalOpen && selectedIncident && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] transition-opacity duration-300 ease-out">
-          <div className={`rounded-xl p-8 w-full max-w-lg mx-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} shadow-2xl`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'} tracking-tight`}>
-                Update Incident
-              </h2>
-              <button
-                onClick={() => setIsUpdateModalOpen(false)}
-                className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'} transition-colors duration-200`}
-                aria-label="Close modal"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+        <dialog
+          ref={updateDialogRef}
+          className={modalStyles.dialog}
+          onCancel={() => setIsUpdateModalOpen(false)}
+        >
+          <div className={modalStyles.header}>
+            <h2 className={modalStyles.title}>Update Incident</h2>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setIsUpdateModalOpen(false)}
+              aria-label="Close modal"
+            >
+              <span className="material-symbols-outlined iconSmall">close</span>
+            </Button>
+          </div>
 
-            <form onSubmit={handleUpdateIncident} className="space-y-6">
-              <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                  Incident Name <span className="text-red-500">*</span>
+          <div className={modalStyles.body}>
+            <form onSubmit={handleUpdateIncident} className={formStyles.form}>
+              <div className={formStyles.field}>
+                <label className={formStyles.label}>
+                  Incident Name *
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full p-3 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                  } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+                  className={formStyles.input}
                   required
                   aria-required="true"
                 />
               </div>
 
-              <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                  Description
-                </label>
+              <div className={formStyles.field}>
+                <label className={formStyles.label}>Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full p-3 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                  } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+                  className={formStyles.input}
                   rows={4}
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                    Start Time <span className="text-red-500">*</span>
-                  </label>
+              <div className="gridTwo">
+                <div className={formStyles.field}>
+                  <label className={formStyles.label}>Start Time *</label>
                   <input
                     type="datetime-local"
                     value={formData.startTime}
                     step="1"
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className={`w-full p-3 rounded-lg border ${
-                      isDarkMode
-                        ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                    } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+                    className={formStyles.input}
                     required
                     aria-required="true"
                   />
                 </div>
 
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                    End Time <span className="text-red-500">*</span>
-                  </label>
+                <div className={formStyles.field}>
+                  <label className={formStyles.label}>End Time *</label>
                   <input
                     type="datetime-local"
                     value={formData.endTime}
                     step="1"
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className={`w-full p-3 rounded-lg border ${
-                      isDarkMode
-                        ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                    } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+                    className={formStyles.input}
                     required
                     aria-required="true"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                  Severity <span className="text-red-500">*</span>
-                  <span
-                    className="ml-2 text-xs text-gray-500 cursor-help"
-                    title="Low: Minor impact, Medium: Moderate impact, High: Critical impact"
-                  >
-                    (?)
-                  </span>
+              <div className={formStyles.field}>
+                <label className={formStyles.label}>
+                  Severity *
+                  <span className={formStyles.helpText} title="Low: Minor impact, Medium: Moderate impact, High: Critical impact"> (?)</span>
                 </label>
                 <select
                   value={formData.severity}
                   onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                  className={`w-full p-3 rounded-lg border ${
-                    isDarkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                  } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+                  className={formStyles.select}
                   required
                   aria-required="true"
                 >
@@ -544,105 +506,71 @@ const ReportPage = ({ isDarkMode = false, timeFormat = "24h" }) => {
                 </select>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setIsUpdateModalOpen(false)}
-                  className={`px-5 py-2.5 rounded-lg ${
-                    isDarkMode
-                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500`}
-                >
-                  Cancel
-                </button>
-                <button
+              <div className={modalStyles.actions}>
+                <Button onClick={() => setIsUpdateModalOpen(false)}>Cancel</Button>
+                <Button
                   type="submit"
+                  variant="primary"
                   disabled={updateLoading || formData.name === '' || formData.startTime === '' || formData.endTime === '' || formData.severity === ''}
-                  className={`px-5 py-2.5 rounded-lg ${
-                    isDarkMode
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
-                  } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {updateLoading ? 'Updating...' : 'Update'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
-        </div>
+        </dialog>
       )}
 
       {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && incidentToDelete && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] transition-opacity duration-300 ease-out">
-          <div className={`rounded-xl p-8 w-full max-w-md mx-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} shadow-2xl`}>
-            <div className="flex items-center space-x-3 mb-6">
-              <div className={`p-3 rounded-full ${isDarkMode ? 'bg-red-500/20' : 'bg-red-100'}`}>
-                <svg className={`w-6 h-6 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
+        <dialog
+          ref={deleteDialogRef}
+          className={modalStyles.dialog}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setIncidentToDelete(null);
+          }}
+        >
+          <div className={modalStyles.header}>
+            <div className="row">
+              <span className="pill pillDanger"><AlertTriangle size={20} /></span>
               <div>
-                <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'} tracking-tight`}>
-                  Delete Incident Report
-                </h2>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-                  This action cannot be undone
-                </p>
+                <h2 className={modalStyles.title}>Delete Incident Report</h2>
+                <p className={modalStyles.subtitle}>This action cannot be undone</p>
               </div>
             </div>
+          </div>
 
-            <div className={`mb-6 p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                <span className="font-medium">Incident:</span> {incidentToDelete.title || incidentToDelete.name}
-              </p>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                <span className="font-medium">Created:</span> {new Date(incidentToDelete.date || incidentToDelete.created_at).toLocaleDateString()}
-              </p>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                <span className="font-medium">Audio Files:</span> {incidentToDelete.audios?.length || 0}
-              </p>
+          <div className={modalStyles.body}>
+            <div className={cardStyles.card}>
+              <p><strong>Incident:</strong> {incidentToDelete.title || incidentToDelete.name}</p>
+              <p><strong>Created:</strong> {new Date(incidentToDelete.date || incidentToDelete.created_at).toLocaleDateString()}</p>
+              <p><strong>Audio Files:</strong> {incidentToDelete.audios?.length || 0}</p>
             </div>
 
-            <div className="flex justify-end space-x-3">
-              <button
+            <div className={modalStyles.actions}>
+              <Button
                 onClick={() => {
                   setIsDeleteModalOpen(false);
                   setIncidentToDelete(null);
                 }}
                 disabled={deleteLoading}
-                className={`px-5 py-2.5 rounded-lg ${
-                  isDarkMode
-                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={handleDeleteConfirm}
                 disabled={deleteLoading}
-                className={`px-5 py-2.5 rounded-lg ${
-                  isDarkMode
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-red-500 text-white hover:bg-red-600'
-                } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {deleteLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Deleting...</span>
-                  </div>
-                ) : (
-                  'Delete Report'
-                )}
-              </button>
+                {deleteLoading && <span className="spinner spinnerSmall" role="status" aria-label="Deleting report" />}
+                {deleteLoading ? 'Deleting...' : 'Delete Report'}
+              </Button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
-    </div>
+    </main>
   );
 };
 

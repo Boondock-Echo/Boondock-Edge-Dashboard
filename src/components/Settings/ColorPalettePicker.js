@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
+import Button from '../ui/Button';
+import formStyles from '../ui/Form.module.css';
+import styles from '../ui/ColorPalettePicker.module.css';
 
 const ColorPalettePicker = ({ 
   label, 
   color, 
-  onChange, 
-  isDarkMode = false 
+  onChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -31,59 +33,41 @@ const ColorPalettePicker = ({
   ];
 
   return (
-    <div className="space-y-2">
-      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-        {label}
-      </label>
+    <div className={formStyles.field}>
+      <label className={formStyles.label}>{label}</label>
       
-      <div className="relative">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
-              isDarkMode 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-white border-gray-300 text-gray-900 hover:bg-gray-50'
-            }`}
-          >
-            <div 
-              className="w-6 h-6 rounded-md border border-gray-300"
-              style={{ backgroundColor: color }}
-            />
-            <span className="text-sm">{color}</span>
-            <ChevronDown className="w-4 h-4" />
-          </button>
+      <div className={styles.picker}>
+        <div className="row">
+          <Button onClick={() => setIsOpen(!isOpen)}>
+            <span className={styles.currentSwatch} style={{ backgroundColor: color }} />
+            <span>{color}</span>
+            <ChevronDown size={16} />
+          </Button>
           
           <input
             type="color"
             value={color}
             onChange={(e) => onChange(e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer"
+            className={styles.nativePicker}
           />
         </div>
 
         {isOpen && (
-          <div className={`absolute z-10 mt-2 p-3 rounded-lg shadow-lg border ${
-            isDarkMode 
-              ? 'bg-gray-800 border-gray-700' 
-              : 'bg-white border-gray-200'
-          }`}>
-            <div className="grid grid-cols-6 gap-2 mb-3">
+          <div className={styles.popover}>
+            <div className={styles.swatches}>
               {presetColors.map((preset) => (
                 <button
                   key={preset.value}
+                  type="button"
                   onClick={() => {
                     onChange(preset.value);
                     setIsOpen(false);
                   }}
-                  className="relative w-8 h-8 rounded-md group"
+                  className={styles.swatch}
                   style={{ backgroundColor: preset.value }}
+                  aria-label={preset.name}
                 >
-                  {color === preset.value && (
-                    <Check className="absolute inset-0 m-auto w-4 h-4 text-white drop-shadow-md" />
-                  )}
-                  <span className="sr-only">{preset.name}</span>
-                  <div className="absolute inset-0 rounded-md ring-2 ring-transparent group-hover:ring-white/50" />
+                  {color === preset.value && <Check size={16} aria-hidden="true" />}
                 </button>
               ))}
             </div>
@@ -92,11 +76,7 @@ const ColorPalettePicker = ({
               type="text"
               value={color}
               onChange={(e) => onChange(e.target.value)}
-              className={`w-full px-3 py-1 text-sm rounded-lg border transition-all duration-200 ${
-                isDarkMode 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
-                  : 'bg-white border-gray-300 text-gray-900'
-              }`}
+              className={formStyles.input}
             />
           </div>
         )}

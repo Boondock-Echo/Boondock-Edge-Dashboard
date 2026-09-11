@@ -1,7 +1,9 @@
+import styles from '../ui/ThemeSelector.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import React from 'react';
 import { Palette } from 'lucide-react';
 
-const ThemeSelector = ({ onThemeSelect, isDarkMode }) => {
+const ThemeSelector = ({ onThemeSelect, }) => {
   const themes = [
     {
       name: 'Police',
@@ -73,75 +75,57 @@ const ThemeSelector = ({ onThemeSelect, isDarkMode }) => {
   };
 
   return (
-    <div className="mb-8">
-      <h3
-        className={`text-xl font-semibold mb-6 flex items-center ${
-          isDarkMode ? 'text-gray-200' : 'text-gray-800'
-        }`}
-      >
-        <Palette className="w-6 h-6 mr-2" />
+    <div >
+      <h3 className="pageTitle">
+        <Palette  />
          Themes
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="gridThree">
         {themes.map((theme) => (
           <button
             key={theme.name}
             onClick={() => handleThemeSelect(theme)}
-            className={`p-4 rounded-xl border shadow-sm transition-all duration-300 transform hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              isDarkMode
-                ? 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-750 focus:ring-gray-500'
-                : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-gray-300'
-            }`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium} ${styles.themeButton}`}
           >
-            <div className="space-y-3">
+            <div className="stack stackCompact">
               {/* Theme Name */}
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm tracking-wide">{theme.name}</span>
-                <div
-                  className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ backgroundColor: theme.colors.accent }}
-                />
+              <div className="rowBetween">
+                <span className="mutedText smallText">{theme.name}</span>
+                <div className={styles.accentDot} style={{ backgroundColor: theme.colors.accent }} />
               </div>
 
               {/* Color Swatches */}
-              <div className="flex space-x-2">
+              <div className={styles.swatches}>
                 <div
-                  className="w-5 h-5 rounded-full border transition-transform duration-300 group-hover:scale-110"
+                  className={styles.swatch}
                   style={{
                     backgroundColor: theme.colors.primary,
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                    borderColor: 'var(--ui-border)'
                   }}
                 />
                 <div
-                  className="w-5 h-5 rounded-full border transition-transform duration-300 group-hover:scale-110"
+                  className={styles.swatch}
                   style={{
                     backgroundColor: theme.colors.secondary,
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                    borderColor: 'var(--ui-border)'
                   }}
                 />
                 <div
-                  className="w-5 h-5 rounded-full border transition-transform duration-300 group-hover:scale-110"
+                  className={styles.swatch}
                   style={{
                     backgroundColor: theme.colors.accent,
-                    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                    borderColor: 'var(--ui-border)'
                   }}
                 />
               </div>
 
               {/* Font Preview */}
-              <div
-                className="text-xs capitalize opacity-75 truncate"
-                style={{ fontFamily: theme.font }}
-              >
+              <div style={{ fontFamily: theme.font }}>
                 {theme.font}
               </div>
 
               {/* Description */}
-              <div
-                className={`text-xs italic ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
+              <div>
                 {theme.description}
               </div>
             </div>

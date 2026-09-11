@@ -5,9 +5,12 @@ import { Radio, RadioTower, Volume2, Globe2, Tag,
 import ChannelEditModal from './ChannelEditModal';
 import ChannelCreateModal from './ChannelCreateModal';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
-const ChannelSettings = ({ isDarkMode = false }) => {
+const ChannelSettings = () => {
   // =========================================================================
   // State Management
   // =========================================================================
@@ -391,128 +394,74 @@ const ChannelSettings = ({ isDarkMode = false }) => {
   // =========================================================================
   const getStatusColor = (status) => {
     const statusColors = {
-      enabled: 'text-green-500',
-      resume: 'text-green-500',
-      record_begin: 'text-green-500',
-      record_end: 'text-blue-500',
-      online: 'text-green-400',
-      busy: 'text-orange-500',
-      offline: 'text-gray-500',
-      disabled: 'text-red-500',
+      enabled: 'pillSuccess',
+      resume: 'pillSuccess',
+      record_begin: 'pillSuccess',
+      record_end: 'pillAccent',
+      online: 'pillSuccess',
+      busy: 'pillWarning',
+      offline: '',
+      disabled: 'pillDanger',
     };
-    return statusColors[status?.toLowerCase()] || 'text-gray-500';
+    return statusColors[status?.toLowerCase()] || '';
   };
 
   const renderChannelControls = (channel) => (
-    <div className="flex items-center gap-3">
-      <span className={`flex items-center gap-1 text-xs font-medium capitalize ${getStatusColor(channel.status)}`}>
+    <div className="row">
+      <span className={`pill ${getStatusColor(channel.status)}`}>
         {channel.status}
       </span>
-      <div className="flex items-center gap-2">
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={channel.status !== "disabled"}
-            onChange={(e) => handleToggleEnabled(channel.id, e.target.checked)}
-            disabled={isSaving}
-            className="sr-only peer"
-          />
-          <div className={`w-9 h-5 ${channel.status !== "disabled" ? 'bg-blue-600' : 'bg-gray-600'}
-            peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer 
-            peer-checked:after:translate-x-full after:content-[''] after:absolute 
-            after:top-[2px] after:left-[2px] after:bg-white after:rounded-full 
-            after:h-4 after:w-4 after:transition-all`}></div>
-        </label>
-      </div>
+      <label className={formStyles.switch}>
+        <input
+          type="checkbox"
+          checked={channel.status !== "disabled"}
+          onChange={(e) => handleToggleEnabled(channel.id, e.target.checked)}
+          disabled={isSaving}
+        />
+        <span className={formStyles.switchTrack} aria-hidden="true">
+          <span className={formStyles.switchThumb} />
+        </span>
+      </label>
     </div>
   );
 
   const renderChannelCard = (channel) => (
-    <div
-      key={channel.id}
-      className={`relative overflow-hidden rounded-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'} 
-        p-6 transition-all duration-300 hover:shadow-xl border 
-        ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
-    >
-      {/* <div className="flex justify-between items-start mb-6">
-        <div className="flex items-center gap-3">
-          <RadioTower className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          <div>
-            <h3 className={`text-lg md:text-md font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Channel {channel.id}
-            </h3>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {channel.name}
+    <div key={channel.id} className={`${cardStyles.card} ${cardStyles.interactive}`}>
+      <div className="rowBetweenStart">
+        {/* Left Side: Icon + Text */}
+        <div className="row grow">
+          <RadioTower className="iconMedium mutedText noShrink" />
+          <div className="grow">
+            <p className="smallText truncate">Channel {channel.id}</p>
+            <p className="smallText mutedText truncate" title={channel.name}>
+              <strong>{channel.name}</strong>
             </p>
           </div>
         </div>
-        {renderChannelControls(channel)}
-      </div> */}
-<div className="flex justify-between items-start mb-3">
-  {/* Left Side: Icon + Text */}
-  <div className="flex items-center gap-3 min-w-0">
-    <RadioTower className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-    <div className="min-w-0">
-      <p className={`text-sm md:text-xs  truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-        Channel {channel.id}
-      </p>
-      <p
-        className={`text-sm md:text-xs font-bold truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
-        title={channel.name}
-      >
-        {channel.name}
-      </p>
-    </div>
-  </div>
 
-  {/* Right Side: Toggle */}
-  <div className="shrink-0 ml-2">{renderChannelControls(channel)}</div>
-</div>
-
-      <div className={`grid grid-cols-2 gap-4 mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-        <div className="flex items-center gap-2">
-          <Volume2 className="w-4 h-4 text-gray-400" />
-          <span className="text-sm">{channel.frequency} MHz</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Globe2 className="w-4 h-4 text-gray-400" />
-          <span className="text-sm capitalize">{channel.src_language}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tag className="w-4 h-4 text-gray-400" />
-          <span className="text-sm">{channel.tag || 'No tag'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <User2 className="w-4 h-4 text-gray-400" />
-          <span className="text-sm">{channel.person || 'Unassigned'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Radio className="w-4 h-4 text-gray-400" />
-          <span className="text-sm">Audio Stream: {channel.audio_stream_enabled ? 'On' : 'Off'}</span>
-        </div>
+        {/* Right Side: Toggle */}
+        <div className="noShrink">{renderChannelControls(channel)}</div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={() => handleEdit(channel)}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg 
-            ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}
-            transition-colors duration-200 font-medium`}
-        >
-          <Settings2 className="w-4 h-4" />
+      <div className="gridTwo">
+        <div className="row"><Volume2 className="iconSmall mutedText" /><span className="smallText">{channel.frequency} MHz</span></div>
+        <div className="row"><Globe2 className="iconSmall mutedText" /><span className="smallText">{channel.src_language}</span></div>
+        <div className="row"><Tag className="iconSmall mutedText" /><span className="smallText">{channel.tag || 'No tag'}</span></div>
+        <div className="row"><User2 className="iconSmall mutedText" /><span className="smallText">{channel.person || 'Unassigned'}</span></div>
+        <div className="row"><Radio className="iconSmall mutedText" /><span className="smallText">Audio Stream: {channel.audio_stream_enabled ? 'On' : 'Off'}</span></div>
+      </div>
+
+      <div className="stackCompact">
+        <Button onClick={() => handleEdit(channel)} className="fullWidth">
+          <Settings2 />
           Configure
-        </button>
+        </Button>
         
         {channel.mac && channel.audio_stream_enabled && (
-          <button
-            onClick={() => openAudioStream(channel)}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg 
-              ${isDarkMode ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}
-              transition-colors duration-200 font-medium`}
-          >
-            <ExternalLink className="w-4 h-4" />
+          <Button onClick={() => openAudioStream(channel)} variant="accent" className="fullWidth">
+            <ExternalLink />
             Live Audio Stream
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -540,50 +489,39 @@ const ChannelSettings = ({ isDarkMode = false }) => {
   // Main Render
   // =========================================================================
   return (
-    <div className="space-y-4">
+    <div className="stack">
       {/* Header with Add Channel Button */}
-      <div className={`flex items-center justify-between p-4 rounded-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div>
-          <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'}`}>
-              <Radio className="w-5 h-5 text-white" />
-            </div>
+      <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+        <div className="rowBetweenStart">
+          <div className="row">
+            <div className="iconTile iconTileAccent"><Radio /></div>
             <div>
-              <h3 className="font-semibold">Channels</h3>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Manage communication channels for your recorders
-              </p>
+              <h3 className={cardStyles.title}>Channels</h3>
+              <p className={cardStyles.description}>Manage communication channels for your recorders</p>
             </div>
           </div>
+          <Button onClick={() => setIsCreatingChannel(true)} variant="primary">
+            <Plus />
+            <span>Add Channel</span>
+          </Button>
         </div>
-        <button
-          onClick={() => setIsCreatingChannel(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Channel</span>
-        </button>
       </div>
 
       {/* Status summary / hint */}
-      <div className={`rounded-xl border px-4 py-3 text-xs ${
-        isDarkMode
-          ? 'border-blue-500/40 bg-blue-900/20 text-blue-100'
-          : 'border-blue-200 bg-blue-50 text-blue-800'
-      }`}>
-        {channels.length === 0
-          ? 'No channels configured yet. Create your first channel to begin routing audio.'
-          : `Managing ${channels.length} channel${channels.length !== 1 ? 's' : ''}. Click a card to edit details or toggle status.`}
+      <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+        <div className={noticeStyles.body}>
+          <p>{channels.length === 0
+            ? 'No channels configured yet. Create your first channel to begin routing audio.'
+            : `Managing ${channels.length} channel${channels.length !== 1 ? 's' : ''}. Click a card to edit details or toggle status.`}</p>
+        </div>
       </div>
 
       {loading && (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
+        <div className="centeredContent"><span className="spinner spinnerLarge" aria-label="Loading channels" /></div>
       )}
 
       {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="gridThree">
           {channels.map(channel => renderChannelCard(channel))}
         </div>
       )}
@@ -593,7 +531,6 @@ const ChannelSettings = ({ isDarkMode = false }) => {
           editingChannel={editingChannel}
           tempChannel={tempChannel}
           frequencies={frequencies}
-          isDarkMode={isDarkMode}
           isSaving={isSaving}
           onClose={() => {
             setEditingChannel(null);
@@ -612,7 +549,6 @@ const ChannelSettings = ({ isDarkMode = false }) => {
           onClose={() => setIsCreatingChannel(false)}
           onChannelCreated={handleCreateChannel}
           frequencies={frequencies}
-          isDarkMode={isDarkMode}
           isSaving={isSaving}
         />
       )}

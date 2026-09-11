@@ -1,0 +1,18 @@
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-6); border-bottom: 1px solid var(--ui-border); }
+.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-4); }
+.stat { padding: var(--space-4); background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); }
+.statLabel { margin: 0; color: var(--ui-muted); font-size: .875rem; font-weight: 500; }
+.statValue { margin: var(--space-1) 0 0; color: var(--ui-text); font-size: 1.5rem; font-weight: 700; }
+.filters { padding: var(--space-4); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); }
+.logPanel { overflow: hidden; background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); }
+.logHeader { padding: var(--space-4); background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); }
+.empty { padding: var(--space-8); color: var(--ui-muted); text-align: center; }
+.details { padding: var(--space-6); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); }
+.detailValue { margin: var(--space-1) 0 0; color: var(--ui-text); font-size: .875rem; overflow-wrap: anywhere; }
+.detailBlock { max-height: 10rem; padding: var(--space-3); margin-top: var(--space-1); overflow-y: auto; background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: var(--radius-md); }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); background: var(--ui-surface); border-top: 1px solid var(--ui-border); }
+.statusDot { width: .75rem; height: .75rem; border-radius: var(--radius-pill); background: var(--ui-danger); }
+.statusDotRunning { background: var(--ui-success); animation: summaryPulse 2s ease-in-out infinite; }
+@keyframes summaryPulse { 50% { opacity: .45; } }
+@media (max-width: 72rem) { .stats { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 40rem) { .stats { grid-template-columns: repeat(2, minmax(0,1fr)); } }

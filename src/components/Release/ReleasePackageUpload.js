@@ -4,8 +4,8 @@ import api from '../../utils/apiClient';
 import { Upload, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Button from '../ui/Button';
-import { Spinner } from '../ui/Spinner';
-import styles from '../ui/Page.module.css';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
 
 /**
  * Logged-in users: install boondock-edge-release-*.zip (from pack_boondock_release.py / release.bat).
@@ -46,31 +46,31 @@ const ReleasePackageUpload = () => {
   };
 
   return (
-    <section className={styles.uploadCard}>
-      <header className={styles.uploadHeader}>
+    <section className={cardStyles.card}>
+      <header className={cardStyles.header}>
         <div>
-          <h2 className={styles.cardTitle}>
+          <h2 className={cardStyles.title}>
             <Upload size={16} />
             Install a full release
           </h2>
-          <p className={styles.description}>
-            Upload <code className={styles.code}>boondock-edge-release-… .zip</code> from{' '}
-            <code className={styles.code}>release.bat</code> (UI + server). Restart the edge service
+          <p className={cardStyles.description}>
+            Upload <code>boondock-edge-release-… .zip</code> from{' '}
+            <code>release.bat</code> (UI + server). Restart the edge service
             afterward.
           </p>
         </div>
-        <Link to="/version" className={styles.link}>
+        <Link to="/version" className="row">
           Snapshots &amp; rollback <ExternalLink size={14} />
         </Link>
       </header>
-      <div className={styles.formRow}>
+      <div className="rowWrap">
         <input
           ref={fileRef}
           type="file"
           accept=".zip,application/zip"
-          className={`${styles.file} ${styles.grow}`}
+          className={`${formStyles.file} grow`}
         />
-        <label className={styles.check}>
+        <label className={formStyles.checkbox}>
           <input
             type="checkbox"
             checked={installDeps}
@@ -79,7 +79,7 @@ const ReleasePackageUpload = () => {
           <span>Run pip after</span>
         </label>
         <Button variant="primary" disabled={applying} onClick={onApply}>
-          {applying && <Spinner size="small" label="Uploading release" />}
+          {applying && <span className="spinner spinnerSmall" role="status" aria-label="Uploading release" />}
           {applying ? 'Uploading…' : 'Install'}
         </Button>
       </div>

@@ -1,28 +1,20 @@
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import { apiFetch } from '../../utils/apiClient';
 import { useState } from 'react';
 import {
   RadioTower,
   X,
   Volume2,
-  User2,
   Wifi,
-  Tag,
-  ActivitySquare,
-  Languages,
   Radio
 } from 'lucide-react';
-
-const LANGUAGES = [
-  "english", "spanish", "french", "german", "italian",
-  "portuguese", "chinese", "japanese", "korean", "arabic"
-];
 
 const ChannelCreateModal = ({
   isOpen,
   onClose,
   frequencies,
-  edgeServerEndpoint,
-  isDarkMode,
   onChannelCreated,
 }) => {
   const [newChannel, setNewChannel] = useState({
@@ -123,39 +115,39 @@ const ChannelCreateModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className={`relative w-full max-w-2xl p-6 rounded-2xl shadow-2xl transition-transform duration-300 transform scale-95 hover:scale-100 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div className="screenCenter">
+      <div className={cardStyles.card}>
         {/* Modal Header */}
-        <div className={`flex items-center justify-between pb-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center gap-3">
-            <RadioTower className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="rowBetween">
+          <div className="row">
+            <RadioTower  />
+            <h3 className="pageTitle">
               Create New Channel
             </h3>
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.icon}`}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X  />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="relative space-y-6 py-6">
-          <div className="grid grid-cols-2 gap-6">
+        <div className="stack">
+          <div className="gridTwo">
             {/* Frequency Selection */}
-            <div className="space-y-2 col-span-2">
-              <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Volume2 className="w-4 h-4" />
+            <div className="stack stackCompact">
+              <label className={formStyles.label}>
+                <div className="row">
+                  <Volume2  />
                   Frequency
                 </div>
               </label>
               <select
                 value={newChannel.frequency_id || ''}
                 onChange={(e) => handleFrequencyChange(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border transition-all duration-200 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                className={formStyles.select}
               >
                 <option value="">Select Frequency</option>
                 {frequencies.map((freq) => (
@@ -167,10 +159,10 @@ const ChannelCreateModal = ({
             </div>
 
             {/* Name Field */}
-            <div className="space-y-2 col-span-2">
-              <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <RadioTower className="w-4 h-4" />
+            <div className="stack stackCompact">
+              <label className={formStyles.label}>
+                <div className="row">
+                  <RadioTower  />
                   Name
                 </div>
               </label>
@@ -178,15 +170,15 @@ const ChannelCreateModal = ({
                 type="text"
                 value={newChannel.name}
                 onChange={(e) => handleFieldChange("name", e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border transition-all duration-200 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                className={formStyles.input}
               />
             </div>
 
             {/* MAC Address Field */}
-            <div className="space-y-2 col-span-2">
-              <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Wifi className="w-4 h-4" />
+            <div className="stack stackCompact">
+              <label className={formStyles.label}>
+                <div className="row">
+                  <Wifi  />
                   MAC Address
                 </div>
               </label>
@@ -196,33 +188,29 @@ const ChannelCreateModal = ({
                 onChange={(e) => handleFieldChange("mac", e.target.value)}
                 placeholder="XX:XX:XX:XX:XX:XX"
                 pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
-                className={`w-full px-4 py-2 rounded-lg border transition-all duration-200 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                className={formStyles.input}
               />
             </div>
 
             {/* Audio Stream Toggle */}
-            <div className="space-y-2 col-span-2">
-              <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Radio className="w-4 h-4" />
+            <div className="stack stackCompact">
+              <label className={formStyles.label}>
+                <div className="row">
+                  <Radio  />
                   Audio Stream
                 </div>
               </label>
-              <div className="flex items-center">
-                <label className="relative inline-flex items-center cursor-pointer">
+              <div className="row">
+                <label className={formStyles.label}>
                   <input
                     type="checkbox"
                     checked={newChannel.audio_stream_enabled || false}
                     onChange={(e) => handleFieldChange("audio_stream_enabled", e.target.checked)}
-                    className="sr-only peer"
+                    className={formStyles.input}
                   />
-                  <div className={`w-9 h-5 ${newChannel.audio_stream_enabled ? 'bg-blue-600' : 'bg-gray-600'}
-                    peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer 
-                    peer-checked:after:translate-x-full after:content-[''] after:absolute 
-                    after:top-[2px] after:left-[2px] after:bg-white after:rounded-full 
-                    after:h-4 after:w-4 after:transition-all`}></div>
+                  <div ></div>
                 </label>
-                <span className={`ml-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <span className="mutedText smallText">
                   {newChannel.audio_stream_enabled ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
@@ -234,27 +222,23 @@ const ChannelCreateModal = ({
 
           {/* Error message */}
           {error && (
-            <div className="text-red-500 text-sm mt-4">{error}</div>
+            <div >{error}</div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className={`relative flex justify-end pt-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div >
           <button
             onClick={onClose}
             disabled={isSaving}
-            className={`px-4 py-2 rounded-lg transition-colors duration-200 ${isDarkMode
-              ? 'bg-gray-700 hover:bg-gray-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-            } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !newChannel.frequency_id || !newChannel.name}
-            className={`px-4 py-2 ml-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
           >
             {isSaving ? 'Creating...' : 'Create Channel'}
           </button>

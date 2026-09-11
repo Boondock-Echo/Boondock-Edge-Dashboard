@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { X, AlertTriangle, Calendar, Clock, FileText, User } from "lucide-react";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import Button from "../ui/Button";
+import formStyles from "../ui/Form.module.css";
+import listStyles from "../ui/List.module.css";
+import modalStyles from "../ui/Modal.module.css";
+import noticeStyles from "../ui/Notice.module.css";
 
 const IncidentReportModal = ({
   isOpen,
@@ -12,7 +16,6 @@ const IncidentReportModal = ({
   timeFormat = "24h",
   timezone,
   onSubmit,
-  isDarkMode = false,
   tagsByMessage,
 }) => {
   const [formData, setFormData] = useState({
@@ -23,6 +26,7 @@ const IncidentReportModal = ({
     severity: "medium",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogRef = useRef(null);
 
   // Toast configuration
   const TOAST_CONFIG = {
@@ -32,15 +36,6 @@ const IncidentReportModal = ({
     closeOnClick: true,
     pauseOnHover: true,
     draggable: true,
-    theme: isDarkMode ? "dark" : "light",
-    style: {
-      borderRadius: "8px",
-      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-      minWidth: "300px",
-    },
-    progressStyle: {
-      background: isDarkMode ? "#4B5563" : "#D1D5DB",
-    },
     onClose: () => {
       // Safe cleanup
     },
@@ -48,6 +43,17 @@ const IncidentReportModal = ({
       // Safe initialization
     }
   };
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
 
   // Helper function to parse YYYYMMDD_HHMMSS format to Date
   const parseTimestamp = (timestamp) => {
@@ -247,10 +253,10 @@ const IncidentReportModal = ({
   };
 
   const severityOptions = [
-    { value: "low", label: "Low", color: "text-green-600", bgColor: "bg-green-200" },
-    { value: "medium", label: "Medium", color: "text-yellow-600", bgColor: "bg-yellow-200" },
-    { value: "high", label: "High", color: "text-orange-600", bgColor: "bg-orange-200" },
-    { value: "critical", label: "Critical", color: "text-red-700", bgColor: "bg-red-200" },
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+    { value: "critical", label: "Critical" },
   ];
 
   // Format start (oldest/earliest) and end (latest) message times for display
@@ -319,295 +325,231 @@ const IncidentReportModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
-      <div
-        className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-lg shadow-xl ${
-          isDarkMode ? "bg-gray-800" : "bg-white"
-        }`}
-      >
-        <div
-          className={`flex items-center justify-between p-6 border-b ${
-            isDarkMode ? "border-gray-700" : "border-gray-200"
-          }`}
-        >
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg ${isDarkMode ? "bg-orange-900 bg-opacity-20" : "bg-orange-100"}`}>
-              <FileText className={`w-6 h-6 ${isDarkMode ? "text-orange-400" : "text-orange-600"}`} />
-            </div>
-            <div>
-              <h2 className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                Create Incident Report
-              </h2>
-              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                Document incident with selected messages
-              </p>
-            </div>
+    <dialog
+      ref={dialogRef}
+      className={`${modalStyles.dialog} ${modalStyles.wide}`}
+      aria-labelledby="incident-report-title"
+      aria-describedby="incident-report-description"
+      onCancel={onClose}
+    >
+      <div className={modalStyles.header}>
+        <div className="row">
+          <FileText size={24} aria-hidden="true" />
+          <div>
+            <h2 id="incident-report-title" className={modalStyles.title}>
+              Create Incident Report
+            </h2>
+            <p id="incident-report-description" className={modalStyles.subtitle}>
+              Document incident with selected messages
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkMode
-                ? "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(90vh-180px)] overflow-y-auto">
-          <div>
-            <label
-              className={`flex items-center space-x-2 text-sm font-medium mb-2 ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Incident Name *</span>
-            </label>
-        
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter incident name..."
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                isDarkMode
-                  ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-              }`}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
-                className={`flex items-center space-x-2 text-sm font-medium mb-1 ${
-                  isDarkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Start Time</span>
-              </label>
-              
-         <input
-  type="datetime-local"
-  name="startTime"
-  value={formData.startTime}
-  step="1"
-  onChange={(e) =>
-    setFormData((prev) => ({ ...prev, startTime: e.target.value }))
-  }
-  className={`w-full px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-    isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900"
-  }`}
-/>
-
-            </div>
-            <div>
-              <label
-                className={`flex items-center space-x-2 text-sm font-medium mb-1 ${
-                  isDarkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                <span>End Time</span>
-              </label>
-             
-             <input
-  type="datetime-local"
-  name="endTime"
-  value={formData.endTime}
-  step="1"
-  onChange={handleInputChange}
-  className={`w-full px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-    isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900"
-  }`}
-/>
-            </div>
-          </div>
-          
-          {/* Time Information Display */}
-          {oldestMessageTime && latestMessageTime && (
-            <div className={`p-3 rounded-md border ${
-              isDarkMode ? "bg-gray-800 border-gray-600" : "bg-blue-50 border-blue-200"
-            }`}>
-              <div className={`text-xs font-medium mb-2 ${
-                isDarkMode ? "text-blue-400" : "text-blue-700"
-              }`}>
-                📅 Calculated from selected audio messages ({timezone}):
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
-                    Start Time (Oldest): 
-                  </span>
-                  <span className={`ml-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                    {formatTimeWithDate(oldestMessageTime, timezone)}
-                  </span>
-                </div>
-                <div>
-                  <span className={`font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
-                    End Time (Latest): 
-                  </span>
-                  <span className={`ml-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                    {formatTimeWithDate(latestMessageTime, timezone)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div>
-            <label
-              className={`flex items-center space-x-2 text-sm font-medium mb-2 ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Messages</span>
-            </label>
-            <div
-              className={`px-3 py-2 border rounded-md text-sm ${
-                isDarkMode ? "bg-gray-700 border-gray-600 text-gray-300" : "bg-gray-50 border-gray-300 text-gray-700"
-              }`}
-            >
-              {selectedMessages?.size} message{selectedMessages.size !== 1 ? "s" : ""} selected
-            </div>
-          </div>
-          <div>
-            <label
-              className={`flex items-center space-x-2 text-sm font-medium mb-2 ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>Severity</span>
-            </label>
-            <select
-              name="severity"
-              value={formData.severity}
-              onChange={handleInputChange}
-              className={`w-full px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900"
-              }`}
-            >
-              {severityOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <div className="mt-2">
-              {severityOptions.map(
-                (option) =>
-                  formData.severity === option.value && (
-                    <span
-                      key={option.value}
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                        isDarkMode ? option.color : `${option.color} ${option.bgColor}`
-                      }`}
-                    >
-                      <AlertTriangle className="w-3 h-3 mr-1" />
-                      {option.label} Severity
-                    </span>
-                  )
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              className={`flex items-center space-x-2 text-sm font-medium mb-2 ${
-                isDarkMode ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Description</span>
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={4}
-              placeholder="Describe the incident, its impact, and any relevant details..."
-              className={`w-full px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-vertical ${
-                isDarkMode
-                  ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-              }`}
-            />
-          </div>
-          <div>
-            <label
-              className={`text-sm font-medium mb-2 block ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Selected Messages Preview
-            </label>
-            <div
-              className={`max-h-32 overflow-y-auto border rounded-md p-3 space-y-2 ${
-                isDarkMode ? "border-gray-600 bg-gray-700" : "border-gray-200 bg-gray-50"
-              }`}
-            >
-              {sortedSelectedMessages.slice(0, 3).map((msg) => (
-                <div key={msg.id} className={`text-xs ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  <span className="font-mono">[{formatTime(msg.time, timezone)}]</span> {msg.message}
-                  {(tagsByMessage[msg.id] || []).length > 0 && (
-                    <span className="ml-2">
-                      {tagsByMessage[msg.id].map((tag) => (
-                        <span
-                          key={tag}
-                          className={`inline-flex items-center px-1 py-0.5 ml-1 text-xs rounded-full ${
-                            isDarkMode ? "bg-gray-600 text-gray-200" : "bg-gray-200 text-gray-800"
-                          }`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {selectedMessages.size > 3 && (
-                <div className={`text-xs italic ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                  ... and {selectedMessages.size - 3} more messages
-                </div>
-              )}
-            </div>
-          </div>
-        </form>
-        <div
-          className={`flex items-center justify-end space-x-3 p-6 border-t ${
-            isDarkMode ? "border-gray-600" : "border-gray-200"
-          }`}
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={onClose}
+          aria-label="Close incident report"
         >
-          <button
+          <X />
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className={`${modalStyles.body} ${formStyles.form}`}>
+        <div className={formStyles.field}>
+          <label className={`${formStyles.label} row`} htmlFor="incident-name">
+            <User size={16} aria-hidden="true" />
+            <span>Incident Name *</span>
+          </label>
+          <input
+            id="incident-name"
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            required
+            placeholder="Enter incident name..."
+            className={formStyles.input}
+          />
+        </div>
+
+        <div className="gridTwo">
+          <div className={formStyles.field}>
+            <label className={`${formStyles.label} row`} htmlFor="incident-start-time">
+              <Calendar size={16} aria-hidden="true" />
+              <span>Start Time</span>
+            </label>
+            <input
+              id="incident-start-time"
+              type="datetime-local"
+              name="startTime"
+              value={formData.startTime}
+              step="1"
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, startTime: e.target.value }))
+              }
+              className={formStyles.input}
+            />
+          </div>
+
+          <div className={formStyles.field}>
+            <label className={`${formStyles.label} row`} htmlFor="incident-end-time">
+              <Clock size={16} aria-hidden="true" />
+              <span>End Time</span>
+            </label>
+            <input
+              id="incident-end-time"
+              type="datetime-local"
+              name="endTime"
+              value={formData.endTime}
+              step="1"
+              onChange={handleInputChange}
+              className={formStyles.input}
+            />
+          </div>
+        </div>
+
+        {/* Time Information Display */}
+        {oldestMessageTime && latestMessageTime && (
+          <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+            <Calendar size={18} className={noticeStyles.icon} aria-hidden="true" />
+            <div className={`${noticeStyles.body} grow`}>
+              <p>Calculated from selected audio messages ({timezone}):</p>
+              <div className="gridTwo">
+                <p>
+                  <strong>Start Time (Oldest):</strong>{" "}
+                  {formatTimeWithDate(oldestMessageTime, timezone)}
+                </p>
+                <p>
+                  <strong>End Time (Latest):</strong>{" "}
+                  {formatTimeWithDate(latestMessageTime, timezone)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={formStyles.field}>
+          <label className={`${formStyles.label} row`}>
+            <FileText size={16} aria-hidden="true" />
+            <span>Messages</span>
+          </label>
+          <div className={formStyles.input}>
+            {selectedMessages?.size} message{selectedMessages.size !== 1 ? "s" : ""} selected
+          </div>
+        </div>
+
+        <div className={formStyles.field}>
+          <label className={`${formStyles.label} row`} htmlFor="incident-severity">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <span>Severity</span>
+          </label>
+          <select
+            id="incident-severity"
+            name="severity"
+            value={formData.severity}
+            onChange={handleInputChange}
+            className={formStyles.select}
+          >
+            {severityOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div>
+            {severityOptions.map(
+              (option) =>
+                formData.severity === option.value && (
+                  <span
+                    key={option.value}
+                    className={`pill ${
+                      option.value === "low"
+                        ? "pillSuccess"
+                        : option.value === "medium"
+                          ? "pillAccent"
+                          : option.value === "high"
+                            ? "pillWarning"
+                            : "pillDanger"
+                    }`}
+                  >
+                    <AlertTriangle size={12} aria-hidden="true" />
+                    {option.label} Severity
+                  </span>
+                )
+            )}
+          </div>
+        </div>
+
+        <div className={formStyles.field}>
+          <label className={`${formStyles.label} row`} htmlFor="incident-description">
+            <FileText size={16} aria-hidden="true" />
+            <span>Description</span>
+          </label>
+          <textarea
+            id="incident-description"
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            rows={4}
+            placeholder="Describe the incident, its impact, and any relevant details..."
+            className={formStyles.input}
+          />
+        </div>
+
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Selected Messages Preview</label>
+          <div className='preview'>
+            <ul className={listStyles.list}>
+              {sortedSelectedMessages.slice(0, 3).map((msg) => (
+                <li key={msg.id} className={listStyles.item}>
+                  <div className={listStyles.content}>
+                    <span className={listStyles.identifier}>[{formatTime(msg.time, timezone)}]</span>{" "}
+                    {msg.message}
+                    {(tagsByMessage[msg.id] || []).length > 0 && (
+                      <span className="rowWrap">
+                        {tagsByMessage[msg.id].map((tag) => (
+                          <span key={tag} className="pill">
+                            {tag}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {selectedMessages.size > 3 && (
+              <p className={formStyles.helpText}>
+                ... and {selectedMessages.size - 3} more messages
+              </p>
+            )}
+          </div>
+        </div>
+      </form>
+
+      <div className={modalStyles.actionsBetween}>
+        <div />
+        <div className={modalStyles.actions}>
+          <Button
             type="button"
+            variant="secondary"
             onClick={onClose}
             disabled={isSubmitting}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              isDarkMode
-                ? "text-gray-300 hover:text-gray-100 hover:bg-gray-700"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-            }`}
           >
             Cancel
-          </button>
-          <button
-            type="submit"
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.name.trim()}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-              isSubmitting || !formData.name.trim()
-                ? `${isDarkMode ? "bg-gray-400 text-gray-600" : "bg-gray-200 text-gray-400"} cursor-not-allowed`
-                : `${isDarkMode ? "bg-orange-600 hover:bg-orange-700" : "bg-orange-600 hover:bg-orange-700"} text-white`
-            }`}
           >
             {isSubmitting ? "Creating..." : "Create Report"}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 

@@ -8,7 +8,9 @@ import ContentEditable from "react-contenteditable";
 import Button from "../ui/Button";
 import { toast } from "react-toastify";
 import audioStyles from "../ui/AudioPlayer.module.css";
-import { Spinner } from "../ui/Spinner";
+import modalStyles from "../ui/Modal.module.css";
+import cardStyles from "../ui/Card.module.css";
+import listStyles from "../ui/List.module.css";
 
 
 // Debounce utility to prevent rapid transcription requests
@@ -1398,6 +1400,7 @@ const handleWaveformClick = useCallback(
           aria-label="Close audio editor"
           onClick={handleClose}
           variant="secondary"
+          size="icon"
         >
           <X size={20} />
         </Button>
@@ -1418,7 +1421,7 @@ const handleWaveformClick = useCallback(
         <div className={audioStyles.timelineHeader}>
           {(isProcessing || isLoading) && (
             <div className={audioStyles.status}>
-              <Spinner size="small" label={isProcessing ? "Processing audio" : "Loading audio"} />
+              <span className="spinner" role="status" aria-label={isProcessing ? "Processing audio" : "Loading audio"} />
               <span>{isProcessing ? `Processing (${processProgress}%)` : "Loading..."}</span>
             </div>
           )}
@@ -1456,113 +1459,110 @@ const handleWaveformClick = useCallback(
         {showHistory && (
           <dialog
             ref={historyDialogRef}
-            className={audioStyles.dialog}
+            className={`${modalStyles.dialog} ${modalStyles.wide}`}
             aria-labelledby="version-history-title"
             onClose={() => setShowHistory(false)}
           >
-              <header className={audioStyles.dialogHeader}>
-                <div>
-                  <h2 id="version-history-title" className={audioStyles.dialogTitle}>Version History</h2>
-                  <p className={audioStyles.dialogSubtitle}>All timestamps shown in {userTimezone}</p>
+            <header className={modalStyles.header}>
+              <div>
+                <h2 id="version-history-title" className={modalStyles.title}>Version History</h2>
+                <p className={modalStyles.subtitle}>All timestamps shown in {userTimezone}</p>
+              </div>
+              <Button
+                aria-label="Close version history"
+                onClick={() => setShowHistory(false)}
+                size="icon"
+              >
+                <X size={20} />
+              </Button>
+            </header>
+
+            <div className={modalStyles.body}>
+              {isLoadingHistory ? (
+                <div className="centeredContent">
+                  <span className="spinner spinnerLarge" role="status" aria-label="Loading version history" />
+                  <span>Loading history...</span>
                 </div>
-                <Button
-                  aria-label="Close version history"
-                  onClick={() => setShowHistory(false)}
-                  size="icon"
-                >
-                  <X size={20} />
-                </Button>
-              </header>
-              
-              <div className={audioStyles.dialogBody}>
-                {isLoadingHistory ? (
-                  <div className={audioStyles.dialogLoading}>
-                    <Spinner size="large" label="Loading version history" />
-                    <span>Loading history...</span>
-                  </div>
-                ) : historyVersions.length === 0 ? (
-                  <div className={audioStyles.dialogEmpty}>
+              ) : historyVersions.length === 0 ? (
+                <div className="centeredContent">
+                  <div className="stack stackCompact">
                     <Clock size={48} />
                     <p>No version history available</p>
                     <p>History will be created when you save changes</p>
                   </div>
-                ) : (
-                  <div className={audioStyles.dialogList}>
-                    {historyVersions.map((version) => (
-                      <div
-                        key={version.id}
-                        className={audioStyles.dialogCard}
-                      >
-                        <div className={audioStyles.dialogCardHeader}>
-                          <div className={audioStyles.dialogRow}>
-                            <span className={`${audioStyles.dialogBadge} ${version.version_number === 0 ? audioStyles.dialogBadgeWarning : ""}`}>
-                              {version.version_number === 0 ? "Original" : `Version ${version.version_number}`}
-                            </span>
-                            <span className={audioStyles.dialogMeta}>
-                              {typeof version.created_at === 'string' && version.created_at.includes(' ') ? 
-                                version.created_at : 
-                                new Date(version.created_at).toLocaleString("en-US")
-                              }
-                              {typeof version.created_at === 'string' && version.created_at.includes(' ') && 
-                                <small>({historyTimezone})</small>
-                              }
-                            </span>
-                          </div>
-                          <div className={audioStyles.dialogRow}>
+                </div>
+              ) : (
+                <div className="stack">
+                  {historyVersions.map((version) => (
+                    <article key={version.id} className="stack stackCompact">
+                      <div className="rowBetweenStart">
+                        <div className="rowWrap">
+                          <span className={`pill ${version.version_number === 0 ? "pillWarning" : "pillAccent"}`}>
+                            {version.version_number === 0 ? "Original" : `Version ${version.version_number}`}
+                          </span>
+                          <span>
+                            {typeof version.created_at === 'string' && version.created_at.includes(' ')
+                              ? version.created_at
+                              : new Date(version.created_at).toLocaleString("en-US")}
+                            {typeof version.created_at === 'string' && version.created_at.includes(' ') &&
+                              <small> ({historyTimezone})</small>
+                            }
+                          </span>
+                        </div>
+                        <div className={modalStyles.actions}>
+                          <Button
+                            onClick={() => revertToVersion(version.version_number)}
+                            disabled={isProcessing}
+                            size="small"
+                            variant="success"
+                          >
+                            <ArrowLeft size={12} /> Revert
+                          </Button>
+                          {version.version_number !== 0 && (
                             <Button
-                              onClick={() => revertToVersion(version.version_number)}
+                              onClick={() => deleteVersion(version.version_number)}
                               disabled={isProcessing}
                               size="small"
-                              variant="success"
+                              variant="danger"
                             >
-                              <ArrowLeft size={12} /> Revert
+                              <X size={12} /> Delete
                             </Button>
-                            {version.version_number !== 0 && (
-                              <Button
-                                onClick={() => deleteVersion(version.version_number)}
-                                disabled={isProcessing}
-                                size="small"
-                                variant="danger"
-                              >
-                                <X size={12} /> Delete
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </div>
-                        
-                        {version.description && (
-                          <div className={audioStyles.dialogSection}>
-                            <strong>Description: </strong>
-                            <span>{version.description}</span>
-                          </div>
-                        )}
-                        
-                        <div className={audioStyles.dialogSection}>
-                          <strong>Transcription Preview:</strong>
-                          <div 
-                            className={audioStyles.dialogPreview}
-                            dangerouslySetInnerHTML={{ 
-                              __html: version.transcription ? 
-                                (version.transcription.length > 200 ? 
-                                  version.transcription.substring(0, 200) + '...' : 
-                                  version.transcription
-                                ) : 
-                                '<em>No transcription</em>'
-                            }}
-                          />
-                        </div>
-                        
-                        {version.audio_filename && (
-                          <div className={audioStyles.dialogMetaLine}>
-                            <strong>Audio: </strong>
-                            <span>{version.audio_filename}</span>
-                          </div>
-                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+                      {version.description && (
+                        <div>
+                          <strong>Description: </strong>
+                          <span>{version.description}</span>
+                        </div>
+                      )}
+
+                      <div className="stack stackCompact">
+                        <strong>Transcription Preview:</strong>
+                        <div
+                          className="preview"
+                          dangerouslySetInnerHTML={{
+                            __html: version.transcription
+                              ? (version.transcription.length > 200
+                                  ? version.transcription.substring(0, 200) + '...'
+                                  : version.transcription)
+                              : '<em>No transcription</em>'
+                          }}
+                        />
+                      </div>
+
+                      {version.audio_filename && (
+                        <div>
+                          <strong>Audio: </strong>
+                          <span>{version.audio_filename}</span>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
           </dialog>
         )}
 
@@ -1572,8 +1572,8 @@ const handleWaveformClick = useCallback(
 
 
       <footer className={audioStyles.editorFooter}>
-        <div className={audioStyles.footerContent}>
-          <div className={audioStyles.transport}>
+        <div className={`rowBetween ${audioStyles.footerContent}`}>
+          <div className="row">
             <Button
               aria-label="Skip back 1 second"
               onClick={handleSkipBackward}
@@ -1583,20 +1583,22 @@ const handleWaveformClick = useCallback(
             >
               <SkipBack size={20} />
             </Button>
-            <button
+            <Button
               aria-label={isAdvancedPlaying ? "Pause audio" : "Play audio"}
               onClick={togglePlayPause}
               disabled={isLoading || isProcessing}
               className={audioStyles.playToggle}
+              size="icon"
+              variant="primary"
             >
               {isLoading || isProcessing ? (
-                <Spinner label="Loading audio" />
+                <span className="spinner" role="status" aria-label="Loading audio" />
               ) : isAdvancedPlaying ? (
                 <Pause size={20} />
               ) : (
                 <Play size={20} />
               )}
-            </button>
+            </Button>
             <Button
               aria-label="Stop playback"
               onClick={handleStop}
@@ -1618,8 +1620,8 @@ const handleWaveformClick = useCallback(
               <SkipForward size={20} />
             </Button>
           </div>
-          <div className={audioStyles.volumeControl}>
-            <Volume2 size={20} className={audioStyles.muted} />
+          <div className="row">
+            <Volume2 size={20} color="var(--ui-muted)" />
             <input
               type="range"
               min="0"

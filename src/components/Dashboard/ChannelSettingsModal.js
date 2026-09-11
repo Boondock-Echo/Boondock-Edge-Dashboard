@@ -1,10 +1,12 @@
 import { apiFetch } from '../../utils/apiClient';
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Save, Volume2, Clock, MinusCircle, PlusCircle, Settings } from "lucide-react";
+import Button from "../ui/Button";
+import formStyles from "../ui/Form.module.css";
+import modalStyles from "../ui/Modal.module.css";
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
-const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = true }) => {
+const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
   const [settings, setSettings] = useState({
     threshold: "50", // from 0 to 100
     silence: "1000", // ms, default 1 second
@@ -17,6 +19,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
   });
   const [initialSettings, setInitialSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const dialogRef = useRef(null);
 
   useEffect(() => {
     if (channel && channel.id) {
@@ -74,13 +77,23 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
     }
   }, [channel]);
 
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !isOpen) return;
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+  }, [isOpen]);
+
   // Audio gain options: finite set of dB values
   const audioGainOptions = [-3, 0, 3, 6, 9, 12, 15, 18, 21, 24];
 
   const ranges = {
     threshold: {
       min: 0,
-      max: 100,
+      max: 60,
       step: 0.5,
       label: "Audio Threshold",
       unit: "",
@@ -261,12 +274,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
 
       if (Object.keys(changedSettings).length > 0) {
         toast.success(
-          <div>
-            <strong>Updated Channel {channel.name}</strong>
-            <div className="whitespace-pre-line mt-2 text-sm">
-              {formatChangesMessage(changedSettings)}
-            </div>
-          </div>,
+          `Updated Channel ${channel.name}: ${formatChangesMessage(changedSettings)}`,
           {
             position: "top-right",
             autoClose: 3000,
@@ -274,7 +282,6 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-            theme: isDarkMode ? "dark" : "light",
           }
         );
       } else {
@@ -285,7 +292,6 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-          theme: isDarkMode ? "dark" : "light",
         });
       }
 
@@ -299,7 +305,6 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
-        theme: isDarkMode ? "dark" : "light",
       });
     } finally {
       setIsSaving(false);
@@ -308,490 +313,190 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave, isDarkMode = t
 
   if (!isOpen) return null;
 
-  return isDarkMode ? (
-    // Dark Mode UI
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
-      <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-        <div className="fixed inset-0 transition-opacity" onClick={onClose} />
+  const renderRangeField = (key, value) => {
+    const range = ranges[key];
+    const Icon = range.icon;
 
-        <div className="relative transform overflow-hidden rounded-lg bg-gray-800 text-left sm:my-8 sm:w-full sm:max-w-4xl border border-gray-700">
-          <div className="absolute right-0 top-0 pr-4 pt-4 z-10">
-            <button
-              type="button"
-              className="p-2 text-gray-400 hover:text-white focus:outline-none"
-              onClick={onClose}
-            >
-              <span className="sr-only">Close</span>
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="relative p-6">
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-white mb-1">
-                {channel?.name || 'Channel Settings'}
-              </h3>
-              <p className="text-sm text-gray-400">
-                Adjust audio processing parameters
-              </p>
+    return (
+      <div key={key} className={formStyles.field}>
+        <div className={formStyles.fieldHeader}>
+          <div className={formStyles.fieldInfo}>
+            <Icon className={formStyles.fieldIcon} aria-hidden="true" />
+            <div>
+              <label className={formStyles.label} htmlFor={`channel-setting-${key}`}>
+                {range.label}
+              </label>
+              <p className={formStyles.description}>{range.description}</p>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Settings Grid - 2 Columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Audio settings with sliders */}
-                  {Object.entries(settings).map(([key, value]) => {
-                    // Skip audio_gain, discard_small_enabled, and discard_small_min_ms as they're handled separately
-                    if (key === 'audio_gain' || key === 'discard_small_enabled' || key === 'discard_small_min_ms') return null;
-                    
-                    const Icon = ranges[key].icon;
-                    return (
-                      <div key={key} className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-2 flex-1">
-                            <Icon className="h-5 w-5 text-gray-400 mt-0.5" />
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-white">
-                                {ranges[key].label}
-                              </label>
-                              <p className="text-xs text-gray-400">
-                                {ranges[key].description}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-sm font-medium text-blue-400 ml-2">
-                            {value}{ranges[key].unit}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <input
-                            type="range"
-                            value={value}
-                            onChange={(e) => handleInputChange(key, e.target.value)}
-                            min={ranges[key].min}
-                            max={ranges[key].max}
-                            step={ranges[key].step}
-                            className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer
-                                     focus:outline-none
-                                     [&::-webkit-slider-thumb]:appearance-none
-                                     [&::-webkit-slider-thumb]:h-4
-                                     [&::-webkit-slider-thumb]:w-4
-                                     [&::-webkit-slider-thumb]:rounded-full
-                                     [&::-webkit-slider-thumb]:bg-blue-500
-                                     [&::-webkit-slider-thumb]:cursor-pointer
-                                     [&::-moz-range-thumb]:h-4
-                                     [&::-moz-range-thumb]:w-4
-                                     [&::-moz-range-thumb]:rounded-full
-                                     [&::-moz-range-thumb]:bg-blue-500
-                                     [&::-moz-range-thumb]:border-0
-                                     [&::-moz-range-thumb]:cursor-pointer"
-                            disabled={isSaving}
-                          />
-                          <div className="flex justify-between px-1 text-xs text-gray-500">
-                            <span>{ranges[key].min}{ranges[key].unit}</span>
-                            <span>{ranges[key].max}{ranges[key].unit}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Audio Gain Dropdown */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2 flex-1">
-                        <Settings className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-white">
-                            Audio Gain
-                          </label>
-                          <p className="text-xs text-gray-400">
-                            Audio codec gain in dB (default: 3 dB)
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-blue-400 ml-2">
-                        {settings.audio_gain} dB
-                      </span>
-                    </div>
-
-                    <select
-                      value={settings.audio_gain}
-                      onChange={(e) => handleGainChange(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white
-                               focus:outline-none focus:border-blue-500"
-                      disabled={isSaving}
-                    >
-                      {audioGainOptions.map((gain) => (
-                        <option key={gain} value={gain.toString()}>
-                          {gain >= 0 ? `+${gain}` : gain} dB
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Discard Small Audio Checkbox */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2 flex-1">
-                        <MinusCircle className="h-5 w-5 text-gray-400 mt-0.5" />
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-white">
-                            Discard Small Audio
-                          </label>
-                          <p className="text-xs text-gray-400">
-                            Enable discarding small audio files
-                          </p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer ml-2">
-                        <input
-                          type="checkbox"
-                          checked={settings.discard_small_enabled}
-                          onChange={(e) => setSettings(prev => ({ ...prev, discard_small_enabled: e.target.checked }))}
-                          className="sr-only peer"
-                          disabled={isSaving}
-                        />
-                        <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  {/* Discard Small Files Min Ms - Only enabled when checkbox is checked */}
-                  {settings.discard_small_enabled && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-2 flex-1">
-                          <MinusCircle className="h-5 w-5 text-gray-400 mt-0.5" />
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-white">
-                              {ranges.discard_small_min_ms.label}
-                            </label>
-                            <p className="text-xs text-gray-400">
-                              {ranges.discard_small_min_ms.description}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-medium text-blue-400 ml-2">
-                          {settings.discard_small_min_ms}{ranges.discard_small_min_ms.unit}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          value={settings.discard_small_min_ms}
-                          onChange={(e) => handleInputChange('discard_small_min_ms', e.target.value)}
-                          min={ranges.discard_small_min_ms.min}
-                          max={ranges.discard_small_min_ms.max}
-                          step={ranges.discard_small_min_ms.step}
-                          className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer
-                                   focus:outline-none
-                                   [&::-webkit-slider-thumb]:appearance-none
-                                   [&::-webkit-slider-thumb]:h-4
-                                   [&::-webkit-slider-thumb]:w-4
-                                   [&::-webkit-slider-thumb]:rounded-full
-                                   [&::-webkit-slider-thumb]:bg-blue-500
-                                   [&::-webkit-slider-thumb]:cursor-pointer
-                                   [&::-moz-range-thumb]:h-4
-                                   [&::-moz-range-thumb]:w-4
-                                   [&::-moz-range-thumb]:rounded-full
-                                   [&::-moz-range-thumb]:bg-blue-500
-                                   [&::-moz-range-thumb]:border-0
-                                   [&::-moz-range-thumb]:cursor-pointer"
-                          disabled={isSaving}
-                        />
-                        <div className="flex justify-between px-1 text-xs text-gray-500">
-                          <span>{ranges.discard_small_min_ms.min}{ranges.discard_small_min_ms.unit}</span>
-                          <span>{ranges.discard_small_min_ms.max}{ranges.discard_small_min_ms.unit}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSetDefaults}
-                    className="px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white rounded focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={isSaving}
-                  >
-                    Reset to Defaults
-                  </button>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="inline-flex w-full justify-center px-4 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white rounded focus:outline-none sm:w-auto"
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto gap-2"
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          <span>Save</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </form>
           </div>
+          <span className={formStyles.value} aria-live="polite">
+            {value}{range.unit}
+          </span>
+        </div>
+
+        <input
+          id={`channel-setting-${key}`}
+          type="range"
+          value={value}
+          onChange={(e) => handleInputChange(key, e.target.value)}
+          min={range.min}
+          max={range.max}
+          step={range.step}
+          className={formStyles.range}
+          disabled={isSaving}
+        />
+        <div className={formStyles.rangeScale} aria-hidden="true">
+          <span>{range.min}{range.unit}</span>
+          <span>{range.max}{range.unit}</span>
         </div>
       </div>
-    </div>
-  ) : (
-    // Light Mode UI
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500/50">
-      <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-        <div className="fixed inset-0 transition-opacity" onClick={onClose} />
+    );
+  };
 
-        <div className="relative transform overflow-hidden rounded-lg bg-white text-left sm:my-8 sm:w-full sm:max-w-4xl border border-gray-300">
-          <div className="absolute right-0 top-0 pr-4 pt-4 z-10">
-            <button
-              type="button"
-              className="p-2 text-gray-400 hover:text-gray-600 focus:outline-none"
-              onClick={onClose}
-            >
-              <span className="sr-only">Close</span>
-              <X className="h-5 w-5" />
-            </button>
+  const handleDialogCancel = (event) => {
+    event.preventDefault();
+    if (!isSaving) {
+      onClose();
+    }
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className={`${modalStyles.dialog} ${modalStyles.wide}`}
+      aria-labelledby="channel-settings-title"
+      aria-describedby="channel-settings-description"
+      onCancel={handleDialogCancel}
+    >
+        <div className={modalStyles.header}>
+          <div>
+            <h2 id="channel-settings-title" className={modalStyles.title}>
+              {channel?.name || 'Channel Settings'}
+            </h2>
+            <p id="channel-settings-description" className={modalStyles.subtitle}>
+              Adjust audio processing parameters
+            </p>
           </div>
-
-          <div className="relative p-6">
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                {channel?.name || 'Channel Settings'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                Adjust audio processing parameters
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Settings Grid - 2 Columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Audio settings with sliders */}
-                  {Object.entries(settings).map(([key, value]) => {
-                    // Skip audio_gain, discard_small_enabled, and discard_small_min_ms as they're handled separately
-                    if (key === 'audio_gain' || key === 'discard_small_enabled' || key === 'discard_small_min_ms') return null;
-                    
-                    const Icon = ranges[key].icon;
-                    return (
-                      <div key={key} className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-2 flex-1">
-                            <Icon className="h-5 w-5 text-gray-500 mt-0.5" />
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium text-gray-900">
-                                {ranges[key].label}
-                              </label>
-                              <p className="text-xs text-gray-600">
-                                {ranges[key].description}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-sm font-medium text-blue-600 ml-2">
-                            {value}{ranges[key].unit}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <input
-                            type="range"
-                            value={value}
-                            onChange={(e) => handleInputChange(key, e.target.value)}
-                            min={ranges[key].min}
-                            max={ranges[key].max}
-                            step={ranges[key].step}
-                            className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
-                                     focus:outline-none
-                                     [&::-webkit-slider-thumb]:appearance-none
-                                     [&::-webkit-slider-thumb]:h-4
-                                     [&::-webkit-slider-thumb]:w-4
-                                     [&::-webkit-slider-thumb]:rounded-full
-                                     [&::-webkit-slider-thumb]:bg-blue-500
-                                     [&::-webkit-slider-thumb]:cursor-pointer
-                                     [&::-moz-range-thumb]:h-4
-                                     [&::-moz-range-thumb]:w-4
-                                     [&::-moz-range-thumb]:rounded-full
-                                     [&::-moz-range-thumb]:bg-blue-500
-                                     [&::-moz-range-thumb]:border-0
-                                     [&::-moz-range-thumb]:cursor-pointer"
-                            disabled={isSaving}
-                          />
-                          <div className="flex justify-between px-1 text-xs text-gray-500">
-                            <span>{ranges[key].min}{ranges[key].unit}</span>
-                            <span>{ranges[key].max}{ranges[key].unit}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Audio Gain Dropdown */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2 flex-1">
-                        <Settings className="h-5 w-5 text-gray-500 mt-0.5" />
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-gray-900">
-                            Audio Gain
-                          </label>
-                          <p className="text-xs text-gray-600">
-                            Audio codec gain in dB (default: 3 dB)
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-blue-600 ml-2">
-                        {settings.audio_gain} dB
-                      </span>
-                    </div>
-
-                    <select
-                      value={settings.audio_gain}
-                      onChange={(e) => handleGainChange(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-900
-                               focus:outline-none focus:border-blue-500"
-                      disabled={isSaving}
-                    >
-                      {audioGainOptions.map((gain) => (
-                        <option key={gain} value={gain.toString()}>
-                          {gain >= 0 ? `+${gain}` : gain} dB
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Discard Small Audio Checkbox */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2 flex-1">
-                        <MinusCircle className="h-5 w-5 text-gray-500 mt-0.5" />
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-gray-900">
-                            Discard Small Audio
-                          </label>
-                          <p className="text-xs text-gray-600">
-                            Enable discarding small audio files
-                          </p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer ml-2">
-                        <input
-                          type="checkbox"
-                          checked={settings.discard_small_enabled}
-                          onChange={(e) => setSettings(prev => ({ ...prev, discard_small_enabled: e.target.checked }))}
-                          className="sr-only peer"
-                          disabled={isSaving}
-                        />
-                        <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  {/* Discard Small Files Min Ms - Only enabled when checkbox is checked */}
-                  {settings.discard_small_enabled && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-2 flex-1">
-                          <MinusCircle className="h-5 w-5 text-gray-500 mt-0.5" />
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-900">
-                              {ranges.discard_small_min_ms.label}
-                            </label>
-                            <p className="text-xs text-gray-600">
-                              {ranges.discard_small_min_ms.description}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600 ml-2">
-                          {settings.discard_small_min_ms}{ranges.discard_small_min_ms.unit}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          value={settings.discard_small_min_ms}
-                          onChange={(e) => handleInputChange('discard_small_min_ms', e.target.value)}
-                          min={ranges.discard_small_min_ms.min}
-                          max={ranges.discard_small_min_ms.max}
-                          step={ranges.discard_small_min_ms.step}
-                          className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
-                                   focus:outline-none
-                                   [&::-webkit-slider-thumb]:appearance-none
-                                   [&::-webkit-slider-thumb]:h-4
-                                   [&::-webkit-slider-thumb]:w-4
-                                   [&::-webkit-slider-thumb]:rounded-full
-                                   [&::-webkit-slider-thumb]:bg-blue-500
-                                   [&::-webkit-slider-thumb]:cursor-pointer
-                                   [&::-moz-range-thumb]:h-4
-                                   [&::-moz-range-thumb]:w-4
-                                   [&::-moz-range-thumb]:rounded-full
-                                   [&::-moz-range-thumb]:bg-blue-500
-                                   [&::-moz-range-thumb]:border-0
-                                   [&::-moz-range-thumb]:cursor-pointer"
-                          disabled={isSaving}
-                        />
-                        <div className="flex justify-between px-1 text-xs text-gray-500">
-                          <span>{ranges.discard_small_min_ms.min}{ranges.discard_small_min_ms.unit}</span>
-                          <span>{ranges.discard_small_min_ms.max}{ranges.discard_small_min_ms.unit}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-300 flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSetDefaults}
-                    className="px-4 py-2 text-sm font-medium bg-gray-200 hover:bg-gray-300 text-gray-800 rounded focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={isSaving}
-                  >
-                    Reset to Defaults
-                  </button>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="inline-flex w-full justify-center px-4 py-2 text-sm font-medium bg-gray-200 hover:bg-gray-300 text-gray-800 rounded focus:outline-none sm:w-auto"
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto gap-2"
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          <span>Save</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </form>
-          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close channel settings"
+          >
+            <X size={18} aria-hidden="true" />
+          </Button>
         </div>
-      </div>
-    </div>
+
+        <form onSubmit={handleSubmit} className={formStyles.form}>
+          <div className={modalStyles.body}>
+            <div className="gridTwo">
+              {Object.entries(settings).map(([key, value]) => {
+                if (key === 'audio_gain' || key === 'discard_small_enabled' || key === 'discard_small_min_ms') {
+                  return null;
+                }
+                return renderRangeField(key, value);
+              })}
+
+              <div className={formStyles.field}>
+                <div className={formStyles.fieldHeader}>
+                  <div className={formStyles.fieldInfo}>
+                    <Settings className={formStyles.fieldIcon} aria-hidden="true" />
+                    <div>
+                      <label className={formStyles.label} htmlFor="channel-setting-audio-gain">
+                        Audio Gain
+                      </label>
+                      <p className={formStyles.description}>
+                        Audio codec gain in dB (default: 3 dB)
+                      </p>
+                    </div>
+                  </div>
+                  <span className={formStyles.value}>{settings.audio_gain} dB</span>
+                </div>
+
+                <select
+                  id="channel-setting-audio-gain"
+                  value={settings.audio_gain}
+                  onChange={(e) => handleGainChange(e.target.value)}
+                  className={formStyles.select}
+                  disabled={isSaving}
+                >
+                  {audioGainOptions.map((gain) => (
+                    <option key={gain} value={gain.toString()}>
+                      {gain >= 0 ? `+${gain}` : gain} dB
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={formStyles.field}>
+                <div className={formStyles.fieldHeader}>
+                  <div className={formStyles.fieldInfo}>
+                    <MinusCircle className={formStyles.fieldIcon} aria-hidden="true" />
+                    <div>
+                      <span className={formStyles.label}>Discard Small Audio</span>
+                      <p className={formStyles.description}>Enable discarding small audio files</p>
+                    </div>
+                  </div>
+
+                  <label className={formStyles.switch}>
+                    <span className={formStyles.srOnly}>Discard small audio files</span>
+                    <input
+                      type="checkbox"
+                      checked={settings.discard_small_enabled}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        discard_small_enabled: e.target.checked
+                      }))}
+                      disabled={isSaving}
+                    />
+                    <span className={formStyles.switchTrack} aria-hidden="true">
+                      <span className={formStyles.switchThumb} />
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {settings.discard_small_enabled && renderRangeField(
+                'discard_small_min_ms',
+                settings.discard_small_min_ms
+              )}
+            </div>
+          </div>
+
+          <div className={modalStyles.actionsBetween}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSetDefaults}
+              disabled={isSaving}
+            >
+              Reset to Defaults
+            </Button>
+
+            <div className={modalStyles.actions}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSaving}>
+                {isSaving ? (
+                  <span className="spinner spinnerSmall" role="status" aria-label="Saving channel settings" />
+                ) : (
+                  <>
+                    <Save size={16} aria-hidden="true" />
+                    <span>Save</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </form>
+    </dialog>
   );
 };
 

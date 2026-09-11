@@ -1,26 +1,27 @@
 import { Settings, Settings2, Users, Radio, FileText, Logs, User, Volume2, AlertCircle, Info, Lock,
   CheckCircle, HelpCircle, TrendingUp, Server, Siren, Activity, Cloud, ShieldAlert, Network,
   Wifi, Wrench, MessageSquare } from 'lucide-react';
+import styles from '../ui/Documentation.module.css';
 
-const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlightText, matchesSearch, searchQuery }) => {
+const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matchesSearch, searchQuery }) => {
   
   if (!page) return null;
 
   // Screenshot display component
-  const ScreenshotDisplay = ({ src, alt, caption, isDarkMode }) => {
+  const ScreenshotDisplay = ({ src, alt, caption }) => {
     if (!src) return null;
     return (
-      <div className="my-4">
-        <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
+      <div className={styles.screenshot}>
+        <div className={styles.screenshotFrame}>
           <img 
             src={src} 
             alt={alt || 'Documentation screenshot'} 
-            className="w-full h-auto"
+            className={styles.screenshotImage}
             style={{ maxHeight: '600px', objectFit: 'contain' }}
           />
         </div>
         {caption && (
-          <p className={`text-xs mt-2 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p className={styles.screenshotCaption}>
             {caption}
           </p>
         )}
@@ -35,10 +36,10 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     if (!shouldShow) return null;
     
     return (
-      <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} mb-4`}>
-        <div className="flex items-center gap-3 mb-4">
-          {Icon && <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />}
-          <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+      <div className={styles.card}>
+        <div className={"row"}>
+          {Icon && <Icon className={`${styles.iconMedium} ${styles.accentIcon}`} />}
+          <h3 className={styles.heading4}>
             {highlightText(title, searchQuery)}
           </h3>
         </div>
@@ -52,23 +53,23 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     if (searchQuery && !fieldMatches) return null;
     
     return (
-      <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <code className={`text-sm font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>
+      <div className={styles.subtlePanel}>
+        <div className={"row"}>
+          <code className={styles.emphasis}>
             {highlightText(field, searchQuery)}
           </code>
           {required && (
-            <span className={`text-xs px-2 py-0.5 rounded ${isDarkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'}`}>
+            <span className={styles.caption}>
               Required
             </span>
           )}
         </div>
-        <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        <p className={styles.bodyText}>
           {highlightText(description, searchQuery)}
         </p>
         {defaultValue !== null && (
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Default: <code className="font-mono">{defaultValue}</code>
+          <p className={styles.caption}>
+            Default: <code className={styles.mono}>{defaultValue}</code>
           </p>
         )}
       </div>
@@ -81,25 +82,25 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     if (searchQuery && (!actionMatches && !effectsMatch)) return null;
     
     return (
-      <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-          <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+      <div className={styles.subtlePanel}>
+        <div className={"row"}>
+          <CheckCircle className={`${styles.iconSmall} ${styles.successIcon}`} />
+          <span className={styles.emphasis}>
             {highlightText(action, searchQuery)}
           </span>
         </div>
-        <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        <p className={styles.bodyText}>
           {highlightText(description, searchQuery)}
         </p>
         {effects.length > 0 && (
-          <div className="mt-2">
-            <p className={`text-xs font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Effects:</p>
-            <ul className="space-y-1 ml-4">
+          <div >
+            <p className={styles.emphasis}>Effects:</p>
+            <ul className={"stack stackCompact"}>
               {effects.map((effect, idx) => {
                 const effectMatches = matchesSearch(effect);
                 if (searchQuery && !effectMatches) return null;
                 return (
-                  <li key={idx} className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <li key={idx} className={styles.caption}>
                     • {highlightText(effect, searchQuery)}
                   </li>
                 );
@@ -116,26 +117,24 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="Dashboard Overview" icon={TrendingUp}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             The Dashboard is the central hub for viewing, managing, and analyzing all recorded audio communications. It provides real-time access to transcribed recordings with powerful filtering, search, playback, and organization capabilities. The interface is divided into three main areas: Sidebar (left), Message List (center), and Top Bar (controls).
           </p>
           <ScreenshotDisplay 
             src="/screenshots/dashboard-overview.png" 
             alt="Dashboard Overview Screenshot"
             caption="Dashboard main interface showing sidebar, message list, and top bar controls"
-            isDarkMode={isDarkMode}
           />
         </SectionCard>
 
         <SectionCard title="Sidebar (Left Panel)" icon={Radio}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             The sidebar provides navigation, search, and filtering controls. It contains search functionality, channel management, and keyword highlighting tools.
           </p>
           <ScreenshotDisplay 
             src="/screenshots/dashboard-sidebar.png" 
             alt="Dashboard Sidebar Screenshot"
             caption="Sidebar showing search bar, channel list with status indicators, and keywords section"
-            isDarkMode={isDarkMode}
           />
           
           <FieldDescription
@@ -197,14 +196,13 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         </SectionCard>
 
         <SectionCard title="Top Bar Controls" icon={Settings}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             The top bar provides quick access to filtering, selection, view customization, and system controls. All controls are always accessible from the top of the dashboard.
           </p>
           <ScreenshotDisplay 
             src="/screenshots/dashboard-topbar.png" 
             alt="Dashboard Top Bar Screenshot"
             caption="Top bar showing multi-select toggle, time filters, custom filter, view settings, and system clock"
-            isDarkMode={isDarkMode}
           />
           
           <FieldDescription
@@ -281,14 +279,13 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         </SectionCard>
 
         <SectionCard title="Message List (Center Panel)" icon={MessageSquare}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             The message list displays all filtered recordings in chronological order. Each message card contains transcription, metadata, and playback controls. Messages are sorted by timestamp (newest first by default, can be reversed).
           </p>
           <ScreenshotDisplay 
             src="/screenshots/dashboard-messages.png" 
             alt="Dashboard Message List Screenshot"
             caption="Message list showing individual message cards with transcriptions, playback controls, and metadata"
-            isDarkMode={isDarkMode}
           />
           
           <FieldDescription
@@ -521,10 +518,10 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         </SectionCard>
 
         <SectionCard title="Permissions and Roles" icon={Lock}>
-          <div className="space-y-2">
-            <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-              <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>All Users:</p>
-              <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className={"stack stackCompact"}>
+            <div className={styles.subtlePanel}>
+              <p className={styles.emphasis}>All Users:</p>
+              <ul className={styles.bodyText}>
                 <li>• View recordings and transcriptions</li>
                 <li>• Play audio recordings</li>
                 <li>• Search and filter messages</li>
@@ -534,19 +531,19 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 <li>• View tags (read-only)</li>
               </ul>
             </div>
-            <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-              <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Users with Additional Permissions:</p>
-              <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <li>• <code className="font-mono">delete_audio</code>: Delete individual recordings</li>
-                <li>• <code className="font-mono">manage_tags</code>: Add, remove, and manage tags on recordings</li>
-                <li>• <code className="font-mono">create_reports</code>: Create incident reports from recordings</li>
-                <li>• <code className="font-mono">access_advanced_player</code>: Open recordings in advanced player</li>
-                <li>• <code className="font-mono">access_settings</code>: Access Settings page link</li>
+            <div className={styles.subtlePanel}>
+              <p className={styles.emphasis}>Users with Additional Permissions:</p>
+              <ul className={styles.bodyText}>
+                <li>• <code className={styles.mono}>delete_audio</code>: Delete individual recordings</li>
+                <li>• <code className={styles.mono}>manage_tags</code>: Add, remove, and manage tags on recordings</li>
+                <li>• <code className={styles.mono}>create_reports</code>: Create incident reports from recordings</li>
+                <li>• <code className={styles.mono}>access_advanced_player</code>: Open recordings in advanced player</li>
+                <li>• <code className={styles.mono}>access_settings</code>: Access Settings page link</li>
               </ul>
             </div>
-            <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-              <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Admin Users:</p>
-              <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <div className={styles.subtlePanel}>
+              <p className={styles.emphasis}>Admin Users:</p>
+              <ul className={styles.bodyText}>
                 <li>• All permissions listed above</li>
                 <li>• Batch delete, download, and tag operations</li>
                 <li>• Full access to all features and controls</li>
@@ -557,42 +554,42 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         </SectionCard>
 
         <SectionCard title="Common Use Cases" icon={HelpCircle}>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Finding a Recent Recording</p>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+          <div className={styles.callout}>
+            <p className={styles.emphasis}>Finding a Recent Recording</p>
+            <p className={styles.bodyText}>
               Use time filter dropdown to select "Last 1 hour" or "Last 24 hours". Then search for keywords from the conversation. Results show matching messages with highlighted search terms. Click message to play audio and verify it's the correct recording.
             </p>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Monitoring a Specific Channel</p>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+          <div className={styles.callout}>
+            <p className={styles.emphasis}>Monitoring a Specific Channel</p>
+            <p className={styles.bodyText}>
               In sidebar, click toggle switches for all channels except the one you want to monitor. Only recordings from selected channel appear. Use real-time updates to see new recordings as they arrive. Channel status indicator shows if channel is currently recording.
             </p>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Creating an Incident Report</p>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+          <div className={styles.callout}>
+            <p className={styles.emphasis}>Creating an Incident Report</p>
+            <p className={styles.bodyText}>
               Enable multi-select mode, check messages to include in report, click "Create Report" button. Add report title, notes, and metadata. Report is saved and can be accessed from Reports page for export or sharing.
             </p>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Tracking Keyword Mentions</p>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+          <div className={styles.callout}>
+            <p className={styles.emphasis}>Tracking Keyword Mentions</p>
+            <p className={styles.bodyText}>
               Click keyword in sidebar keywords section to highlight all occurrences in visible messages. Keyword count shows how many messages contain that keyword in current filtered view. Use time filters to see keyword frequency over time periods.
             </p>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Batch Download for Analysis</p>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+          <div className={styles.callout}>
+            <p className={styles.emphasis}>Batch Download for Analysis</p>
+            <p className={styles.bodyText}>
               Apply filters to find relevant recordings, enable multi-select mode, select all messages on current page (or specific ones), click "Download Selected". All files downloaded as ZIP archive for external analysis or backup.
             </p>
           </div>
         </SectionCard>
 
         <SectionCard title="Troubleshooting" icon={AlertCircle}>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>No Messages Appearing</p>
-            <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+          <div className={styles.subtlePanel}>
+            <p className={styles.emphasis}>No Messages Appearing</p>
+            <ul className={styles.bodyText}>
               <li>• Check if time filter is too restrictive (try "All" time range)</li>
               <li>• Verify channel toggles are enabled for channels with recordings</li>
               <li>• Clear search query if active</li>
@@ -600,9 +597,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
               <li>• Verify recordings exist for selected time period</li>
             </ul>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Audio Not Playing</p>
-            <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+          <div className={styles.subtlePanel}>
+            <p className={styles.emphasis}>Audio Not Playing</p>
+            <ul className={styles.bodyText}>
               <li>• Check browser audio permissions are allowed</li>
               <li>• Verify audio file exists and is accessible</li>
               <li>• Check browser console for audio loading errors</li>
@@ -610,9 +607,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
               <li>• Ensure no other audio is playing (only one at a time)</li>
             </ul>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Search Not Finding Results</p>
-            <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+          <div className={styles.subtlePanel}>
+            <p className={styles.emphasis}>Search Not Finding Results</p>
+            <ul className={styles.bodyText}>
               <li>• Check spelling of search terms</li>
               <li>• Try partial words if exact phrase not found</li>
               <li>• Ensure time/channel filters aren't excluding matching messages</li>
@@ -620,9 +617,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
               <li>• Search is case-insensitive, but verify special characters</li>
             </ul>
           </div>
-          <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Performance Issues with Large Lists</p>
-            <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+          <div className={styles.subtlePanel}>
+            <p className={styles.emphasis}>Performance Issues with Large Lists</p>
+            <ul className={styles.bodyText}>
               <li>• Use time filters to reduce number of messages displayed</li>
               <li>• Enable pagination instead of continuous scroll</li>
               <li>• Reduce items per page (try 20 or 50 instead of 100)</li>
@@ -633,19 +630,19 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         </SectionCard>
 
         <SectionCard title="Troubleshooting" icon={AlertCircle}>
-          <div className="space-y-2">
-            <div className={`p-3 rounded-md ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-              <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>No Recordings Appearing</p>
-              <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+          <div className={"stack stackCompact"}>
+            <div className={styles.subtlePanel}>
+              <p className={styles.emphasis}>No Recordings Appearing</p>
+              <ul className={styles.bodyText}>
                 <li>• Check if all channels are toggled off in sidebar</li>
                 <li>• Clear active filters (check filter button for active filters)</li>
                 <li>• Verify device status in Settings → Summary</li>
                 <li>• Check if date range filter excludes current time</li>
               </ul>
             </div>
-            <div className={`p-3 rounded-md ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-              <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Audio Not Playing</p>
-              <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+            <div className={styles.subtlePanel}>
+              <p className={styles.emphasis}>Audio Not Playing</p>
+              <ul className={styles.bodyText}>
                 <li>• Check browser audio permissions</li>
                 <li>• Ensure only one audio player is active at a time</li>
                 <li>• Try refreshing the page</li>
@@ -666,19 +663,18 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="Summary Tab Overview" icon={TrendingUp}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 The Summary tab provides a comprehensive overview of system health, device status, recording statistics, error monitoring, user activity, and device management settings. It serves as the central dashboard for monitoring system performance and identifying issues at a glance.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-summary.png" 
                 alt="Settings Summary Tab Screenshot"
                 caption="Summary tab showing system health metrics, device status, recordings by day, errors, and user activity"
-                isDarkMode={isDarkMode}
               />
             </SectionCard>
 
             <SectionCard title="Recordings by Day" icon={FileText}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 View daily recording statistics and trends. Analyze recording activity patterns over time to understand system usage and identify anomalies.
               </p>
               
@@ -720,7 +716,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Errors and Warnings" icon={AlertCircle}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Monitor system errors and warnings in real-time. Track issues that may affect recording functionality, device connectivity, or system stability.
               </p>
               
@@ -771,7 +767,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Users and Login History" icon={Users}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Monitor user activity and login history. Track who is accessing the system, when they log in, and their recent activity.
               </p>
               
@@ -822,7 +818,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Device Management" icon={Radio}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Configure automatic device detection and connection settings. Enable or disable automatic scanning for compatible recording devices when the application starts.
               </p>
               
@@ -842,7 +838,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 ]}
               />
               
-              <div className={`mt-4 p-3 rounded-md border-t border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={styles.subtlePanel}>
                 <FieldDescription
                   field="ESP32 Boondock Edge Recorder Auto-Detection"
                   description="When enabled, automatically discovers and connects to ESP32-based Boondock Edge recorders (Silicon Labs CP210x USB devices) when the service starts. Simplifies device setup and management."
@@ -861,7 +857,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 ]}
               />
               
-              <div className={`mt-4 p-3 rounded-md border-t border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={styles.subtlePanel}>
                 <FieldDescription
                   field="USB Audio Device Auto-Detection"
                   description="When enabled, automatically scans for and connects to USB audio devices when the application starts. Enables recording from USB audio interfaces, microphones, and other USB audio sources."
@@ -880,8 +876,8 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 ]}
               />
               
-              <div className={`p-3 rounded-md mt-4 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.bodyText}>
                   <strong>Note:</strong> Auto-detection runs at application startup. To detect devices after startup, use manual scan buttons or restart the application. Disabling auto-detection does not disconnect already-connected devices.
                 </p>
               </div>
@@ -936,13 +932,13 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Available to all users with <code className="font-mono">access_settings</code> permission. Admin users see all devices, system metrics, and full user activity. Regular users may have limited view of certain sections.
+              <p className={styles.bodyText}>
+                Available to all users with <code className={styles.mono}>access_settings</code> permission. Admin users see all devices, system metrics, and full user activity. Regular users may have limited view of certain sections.
               </p>
-              <div className="space-y-2 mt-3">
-                <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Admin Users:</p>
-                  <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack stackCompact"}>
+                <div className={styles.subtlePanel}>
+                  <p className={styles.emphasis}>Admin Users:</p>
+                  <ul className={styles.bodyText}>
                     <li>• Full access to all summary sections</li>
                     <li>• Can modify device management settings</li>
                     <li>• Can view all user login history</li>
@@ -950,9 +946,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                     <li>• Can clear errors and warnings</li>
                   </ul>
                 </div>
-                <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Regular Users:</p>
-                  <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <p className={styles.emphasis}>Regular Users:</p>
+                  <ul className={styles.bodyText}>
                     <li>• View recordings statistics</li>
                     <li>• View system health metrics</li>
                     <li>• View own login history</li>
@@ -963,30 +959,30 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Common Use Cases" icon={HelpCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Daily System Check</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Daily System Check</p>
+                <p className={styles.bodyText}>
                   Review the Summary tab daily to check device status, review any errors/warnings, verify recording activity, and ensure system health metrics are within normal ranges.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Troubleshooting Issues</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Troubleshooting Issues</p>
+                <p className={styles.bodyText}>
                   When issues arise, check the Errors and Warnings section first, review device status, check recent login activity for unauthorized access, and examine recording statistics for anomalies.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Setting Up Auto-Detection</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Setting Up Auto-Detection</p>
+                <p className={styles.bodyText}>
                   Enable auto-detection for your device types (Uniden scanners, ESP32 recorders, USB audio) to automatically discover and connect devices without manual configuration each time.
                 </p>
               </div>
             </SectionCard>
 
             <SectionCard title="Troubleshooting" icon={AlertCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Devices Not Auto-Detecting</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Devices Not Auto-Detecting</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify auto-detection toggle is enabled for that device type</li>
                   <li>• Check device is connected and powered on before application starts</li>
                   <li>• Ensure device drivers are installed (especially for CP210x USB devices)</li>
@@ -994,9 +990,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Check device compatibility requirements</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>High Error Count</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>High Error Count</p>
+                <ul className={styles.bodyText}>
                   <li>• Review error details for specific error messages</li>
                   <li>• Check device connection status</li>
                   <li>• Verify network connectivity for API-related errors</li>
@@ -1004,9 +1000,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Review system logs for more detailed error information</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Recording Statistics Not Updating</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Recording Statistics Not Updating</p>
+                <ul className={styles.bodyText}>
                   <li>• Click refresh button to manually update statistics</li>
                   <li>• Check if devices are actively recording</li>
                   <li>• Verify database connection is working</li>
@@ -1023,19 +1019,18 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="Recorders Tab Overview" icon={Radio}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 The Recorders tab provides comprehensive management of Boondock Edge recording devices. This section handles device enumeration, firmware management, station configuration, and channel setup. Manage all your recording hardware from a centralized interface.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-recorders.png" 
                 alt="Settings Recorders Tab Screenshot"
                 caption="Recorders tab showing device enumeration, firmware management, and station configuration options"
-                isDarkMode={isDarkMode}
               />
             </SectionCard>
 
             <SectionCard title="Boondock Edge Recorders" icon={Radio}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Enumerate and manage Boondock Edge devices connected via Serial Port. This section allows you to discover, configure, and monitor physical recording devices.
               </p>
               
@@ -1086,7 +1081,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Firmware Management" icon={Server}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Upload and manage ESP32 firmware files for Boondock Edge devices. Update device firmware to latest versions, restore previous versions, or flash custom builds.
               </p>
               
@@ -1137,15 +1132,15 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 ]}
               />
               
-              <div className={`p-3 rounded-md mt-4 ${isDarkMode ? 'bg-yellow-900/20 border border-yellow-800/50' : 'bg-yellow-50 border border-yellow-200'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
+              <div className={styles.highlight}>
+                <p className={styles.bodyText}>
                   <strong>Warning:</strong> Firmware updates will disconnect the device temporarily. Ensure stable serial connection before starting. Do not power off device during firmware upload.
                 </p>
               </div>
             </SectionCard>
 
             <SectionCard title="Stations" icon={Radio}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Add and manage stations (recording channels) for your recordings. Stations represent individual audio input sources and can be configured independently with unique settings.
               </p>
               
@@ -1288,30 +1283,30 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Only users with <code className="font-mono">manage_channels</code> permission (typically admin role) can create, edit, or delete channels.
+              <p className={styles.bodyText}>
+                Only users with <code className={styles.mono}>manage_channels</code> permission (typically admin role) can create, edit, or delete channels.
               </p>
             </SectionCard>
 
             <SectionCard title="Common Use Cases" icon={HelpCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Setting Up New Device</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Setting Up New Device</p>
+                <p className={styles.bodyText}>
                   Create a new channel, assign unique ID matching device configuration, set threshold based on environment, and configure naming for easy identification.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Reducing False Positives</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Reducing False Positives</p>
+                <p className={styles.bodyText}>
                   Increase threshold, set longer min record duration, and adjust audio gain to filter out background noise.
                 </p>
               </div>
             </SectionCard>
 
             <SectionCard title="Troubleshooting" icon={AlertCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Device Not Detected</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Device Not Detected</p>
+                <ul className={styles.bodyText}>
                   <li>• Check USB/Serial cable connection</li>
                   <li>• Verify correct COM port selected</li>
                   <li>• Ensure device is powered on</li>
@@ -1319,9 +1314,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Check device drivers are installed</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Firmware Upload Failed</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Firmware Upload Failed</p>
+                <ul className={styles.bodyText}>
                   <li>• Ensure stable serial connection</li>
                   <li>• Do not disconnect during upload</li>
                   <li>• Check firmware file is valid .bin format</li>
@@ -1329,9 +1324,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Try entering bootloader mode manually</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Station Not Recording</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Station Not Recording</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify device is online in Summary tab</li>
                   <li>• Check station is not disabled</li>
                   <li>• Ensure station ID matches device channel ID</li>
@@ -1339,18 +1334,18 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Check audio source is connected to device</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Recordings Too Quiet/Loud</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Recordings Too Quiet/Loud</p>
+                <ul className={styles.bodyText}>
                   <li>• Adjust Audio Gain (increase for quiet, decrease for loud)</li>
                   <li>• Check physical audio input levels on device</li>
                   <li>• Verify microphone/source quality</li>
                   <li>• Use device serial CLI to adjust codec gain</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Serial CLI Not Responding</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Serial CLI Not Responding</p>
+                <ul className={styles.bodyText}>
                   <li>• Check baud rate is set to 115200</li>
                   <li>• Verify serial port is not in use by another application</li>
                   <li>• Try reconnecting to device</li>
@@ -1367,7 +1362,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="Keywords & Tags Tab Overview" icon={Siren}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Manage keywords for highlighting important terms in transcripts and tags for organizing recordings. Keywords automatically highlight when they appear, while tags are manually applied to recordings.
               </p>
             </SectionCard>
@@ -1433,7 +1428,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="User Management Tab Overview" icon={Users}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Create and manage user accounts, assign roles, and configure permissions. Control who has access to different features of the system.
               </p>
             </SectionCard>
@@ -1491,22 +1486,22 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Only users with <code className="font-mono">manage_users</code> permission (typically admin role) can access this tab.
+              <p className={styles.bodyText}>
+                Only users with <code className={styles.mono}>manage_users</code> permission (typically admin role) can access this tab.
               </p>
-              <div className="space-y-2">
-                <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Admin Role:</p>
-                  <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack stackCompact"}>
+                <div className={styles.subtlePanel}>
+                  <p className={styles.emphasis}>Admin Role:</p>
+                  <ul className={styles.bodyText}>
                     <li>• Full system access</li>
                     <li>• All settings and configurations</li>
                     <li>• User management</li>
                     <li>• System administration</li>
                   </ul>
                 </div>
-                <div className={`p-2 rounded ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Member Role:</p>
-                  <ul className={`text-sm ml-4 mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <p className={styles.emphasis}>Member Role:</p>
+                  <ul className={styles.bodyText}>
                     <li>• View and play recordings</li>
                     <li>• Search and filter</li>
                     <li>• Limited settings access (if granted)</li>
@@ -1523,14 +1518,13 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="Global Configurations Tab Overview" icon={Server}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Configure system-wide settings including transcription services, language, timezone, backup options, and network interfaces. Changes affect all channels and recordings.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-global.png" 
                 alt="Settings Global Tab Screenshot"
                 caption="Global settings tab showing transcription configuration, language settings, timezone, and backup options"
-                isDarkMode={isDarkMode}
               />
             </SectionCard>
 
@@ -1591,14 +1585,14 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Only admin users can modify global configurations. Some sub-tabs (like Danger Zone) require additional confirmation.
               </p>
             </SectionCard>
 
             <SectionCard title="Important Notes" icon={AlertCircle}>
-              <div className={`p-3 rounded-md ${isDarkMode ? 'bg-yellow-900/20 border border-yellow-800/50' : 'bg-yellow-50 border border-yellow-200'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
+              <div className={styles.highlight}>
+                <p className={styles.bodyText}>
                   <strong>Warning:</strong> Changes to global settings affect the entire system and all recordings. Test changes in non-production environments first. Some changes may require system restart.
                 </p>
               </div>
@@ -1612,19 +1606,18 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="System Tab Overview" icon={Settings2}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Advanced system administration and maintenance tools. Manage network interfaces, configure WiFi hotspot, perform system maintenance, monitor health, manage backups, and access critical system operations. Use with caution as changes can affect system stability and availability.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-system.png" 
                 alt="Settings System Tab Screenshot"
                 caption="System tab showing interfaces, hotspot configuration, backup/restore, maintenance, and system health options"
-                isDarkMode={isDarkMode}
               />
             </SectionCard>
 
             <SectionCard title="Interfaces" icon={Network}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Configure network interfaces, manage WiFi connections, set up static IP addresses, and configure network relay controls. Essential for device connectivity and network configuration.
               </p>
               
@@ -1682,7 +1675,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Hotspot Configuration" icon={Wifi}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Configure WiFi hotspot/access point mode. Allows Boondock Edge devices to create their own WiFi network for initial setup or when no existing network is available. Useful for field deployment and device configuration.
               </p>
               
@@ -1720,7 +1713,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Backup & Restore" icon={Cloud}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Perform manual backups, restore from backup files, and manage backup history. Create full system backups including recordings, configuration, and database.
               </p>
               
@@ -1758,7 +1751,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Maintenance" icon={Wrench}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Perform system maintenance tasks including cache management, log rotation, database optimization, and cleanup operations to keep the system running smoothly.
               </p>
               
@@ -1799,7 +1792,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="System Health" icon={Activity}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Monitor system health metrics including CPU usage, memory usage, disk space, network statistics, and device status. Essential for proactive system management.
               </p>
               
@@ -1826,7 +1819,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Danger Zone" icon={ShieldAlert}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Critical system operations that can affect system availability, delete data, or reset system configuration. Use with extreme caution. All operations require explicit confirmation.
               </p>
               
@@ -1857,8 +1850,8 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                 ]}
               />
               
-              <div className={`p-3 rounded-md mt-4 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.bodyText}>
                   <strong>DANGER:</strong> Operations in the Danger Zone are irreversible and can cause permanent data loss. Always create a backup before performing any Danger Zone operations. These operations require admin privileges and multiple confirmations.
                 </p>
               </div>
@@ -1892,30 +1885,30 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Common Use Cases" icon={HelpCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Setting Up Static IP</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Setting Up Static IP</p>
+                <p className={styles.bodyText}>
                   1. Go to Interfaces tab. 2. Select network interface. 3. Change IP mode to Static. 4. Enter IP address, subnet, gateway, and DNS. 5. Save and restart interface. System will use static IP address.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Enabling Hotspot for Field Deployment</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Enabling Hotspot for Field Deployment</p>
+                <p className={styles.bodyText}>
                   Go to Hotspot Configuration, enable hotspot, set SSID and password, save. Connect to hotspot from phone/laptop, access web interface at 192.168.4.1, configure device settings. Disable hotspot after configuration if network available.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>System Running Slow</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>System Running Slow</p>
+                <p className={styles.bodyText}>
                   Check System Health for resource usage. Clear cache in Maintenance tab. Optimize database if large. Rotate logs if log files are large. Clean old recordings if storage is full.
                 </p>
               </div>
             </SectionCard>
 
             <SectionCard title="Troubleshooting" icon={AlertCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Network Interface Not Working</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Network Interface Not Working</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify physical network cable is connected (for Ethernet)</li>
                   <li>• Check interface is enabled and not down</li>
                   <li>• Verify IP configuration is correct (DHCP or Static)</li>
@@ -1923,9 +1916,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Check gateway and DNS settings are correct</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>High System Resource Usage</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>High System Resource Usage</p>
+                <ul className={styles.bodyText}>
                   <li>• Check System Health tab for CPU/memory usage</li>
                   <li>• Clear cache if cache size is very large</li>
                   <li>• Optimize database if database file is large</li>
@@ -1936,11 +1929,11 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Restricted to admin users only. All system operations require <code className="font-mono">manage_system</code> permission. Danger Zone operations require additional confirmations and are logged for audit purposes.
+              <p className={styles.bodyText}>
+                Restricted to admin users only. All system operations require <code className={styles.mono}>manage_system</code> permission. Danger Zone operations require additional confirmations and are logged for audit purposes.
               </p>
-              <div className={`p-2 rounded mt-2 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.caption}>
                   Regular users cannot access System tab. System operations can affect system availability, data integrity, and network connectivity.
                 </p>
               </div>
@@ -1954,14 +1947,13 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
         return (
           <div>
             <SectionCard title="Logs Tab Overview" icon={Logs}>
-              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={styles.bodyText}>
                 Comprehensive log viewing and analysis interface. View real-time and historical system logs, device logs, and application logs organized by type. Essential for troubleshooting, system monitoring, debugging issues, and understanding system behavior. All logs are stored by date for easy historical reference.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-logs.png" 
                 alt="Settings Logs Tab Screenshot"
                 caption="Logs tab showing log type filters, date navigation, search functionality, and categorized log entries (Critical, Warnings, Communications, Database, Events, Devices)"
-                isDarkMode={isDarkMode}
               />
             </SectionCard>
 
@@ -2113,36 +2105,36 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Common Use Cases" icon={HelpCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Troubleshooting System Errors</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Troubleshooting System Errors</p>
+                <p className={styles.bodyText}>
                   Filter to Critical logs, check timestamp of error, read logger name to identify component, review error message for details. Use date navigation to check if errors are recurring. Search for specific error codes or keywords.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Monitoring Device Connectivity</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Monitoring Device Connectivity</p>
+                <p className={styles.bodyText}>
                   Filter to Device logs, select specific device from device list, enable auto-refresh to monitor in real-time. Watch for connection/disconnection events, serial port errors, or device communication issues.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Tracking Transcription Activity</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Tracking Transcription Activity</p>
+                <p className={styles.bodyText}>
                   Filter to Communication (COMMS) logs to see all transcription activity. Monitor transcription processing, identify transcription errors, track message flow, and verify transcription service is working correctly.
                 </p>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Reviewing Historical Events</p>
-                <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+              <div className={styles.callout}>
+                <p className={styles.emphasis}>Reviewing Historical Events</p>
+                <p className={styles.bodyText}>
                   Use date navigation to go back to specific dates, filter by Event logs to see system state changes and configuration updates. Search for specific events or time ranges to understand what happened at particular times.
                 </p>
               </div>
             </SectionCard>
 
             <SectionCard title="Troubleshooting" icon={AlertCircle}>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>No Logs Appearing</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>No Logs Appearing</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify correct date is selected (defaults to today)</li>
                   <li>• Check if log type filter is too restrictive</li>
                   <li>• Ensure search term isn't filtering out all logs</li>
@@ -2151,9 +2143,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Verify system is generating logs (check if system is running)</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Search Not Finding Results</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Search Not Finding Results</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify search term spelling is correct</li>
                   <li>• Try broader search terms (partial words)</li>
                   <li>• Check if log type filter excludes matching logs</li>
@@ -2162,9 +2154,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Search is case-sensitive, try different case variations</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Device Logs Not Showing</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Device Logs Not Showing</p>
+                <ul className={styles.bodyText}>
                   <li>• Verify device is connected and recognized by system</li>
                   <li>• Check device is selected in device list</li>
                   <li>• Ensure device has serial port communication active</li>
@@ -2173,9 +2165,9 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
                   <li>• Verify serial port is not in use by another application</li>
                 </ul>
               </div>
-              <div className={`p-3 rounded-md mb-2 ${isDarkMode ? 'bg-red-900/20 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-red-300' : 'text-red-900'}`}>Too Many Logs to Review</p>
-                <ul className={`text-sm ml-4 ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.emphasis}>Too Many Logs to Review</p>
+                <ul className={styles.bodyText}>
                   <li>• Filter by specific log type to reduce volume</li>
                   <li>• Use search to find specific entries</li>
                   <li>• Focus on Critical and Warning logs first</li>
@@ -2186,11 +2178,11 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
             </SectionCard>
 
             <SectionCard title="Permissions" icon={Lock}>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Available to all users with <code className="font-mono">view_logs</code> permission. Admin users can view all log types and device logs. Regular users may have limited access to certain log types for security purposes.
+              <p className={styles.bodyText}>
+                Available to all users with <code className={styles.mono}>view_logs</code> permission. Admin users can view all log types and device logs. Regular users may have limited access to certain log types for security purposes.
               </p>
-              <div className={`p-2 rounded mt-2 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={styles.subtlePanel}>
+                <p className={styles.caption}>
                   Logs may contain sensitive system information. Access is logged for audit purposes. Export and clearing of logs may require additional permissions.
                 </p>
               </div>
@@ -2202,11 +2194,11 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
       return (
         <div>
           <SectionCard title="Settings Overview" icon={Settings}>
-            <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={styles.bodyText}>
               The Settings page provides comprehensive system configuration and management. Access different tabs using the sidebar navigation.
             </p>
-            <div className={`p-3 rounded-md ${isDarkMode ? 'bg-blue-900/20 border border-blue-800/50' : 'bg-blue-50 border border-blue-200'}`}>
-              <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>
+            <div className={styles.callout}>
+              <p className={styles.bodyText}>
                 <strong>Tip:</strong> Use the sidebar to navigate to specific settings sections. Each tab contains detailed configuration options for that area.
               </p>
             </div>
@@ -2223,12 +2215,12 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="User Management Overview" icon={Users}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             The Users page provides a dedicated interface for managing user accounts. This page focuses specifically on user administration, separate from other settings.
           </p>
         </SectionCard>
         <SectionCard title="Features" icon={Info}>
-          <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             This page offers the same functionality as the Settings → User Management tab, but in a dedicated full-page view for easier user administration workflows.
           </p>
         </SectionCard>
@@ -2241,12 +2233,12 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="Logs Page Overview" icon={Logs}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             Dedicated page for viewing and analyzing system logs. Provides enhanced filtering, search, and export capabilities compared to the Settings → Logs tab.
           </p>
         </SectionCard>
         <SectionCard title="Features" icon={Info}>
-          <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             Full-page log viewer with advanced search, date range filtering, and real-time log streaming capabilities.
           </p>
         </SectionCard>
@@ -2259,7 +2251,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="Reports Overview" icon={FileText}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             Create and manage incident reports based on recordings. Reports can include multiple recordings, notes, timestamps, and metadata for documentation and analysis.
           </p>
         </SectionCard>
@@ -2291,7 +2283,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="User Profile Overview" icon={User}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             View and manage your personal account settings, including password, two-factor authentication, and preferences.
           </p>
         </SectionCard>
@@ -2322,7 +2314,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, isDarkMode, highlight
     return (
       <div>
         <SectionCard title="Advanced Audio Player Overview" icon={Volume2}>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={styles.bodyText}>
             Enhanced audio player with advanced controls, waveform visualization, speed adjustment, and detailed playback features. Opens recordings in a dedicated full-page interface.
           </p>
         </SectionCard>

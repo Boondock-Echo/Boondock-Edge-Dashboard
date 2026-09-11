@@ -1,0 +1,16 @@
+.logList { height: 37.5rem; overflow-y: auto; background: var(--ui-surface); border: 1px solid var(--ui-border); }
+.logEntry { padding: var(--space-4); font-family: monospace; border-left: 2px solid currentColor; }
+.logError { color: var(--ui-danger); background: var(--ui-danger-subtle); }
+.logWarning { color: var(--ui-warning); background: color-mix(in srgb, var(--ui-warning) 10%, transparent); }
+.logInfo { color: var(--ui-accent); background: var(--ui-accent-subtle); }
+.logSuccess { color: var(--ui-success); background: var(--ui-success-subtle); }
+.logNeutral { color: var(--ui-muted); background: var(--ui-surface); }
+.logMeta { color: var(--ui-muted); font-size: 0.75rem; letter-spacing: 0.06em; }
+.logMessage { margin-top: var(--space-1); color: var(--ui-text); font-size: 0.875rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); margin-top: var(--space-2); background: var(--ui-surface); border-radius: var(--radius-md); }
+.deviceTabs { position: sticky; top: 0; z-index: 10; padding: var(--space-2) var(--space-4); background: var(--ui-panel); border-bottom: 1px solid var(--ui-border); }
+.deviceLog { display: flex; height: 100%; flex-direction: column; }
+.deviceEntries { flex: 1 1 auto; padding: var(--space-3) var(--space-4); font-family: monospace; font-size: 0.75rem; }
+.deviceLine { display: flex; gap: var(--space-2); }
+.timestamp { flex: none; color: var(--ui-muted); white-space: nowrap; }
+.empty { display: grid; min-height: 12rem; place-items: center; padding: var(--space-8); color: var(--ui-muted); font-family: monospace; text-align: center; }

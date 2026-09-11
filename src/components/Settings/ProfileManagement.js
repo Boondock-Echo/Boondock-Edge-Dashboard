@@ -20,7 +20,13 @@ import {
 import { useAuth } from '../AuthContext';
 import SettingsSectionHeader from './SettingsSectionHeader';
 
-const ProfileManagement = ({ isDarkMode }) => {
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+
+const ProfileManagement = () => {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState({});
   const [features, setFeatures] = useState([]);
@@ -212,108 +218,102 @@ const ProfileManagement = ({ isDarkMode }) => {
     return icons[key] || SettingsIcon;
   };
 
-  const themeClasses = {
-    bg: isDarkMode ? 'bg-gray-900' : 'bg-gray-50',
-    card: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200',
-    text: isDarkMode ? 'text-white' : 'text-gray-900',
-    textSecondary: isDarkMode ? 'text-gray-400' : 'text-gray-600',
-    input: isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900',
-    button: isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700',
-    buttonDanger: isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="row">
+        <span className="spinner spinnerSmall" aria-hidden="true" />
       </div>
     );
   }
 
   const ProfileModal = ({ isOpen, onClose, onSubmit, isEdit }) => {
+    const dialogRef = useRef(null);
+
+    useEffect(() => {
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      if (isOpen && !dialog.open) dialog.showModal();
+      if (!isOpen && dialog.open) dialog.close();
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className={`${themeClasses.card} rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border`}>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-xl font-semibold ${themeClasses.text}`}>
+      <dialog ref={dialogRef} className={modalStyles.dialog} onCancel={(event) => { event.preventDefault(); onClose(); }}>
+        <div className={modalStyles.body}>
+          <div >
+            <div className="rowBetween">
+              <h2 className={cardStyles.title}>
                 {isEdit ? 'Edit Profile' : 'Create New Profile'}
               </h2>
               <button
                 onClick={onClose}
-                className={`p-1 rounded-lg ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
               >
-                <X className={`w-5 h-5 ${themeClasses.textSecondary}`} />
+                <X className="iconMedium" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="stack">
               {!isEdit && (
                 <div>
-                  <label className={`block ${themeClasses.textSecondary} mb-2`}>
+                  <label className={formStyles.label}>
                     Profile Name *
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className={`${themeClasses.input} w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={formStyles.input}
                     placeholder="e.g., Manager, Viewer, etc."
                   />
                 </div>
               )}
 
               <div>
-                <label className={`block ${themeClasses.textSecondary} mb-2`}>
+                <label className={formStyles.label}>
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className={`${themeClasses.input} w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={formStyles.textarea}
                   rows="3"
                   placeholder="Describe this profile..."
                 />
               </div>
 
               <div>
-                <label className={`block ${themeClasses.textSecondary} mb-3`}>
+                <label className={formStyles.label}>
                   Features
                 </label>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="scrollPanel">
                   {features.map((feature) => {
                     const Icon = getFeatureIcon(feature.key);
                     const isEnabled = formData.features[feature.key] || false;
                     return (
                       <div
                         key={feature.key}
-                        className={`${themeClasses.card} border rounded-lg p-3 flex items-center justify-between`}
+                        className="rowBetween"
                       >
-                        <div className="flex items-center gap-3 flex-1">
-                          <Icon className={`w-5 h-5 ${isEnabled ? 'text-blue-500' : themeClasses.textSecondary}`} />
+                        <div className="row">
+                          <Icon className="iconMedium" />
                           <div>
-                            <div className={`font-medium ${themeClasses.text}`}>
+                            <div >
                               {feature.label}
                             </div>
-                            <div className={`text-sm ${themeClasses.textSecondary}`}>
+                            <div >
                               {feature.description}
                             </div>
                           </div>
                         </div>
                         <button
                           onClick={() => handleFeatureToggle(feature.key)}
-                          className={`w-12 h-6 rounded-full transition-colors ${
-                            isEnabled
-                              ? 'bg-blue-600'
-                              : isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
-                          }`}
+                          className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                         >
                           <div
-                            className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                              isEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                            }`}
+                            className={cardStyles.card}
                           />
                         </button>
                       </div>
@@ -322,18 +322,18 @@ const ProfileManagement = ({ isDarkMode }) => {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="rowWrap">
                 <button
                   onClick={onSubmit}
                   disabled={!isEdit && !formData.name.trim()}
-                  className={`${themeClasses.button} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
-                  <Save className="w-4 h-4" />
+                  <Save className="iconSmall" />
                   {isEdit ? 'Update Profile' : 'Create Profile'}
                 </button>
                 <button
                   onClick={onClose}
-                  className={`${themeClasses.card} ${themeClasses.text} px-4 py-2 rounded-lg border transition-colors`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   Cancel
                 </button>
@@ -341,32 +341,27 @@ const ProfileManagement = ({ isDarkMode }) => {
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
     );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="stack stackLarge">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg ${
-          toast.type === 'success' 
-            ? (isDarkMode ? 'bg-green-900/20 border-green-600 text-green-400' : 'bg-green-100 border-green-400 text-green-700')
-            : (isDarkMode ? 'bg-red-900/20 border-red-600 text-red-400' : 'bg-red-100 border-red-400 text-red-700')
-        } border`}>
-          {toast.message}
+        <div className={`${noticeStyles.notice} ${toast.type === 'error' ? noticeStyles.error : noticeStyles.success}`}>
+          <div className={noticeStyles.body}><p>{toast.message}</p></div>
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="stack stackLarge">
         <SettingsSectionHeader
           icon={Shield}
           title="Profiles"
           description="Create and manage user profiles with feature-based access control"
-          isDarkMode={isDarkMode}
           iconColor="purple"
         />
         
-        <div className="flex justify-end mb-4">
+        <div >
           <button
             onClick={() => {
               setFormData({ name: '', description: '', features: {} });
@@ -374,75 +369,75 @@ const ProfileManagement = ({ isDarkMode }) => {
               isModalOpenRef.current = true;
               setIsCreateModalOpen(true);
             }}
-            className={`${themeClasses.button} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="iconMedium" />
             Create Profile
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="gridThree">
           {Object.entries(profiles).map(([name, profile]) => {
             const enabledFeatures = Object.values(profile.features || {}).filter(Boolean).length;
             const totalFeatures = Object.keys(profile.features || {}).length;
             const isDefault = profile.isDefault || false;
 
             return (
-              <div key={name} className={`${themeClasses.card} border rounded-lg p-6`}>
-                <div className="flex items-start justify-between mb-4">
+              <div key={name} className={cardStyles.card}>
+                <div className="row">
                   <div>
-                    <h3 className={`text-xl font-semibold ${themeClasses.text} flex items-center gap-2`}>
+                    <h3 className={cardStyles.title}>
                       {name}
                       {isDefault && (
-                        <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                        <span className="pill pillAccent">
                           Default
                         </span>
                       )}
                     </h3>
                     {profile.description && (
-                      <p className={`${themeClasses.textSecondary} text-sm mt-1`}>
+                      <p className="mutedText smallText">
                         {profile.description}
                       </p>
                     )}
                   </div>
                   {!isDefault && (
-                    <div className="flex gap-2">
+                    <div className="rowWrap">
                       <button
                         onClick={() => handleEdit(name)}
-                        className={`p-2 ${themeClasses.textSecondary} hover:text-blue-500 transition-colors`}
+                        className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.icon}`}
                         title="Edit Profile"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="iconSmall" />
                       </button>
                       <button
                         onClick={() => handleDelete(name)}
-                        className={`p-2 ${themeClasses.textSecondary} hover:text-red-500 transition-colors`}
+                        className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.icon}`}
                         title="Delete Profile"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="iconSmall" />
                       </button>
                     </div>
                   )}
                 </div>
 
-                <div className="mb-4">
-                  <div className={`text-sm ${themeClasses.textSecondary} mb-2`}>
+                <div >
+                  <div >
                     Features: {enabledFeatures} / {totalFeatures} enabled
                   </div>
-                  <div className="space-y-1">
+                  <div className="stack">
                     {Object.entries(profile.features || {}).map(([key, enabled]) => {
                       const feature = features.find(f => f.key === key);
                       if (!feature) return null;
                       const Icon = getFeatureIcon(key);
                       return (
-                        <div key={key} className="flex items-center gap-2 text-sm">
+                        <div key={key} className="row">
                           {enabled ? (
-                            <Check className="w-4 h-4 text-green-500" />
+                            <Check className="iconSmall" />
                           ) : (
-                            <X className="w-4 h-4 text-gray-400" />
+                            <X className="iconSmall" />
                           )}
-                          <Icon className={`w-4 h-4 ${enabled ? 'text-blue-500' : themeClasses.textSecondary}`} />
-                          <span className={enabled ? themeClasses.text : themeClasses.textSecondary}>
+                          <Icon className="iconSmall" />
+                          <span className={enabled ? '' : 'mutedText'}>
                             {feature.label}
                           </span>
                         </div>
@@ -483,4 +478,3 @@ const ProfileManagement = ({ isDarkMode }) => {
 };
 
 export default ProfileManagement;
-

@@ -3,8 +3,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { User, Shield, Smartphone, Clock, Trash2, Check, X, ArrowLeft, Key, Unlock } from 'lucide-react';
+import Button from './ui/Button';
+import pageStyles from './ui/Page.module.css';
+import cardStyles from './ui/Card.module.css';
+import formStyles from './ui/Form.module.css';
+import listStyles from './ui/List.module.css';
+import noticeStyles from './ui/Notice.module.css';
+import tableStyles from './ui/Table.module.css';
 
-const UserProfile = ({ isDarkMode }) => {
+const UserProfile = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [mfaStatus, setMfaStatus] = useState({ mfa_enabled: false, has_secret: false });
@@ -132,112 +139,98 @@ const UserProfile = ({ isDarkMode }) => {
     }
   };
 
-  const themeClasses = {
-    bg: isDarkMode ? 'bg-gray-900' : 'bg-gray-50',
-    card: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200',
-    text: isDarkMode ? 'text-white' : 'text-gray-900',
-    textSecondary: isDarkMode ? 'text-gray-400' : 'text-gray-600',
-    input: isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900',
-    button: isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700',
-    buttonDanger: isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'
-  };
+
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${themeClasses.bg} flex items-center justify-center`}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className={pageStyles.centered}>
+        <span className="spinner spinnerLarge" role="status" aria-label="Loading profile" />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.bg} p-6`}>
-      <div className="max-w-6xl mx-auto">
+    <main className={pageStyles.page}>
+      <div className={`${pageStyles.contentWide} stack`}>
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate('/')}
-            className={`p-2 rounded-lg ${themeClasses.card} hover:opacity-80 transition-opacity`}
-          >
-            <ArrowLeft className={`w-5 h-5 ${themeClasses.text}`} />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-full ${themeClasses.card}`}>
-              <User className={`w-6 h-6 ${themeClasses.text}`} />
+        <div className={pageStyles.header}>
+          <Button size="icon" onClick={() => navigate('/')} aria-label="Back to dashboard">
+            <ArrowLeft size={20} />
+          </Button>
+          <div className="row">
+            <div className={pageStyles.headerIcon}>
+              <User size={24} />
             </div>
             <div>
-              <h1 className={`text-2xl font-bold ${themeClasses.text}`}>User Profile</h1>
-              <p className={themeClasses.textSecondary}>{user?.name || user?.username}</p>
+              <h1 className={pageStyles.title}>User Profile</h1>
+              <p className={cardStyles.description}>{user?.name || user?.username}</p>
             </div>
           </div>
         </div>
 
         {/* Messages */}
         {error && (
-          <div className={`mb-4 p-4 rounded-lg bg-red-100 border border-red-400 text-red-700 ${isDarkMode ? 'bg-red-900/20 border-red-600 text-red-400' : ''}`}>
+          <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
             {typeof error === 'string' ? error : (error?.message || String(error))}
           </div>
         )}
         {success && (
-          <div className={`mb-4 p-4 rounded-lg bg-green-100 border border-green-400 text-green-700 ${isDarkMode ? 'bg-green-900/20 border-green-600 text-green-400' : ''}`}>
+          <div className={`${noticeStyles.notice} ${noticeStyles.success}`}>
             {success}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="gridTwo">
           {/* MFA Section */}
-          <div className={`${themeClasses.card} border rounded-lg p-6`}>
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className={`w-5 h-5 ${themeClasses.text}`} />
-              <h2 className={`text-xl font-semibold ${themeClasses.text}`}>Multi-Factor Authentication</h2>
-            </div>
+          <div className={`${cardStyles.card} stack`}>
+            <h2 className={cardStyles.title}>
+              <Shield size={20} />
+              Multi-Factor Authentication
+            </h2>
 
-            <div className="mb-4 space-y-2">
-              <div className={`flex items-center gap-2 ${themeClasses.textSecondary}`}>
+            <div className="stack stackCompact">
+              <div className="row">
                 Status: 
                 {mfaStatus.mfa_enabled ? (
-                  <span className="flex items-center gap-1 text-green-600">
-                    <Check className="w-4 h-4" /> Enabled
+                  <span className="pill pillSuccess">
+                    <Check size={16} /> Enabled
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-gray-500">
-                    <X className="w-4 h-4" /> Disabled
+                  <span className="pill">
+                    <X size={16} /> Disabled
                   </span>
                 )}
               </div>
               {mfaStatus.mfa_enforced && (
-                <div className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                  <Shield className="w-4 h-4" />
+                <div className="pill pillWarning">
+                  <Shield size={16} />
                   <span>MFA is required by administrator</span>
                 </div>
               )}
             </div>
 
             {!showMfaSetup && !mfaStatus.mfa_enabled && (
-              <button
-                onClick={handleMfaSetup}
-                className={`${themeClasses.button} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors`}
-              >
-                <Key className="w-4 h-4" />
+              <Button onClick={handleMfaSetup}>
+                <Key size={16} />
                 Enable MFA
-              </button>
+              </Button>
             )}
 
             {showMfaSetup && mfaSetup && (
-              <div className="space-y-4">
+              <div className="stack">
                 <div>
-                  <p className={`${themeClasses.textSecondary} mb-2`}>
+                  <p className={cardStyles.description}>
                     Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, etc.):
                   </p>
-                  <div className="flex justify-center p-4 bg-white rounded-lg">
-                    <img src={mfaSetup.qr_code} alt="MFA QR Code" className="max-w-xs" />
+                  <div className="qrFrame">
+                    <img src={mfaSetup.qr_code} alt="MFA QR Code" className="qrCode" />
                   </div>
-                  <p className={`${themeClasses.textSecondary} text-xs mt-2 text-center`}>
-                    Or enter this code manually: <code className="bg-gray-100 px-2 py-1 rounded">{mfaSetup.secret}</code>
+                  <p className={formStyles.helpText}>
+                    Or enter this code manually: <code>{mfaSetup.secret}</code>
                   </p>
                 </div>
                 <div>
-                  <label className={`block ${themeClasses.textSecondary} mb-2`}>
+                  <label className={formStyles.label}>
                     Enter 6-digit code from your app:
                   </label>
                   <input
@@ -245,48 +238,47 @@ const UserProfile = ({ isDarkMode }) => {
                     maxLength="6"
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                    className={`${themeClasses.input} w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={formStyles.input}
                     placeholder="000000"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <button
+                <div className="rowWrap">
+                  <Button
                     onClick={handleVerifySetup}
                     disabled={verifying || totpCode.length !== 6}
-                    className={`${themeClasses.button} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50`}
                   >
                     {verifying ? 'Verifying...' : 'Verify & Enable'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => {
                       setShowMfaSetup(false);
                       setMfaSetup(null);
                       setTotpCode('');
                     }}
-                    className={`${themeClasses.card} ${themeClasses.text} px-4 py-2 rounded-lg border transition-colors`}
+                    variant="secondary"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             {mfaStatus.mfa_enabled && !showMfaSetup && (
-              <div className="space-y-4">
+              <div className="stack">
                 <div>
-                  <label className={`block ${themeClasses.textSecondary} mb-2`}>
+                  <label className={formStyles.label}>
                     Password:
                   </label>
                   <input
                     type="password"
                     value={disablePassword}
                     onChange={(e) => setDisablePassword(e.target.value)}
-                    className={`${themeClasses.input} w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={formStyles.input}
                     placeholder="Enter your password"
                   />
                 </div>
                 <div>
-                  <label className={`block ${themeClasses.textSecondary} mb-2`}>
+                  <label className={formStyles.label}>
                     TOTP Code:
                   </label>
                   <input
@@ -294,55 +286,56 @@ const UserProfile = ({ isDarkMode }) => {
                     maxLength="6"
                     value={disableTotp}
                     onChange={(e) => setDisableTotp(e.target.value.replace(/\D/g, ''))}
-                    className={`${themeClasses.input} w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={formStyles.input}
                     placeholder="000000"
                   />
                 </div>
-                <button
+                <Button
                   onClick={handleDisableMfa}
                   disabled={disabling || !disablePassword || !disableTotp}
-                  className={`${themeClasses.buttonDanger} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50`}
+                  variant="danger"
                 >
-                  <Unlock className="w-4 h-4" />
+                  <Unlock size={16} />
                   {disabling ? 'Disabling...' : 'Disable MFA'}
-                </button>
+                </Button>
               </div>
             )}
           </div>
 
           {/* Devices Section */}
-          <div className={`${themeClasses.card} border rounded-lg p-6`}>
-            <div className="flex items-center gap-3 mb-4">
-              <Smartphone className={`w-5 h-5 ${themeClasses.text}`} />
-              <h2 className={`text-xl font-semibold ${themeClasses.text}`}>Authorized Devices</h2>
-            </div>
+          <div className={`${cardStyles.card} stack`}>
+            <h2 className={cardStyles.title}>
+              <Smartphone size={20} />
+              Authorized Devices
+            </h2>
 
             {devices.length === 0 ? (
-              <p className={themeClasses.textSecondary}>No devices registered</p>
+              <p className={cardStyles.description}>No devices registered</p>
             ) : (
-              <div className="space-y-3">
+              <div className={listStyles.list}>
                 {devices.map((device, index) => (
-                  <div key={device.device_id || index} className={`${themeClasses.card} border rounded-lg p-4`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className={`font-medium ${themeClasses.text}`}>
+                  <div key={device.device_id || index} className={listStyles.item}>
+                    <div className="rowBetweenStart">
+                      <div className="grow">
+                        <p className={listStyles.title}>
                           {device.name || `Device ${index + 1}`}
                         </p>
-                        <p className={`text-sm ${themeClasses.textSecondary} mt-1`}>
+                        <p className={listStyles.meta}>
                           {device.user_agent || 'Unknown device'}
                         </p>
-                        <p className={`text-xs ${themeClasses.textSecondary} mt-1`}>
+                        <p className={listStyles.metaSmall}>
                           IP: {device.ip_address || 'Unknown'} | 
                           Last seen: {formatDate(device.last_seen)}
                         </p>
                       </div>
-                      <button
+                      <Button
                         onClick={() => handleRemoveDevice(device.device_id)}
-                        className={`p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/20' : ''}`}
+                        variant="danger"
+                        size="icon"
                         title="Remove device"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -352,30 +345,30 @@ const UserProfile = ({ isDarkMode }) => {
         </div>
 
         {/* Login History */}
-        <div className={`${themeClasses.card} border rounded-lg p-6 mt-6`}>
-          <div className="flex items-center gap-3 mb-4">
-            <Clock className={`w-5 h-5 ${themeClasses.text}`} />
-            <h2 className={`text-xl font-semibold ${themeClasses.text}`}>Login History</h2>
-          </div>
+        <div className={`${cardStyles.card} stack`}>
+          <h2 className={cardStyles.title}>
+            <Clock size={20} />
+            Login History
+          </h2>
 
           {loginHistory.length === 0 ? (
-            <p className={themeClasses.textSecondary}>No login history available</p>
+            <p className={cardStyles.description}>No login history available</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className={tableStyles.scroll}>
+              <table className={tableStyles.table}>
                 <thead>
-                  <tr className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <th className={`text-left py-3 px-4 ${themeClasses.textSecondary} font-medium`}>Date & Time</th>
-                    <th className={`text-left py-3 px-4 ${themeClasses.textSecondary} font-medium`}>IP Address</th>
-                    <th className={`text-left py-3 px-4 ${themeClasses.textSecondary} font-medium`}>User Agent</th>
+                  <tr className={tableStyles.row}>
+                    <th className={tableStyles.header}>Date & Time</th>
+                    <th className={tableStyles.header}>IP Address</th>
+                    <th className={tableStyles.header}>User Agent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loginHistory.slice(0, 20).map((login, index) => (
-                    <tr key={index} className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                      <td className={`py-3 px-4 ${themeClasses.text}`}>{formatDate(login.timestamp)}</td>
-                      <td className={`py-3 px-4 ${themeClasses.textSecondary}`}>{login.ip_address || 'Unknown'}</td>
-                      <td className={`py-3 px-4 ${themeClasses.textSecondary} text-sm`}>
+                    <tr key={index} className={tableStyles.row}>
+                      <td className={tableStyles.cell}>{formatDate(login.timestamp)}</td>
+                      <td className={tableStyles.cellMuted}>{login.ip_address || 'Unknown'}</td>
+                      <td className={tableStyles.cellMuted}>
                         {login.user_agent || 'Unknown'}
                       </td>
                     </tr>
@@ -386,7 +379,7 @@ const UserProfile = ({ isDarkMode }) => {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

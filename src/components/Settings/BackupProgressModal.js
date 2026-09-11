@@ -1,8 +1,11 @@
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/apiClient';
 import { X, Cloud, CheckCircle, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) => {
+const BackupProgressModal = ({ isOpen, onClose, globalSettings }) => {
   const [backupType, setBackupType] = useState('incremental');
   // Separate destination checkboxes to reduce vertical height
   const [includeCloud, setIncludeCloud] = useState(true);
@@ -171,13 +174,13 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 
   const getStatusIcon = () => {
     if (progress.status === 'running') {
-      return <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />;
+      return <Loader2  />;
     } else if (progress.status === 'completed') {
-      return <CheckCircle className="w-6 h-6 text-green-500" />;
+      return <CheckCircle  />;
     } else if (progress.status === 'error') {
-      return <AlertCircle className="w-6 h-6 text-red-500" />;
+      return <AlertCircle  />;
     }
-    return <Cloud className="w-6 h-6 text-gray-500" />;
+    return <Cloud  />;
   };
 
   const getStatusColor = () => {
@@ -200,30 +203,20 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`w-full max-w-2xl mx-4 rounded-2xl shadow-2xl ${
-        isDarkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
+    <div className="screenCenter">
+      <div >
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
-          <div className="flex items-center gap-3">
+        <div className="rowBetween">
+          <div className="row">
             {getStatusIcon()}
-            <h2 className={`text-2xl font-bold ${
-              isDarkMode ? 'text-gray-100' : 'text-gray-900'
-            }`}>
+            <h2 className="pageTitle">
               Boondock Backup Progress
             </h2>
           </div>
           {progress.status !== 'running' && (
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg transition-colors ${
-                isDarkMode 
-                  ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              }`}
+              className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.icon}`}
             >
               <X size={24} />
             </button>
@@ -231,74 +224,50 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="stack">
           {/* Backup Type & Destination Selection (before backup starts) */}
           {!backupStarted && progress.status === 'idle' && (
-            <div className="space-y-4">
+            <div className="stack">
               <div>
-                <h3 className={`text-lg font-semibold mb-3 ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                }`}>
+                <h3 className="pageTitle">
                   Select Backup Type
                 </h3>
 
                 {/* Side-by-side backup type radios */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    backupType === 'incremental'
-                      ? isDarkMode 
-                        ? 'bg-blue-900/30 border-blue-500' 
-                        : 'bg-blue-50 border-blue-500'
-                      : isDarkMode
-                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                        : 'bg-white border-gray-300 hover:border-gray-400'
-                  }`}>
+                <div className="gridTwo">
+                  <label className={formStyles.label}>
                     <input
                       type="radio"
                       name="backupType"
                       value="incremental"
                       checked={backupType === 'incremental'}
                       onChange={(e) => setBackupType(e.target.value)}
-                      className="mt-1"
+                      className={formStyles.input}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${
-                          isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
+                    <div >
+                      <div className="row">
+                        <span className="mutedText smallText">
                           Incremental
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700'
-                        }`}>
+                        <span className="mutedText smallText">
                           Recommended
                         </span>
                       </div>
                     </div>
                   </label>
 
-                  <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    backupType === 'full'
-                      ? isDarkMode 
-                        ? 'bg-blue-900/30 border-blue-500' 
-                        : 'bg-blue-50 border-blue-500'
-                      : isDarkMode
-                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                        : 'bg-white border-gray-300 hover:border-gray-400'
-                  }`}>
+                  <label className={formStyles.label}>
                     <input
                       type="radio"
                       name="backupType"
                       value="full"
                       checked={backupType === 'full'}
                       onChange={(e) => setBackupType(e.target.value)}
-                      className="mt-1"
+                      className={formStyles.input}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${
-                          isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
+                    <div >
+                      <div className="row">
+                        <span className="mutedText smallText">
                           Full
                         </span>
                       </div>
@@ -307,15 +276,9 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
                 </div>
 
                 {/* Dynamic description based on backup type */}
-                <div className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${
-                  isDarkMode ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200'
-                }`}>
-                  <Info className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                  }`} />
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                  }`}>
+                <div className={cardStyles.card}>
+                  <Info  />
+                  <p className="mutedText smallText">
                     {backupType === 'incremental' ? (
                       <>
                         <strong>Incremental:</strong> Only backs up files that haven&apos;t been backed up yet. Faster and more efficient for regular backups.
@@ -331,118 +294,74 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 
               {/* Destination Selection */}
               <div>
-                <h3 className={`text-lg font-semibold mb-3 ${
-                  isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                }`}>
+                <h3 className="pageTitle">
                   Select Destination
                 </h3>
 
                 {!cloudEnabled && !sambaEnabled && (
-                  <div className={`mb-4 p-3 rounded-lg ${
-                    isDarkMode ? 'bg-yellow-900/20 border border-yellow-700' : 'bg-yellow-50 border border-yellow-200'
-                  }`}>
-                    <p className={`text-sm ${
-                      isDarkMode ? 'text-yellow-300' : 'text-yellow-800'
-                    }`}>
+                  <div className={cardStyles.card}>
+                    <p className="mutedText smallText">
                       <strong>Warning:</strong> Neither Cloud nor Samba backup is enabled. Please enable at least one backup destination in Settings.
                     </p>
                   </div>
                 )}
 
                 {/* Side-by-side destination checkboxes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="gridTwo">
                   {/* Cloud checkbox */}
-                  <label className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
-                    !cloudEnabled
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'cursor-pointer'
-                  } ${
-                    includeCloud
-                      ? isDarkMode
-                        ? 'bg-blue-900/30 border-blue-500'
-                        : 'bg-blue-50 border-blue-500'
-                      : isDarkMode
-                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                        : 'bg-white border-gray-300 hover:border-gray-400'
-                  }`}>
+                  <label className={formStyles.label}>
                     <input
                       type="checkbox"
                       checked={includeCloud}
                       onChange={(e) => cloudEnabled && setIncludeCloud(e.target.checked)}
                       disabled={!cloudEnabled}
-                      className="mt-1"
+                      className={formStyles.input}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${
-                          isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
+                    <div >
+                      <div className="row">
+                        <span className="mutedText smallText">
                           Boondock Cloud
                         </span>
                         {!cloudEnabled && (
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
-                          }`}>
+                          <span className="mutedText smallText">
                             Not Enabled
                           </span>
                         )}
                       </div>
-                      <p className={`text-sm ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
+                      <p className="mutedText smallText">
                         Store backups in Boondock Cloud storage.
                       </p>
                     </div>
                   </label>
 
                   {/* Samba checkbox */}
-                  <label className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
-                    !sambaEnabled
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'cursor-pointer'
-                  } ${
-                    includeSamba
-                      ? isDarkMode
-                        ? 'bg-blue-900/30 border-blue-500'
-                        : 'bg-blue-50 border-blue-500'
-                      : isDarkMode
-                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500'
-                        : 'bg-white border-gray-300 hover:border-gray-400'
-                  }`}>
+                  <label className={formStyles.label}>
                     <input
                       type="checkbox"
                       checked={includeSamba}
                       onChange={(e) => sambaEnabled && setIncludeSamba(e.target.checked)}
                       disabled={!sambaEnabled}
-                      className="mt-1"
+                      className={formStyles.input}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${
-                          isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
+                    <div >
+                      <div className="row">
+                        <span className="mutedText smallText">
                           Samba / Network Drive
                         </span>
                         {!sambaEnabled && (
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
-                          }`}>
+                          <span className="mutedText smallText">
                             Not Enabled
                           </span>
                         )}
                       </div>
-                      <p className={`text-sm ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
+                      <p className="mutedText smallText">
                         Mirror backups to a Samba / NAS share.
                       </p>
                     </div>
                   </label>
                 </div>
 
-                <p className={`mt-3 text-xs ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+                <p className="mutedText smallText">
                   You can select one or both destinations. If both are selected, the backup will run to Cloud and Samba in a single job.
                 </p>
               </div>
@@ -451,16 +370,12 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 
           {/* Status Message */}
           {backupStarted && (
-            <div className={`p-4 rounded-xl ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
-            }`}>
-              <p className={`text-sm font-medium ${getStatusColor()}`}>
+            <div className={cardStyles.card}>
+              <p className="mutedText smallText">
                 {progress.message || 'Initializing backup...'}
               </p>
               {progress.current_operation && (
-                <p className={`text-xs mt-1 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                }`}>
+                <p className="mutedText smallText">
                   Current: {getOperationLabel(progress.current_operation)}
                 </p>
               )}
@@ -470,79 +385,52 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
           {/* Progress Bar */}
           {backupStarted && progress.status === 'running' && (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm font-medium ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+              <div className="rowBetween">
+                <span className="mutedText smallText">
                   Progress
                 </span>
-                <span className={`text-sm font-medium ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                }`}>
+                <span className="mutedText smallText">
                   {progress.processed_files} of {progress.total_files} files
                 </span>
               </div>
-              <div className={`w-full h-3 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                <div
-                  className={`h-full transition-all duration-300 rounded-full ${
-                    isDarkMode ? 'bg-blue-500' : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${progressPercentage}%` }}
-                />
+              <div >
+                <div style={{ width: `${progressPercentage}%` }} />
               </div>
             </div>
           )}
 
           {/* Statistics */}
           {backupStarted && (
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
-            } p-4 rounded-xl`}>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${
-                isDarkMode ? 'text-green-400' : 'text-green-600'
-              }`}>
+            <div className="gridTwo">
+            <div >
+              <div >
                 {progress.uploaded_files}
               </div>
-              <div className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <div >
                 Uploaded
               </div>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${
-                isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
-              }`}>
+            <div >
+              <div >
                 {progress.skipped_files}
               </div>
-              <div className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <div >
                 Skipped
               </div>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${
-                isDarkMode ? 'text-red-400' : 'text-red-600'
-              }`}>
+            <div >
+              <div >
                 {progress.error_files}
               </div>
-              <div className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <div >
                 Errors
               </div>
             </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-600'
-              }`}>
+            <div >
+              <div >
                 {progress.total_files}
               </div>
-              <div className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <div >
                 Total
               </div>
             </div>
@@ -551,17 +439,11 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 
           {/* Completion Message */}
           {backupStarted && progress.status === 'completed' && (
-            <div className={`p-4 rounded-xl bg-green-50 border border-green-200 ${
-              isDarkMode ? 'bg-green-900/20 border-green-700' : ''
-            }`}>
-              <p className={`text-sm font-medium ${
-                isDarkMode ? 'text-green-300' : 'text-green-800'
-              }`}>
+            <div className={cardStyles.card}>
+              <p className="mutedText smallText">
                 Backup completed successfully!
               </p>
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-green-400' : 'text-green-600'
-              }`}>
+              <p className="mutedText smallText">
                 {progress.uploaded_files} files uploaded, {progress.skipped_files} skipped, {progress.error_files} errors
               </p>
             </div>
@@ -569,17 +451,11 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 
           {/* Error Message */}
           {backupStarted && progress.status === 'error' && (
-            <div className={`p-4 rounded-xl bg-red-50 border border-red-200 ${
-              isDarkMode ? 'bg-red-900/20 border-red-700' : ''
-            }`}>
-              <p className={`text-sm font-medium ${
-                isDarkMode ? 'text-red-300' : 'text-red-800'
-              }`}>
+            <div className={cardStyles.card}>
+              <p className="mutedText smallText">
                 Backup failed
               </p>
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-red-400' : 'text-red-600'
-              }`}>
+              <p className="mutedText smallText">
                 {progress.message}
               </p>
             </div>
@@ -587,28 +463,18 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
         </div>
 
         {/* Footer */}
-        <div className={`flex justify-end gap-3 p-6 border-t ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+        <div className={cardStyles.card}>
           {!backupStarted ? (
             <>
               <button
                 onClick={onClose}
-                className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleStartBackup}
-                className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
               >
                 Start Backup
               </button>
@@ -617,13 +483,7 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
             <button
               onClick={onClose}
               disabled={progress.status === 'running'}
-              className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
-                progress.status === 'running'
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : isDarkMode
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
+              className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
             >
               {progress.status === 'running' ? 'Backup in Progress...' : 'Close'}
             </button>
@@ -635,4 +495,3 @@ const BackupProgressModal = ({ isOpen, onClose, isDarkMode, globalSettings }) =>
 };
 
 export default BackupProgressModal;
-

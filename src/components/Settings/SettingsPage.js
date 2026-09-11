@@ -17,13 +17,16 @@ import BackupProgressModal from './BackupProgressModal';
 import InlineDocumentation from '../Documentation/InlineDocumentation';
 import InteractiveUserGuide from '../Documentation/InteractiveUserGuide';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from "../AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
 import logger from "../../utils/logger";
 import CommandCenterShell from "../layout/CommandCenterShell";
 import SidebarFooter from "../Dashboard/SidebarFooter";
 import SettingsSearchBar from "./SettingsSearchBar";
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import navStyles from '../ui/Navigation.module.css';
 
 const SETTINGS_NAV_ICONS = {
   summary: "dashboard",
@@ -35,7 +38,7 @@ const SETTINGS_NAV_ICONS = {
   Logs: "history_edu",
 };
 
-const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverseSort, setReverseSort, onSettingsChange = () => {} }) => {
+const SettingsPage = ({ timezone, timeFormat, setTimeFormat, reverseSort, setReverseSort, onSettingsChange = () => {} }) => {
   const [loading, setLoading] = useState(true);
   const [keywords, setKeywords] = useState([]);
   const [newKeyword, setNewKeyword] = useState('');
@@ -226,7 +229,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
-        theme: isDarkMode ? "dark" : "light",
         onClose: () => {
           // Safely clear the reference
           toastIdRef.current = null;
@@ -251,7 +253,7 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
         toastIdRef.current = null;
       }
     }, 100);
-  }, [isDarkMode]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -397,36 +399,29 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
   };
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <div className="screenCenter"><span className="spinner spinnerLarge" aria-label="Loading settings" /></div>
     );
   }
   // Show loading while permissions are being fetched
   if (permissionsLoading || userRole === null) {
     return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} flex items-center justify-center`}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <div className="screenCenter"><span className="spinner spinnerLarge" aria-label="Loading permissions" /></div>
     );
   }
   // Check if user has access (admin or has access_settings permission)
   if (userRole !== 'admin' && !hasPermission('access_settings')) {
     return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} flex items-center justify-center`}>
-        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center`}>
-          <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            Access Denied
-          </h2>
-          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
-            You don't have permission to access settings. Please contact your administrator.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            Go to Home
-          </button>
+      <div className="screenCenter">
+        <div className={cardStyles.card}>
+          <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+            <div className={noticeStyles.body}>
+              <p><strong>Access Denied</strong></p>
+              <p>You don't have permission to access settings. Please contact your administrator.</p>
+            </div>
+          </div>
+          <div className="actionsEnd">
+            <Button onClick={() => navigate('/')} variant="primary">Go to Home</Button>
+          </div>
         </div>
       </div>
     );
@@ -435,7 +430,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
   return (
     <>
     <CommandCenterShell
-      isDarkMode={isDarkMode}
       productName="Back to Dashboard"
       showBackToDashboardButton
       sidebarOpen={isSidebarOpen}
@@ -443,7 +437,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
       areaTitle=""
       headerCenter={
         <SettingsSearchBar
-          isDarkMode={isDarkMode}
           allowedSectionIds={sidebarItems.map((i) => i.id)}
           setSearchParams={setSearchParams}
           setIsSidebarOpen={setIsSidebarOpen}
@@ -454,17 +447,17 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
       showHeaderSettingsButton={false}
       showHeaderProfile={false}
       sidebar={(
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mb-6 px-6">
-              <h2 className={`font-headline text-lg font-semibold tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-on-surface'}`}>
+        <div className="columnFill">
+          <div className="grow scrollY">
+            <div className="sidebarSection">
+              <h2 className="sidebarTitle">
                 Settings
               </h2>
-              <p className={`mt-0.5 text-sm ${isDarkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>
+              <p className="sidebarSubtitle">
                 Edge server configuration
               </p>
             </div>
-            <nav className="space-y-0.5 px-3" aria-label="Settings sections">
+            <nav className={navStyles.vertical} aria-label="Settings sections">
             {sidebarItems.map((item) => {
               const sym = SETTINGS_NAV_ICONS[item.id] || "chevron_right";
               const active = activeSection === item.id;
@@ -482,31 +475,22 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
                     }
                     setIsSidebarOpen(false);
                   }}
-                  className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                    active
-                      ? isDarkMode
-                        ? "bg-slate-800 text-blue-200"
-                        : "bg-surface-container-low text-primary"
-                      : isDarkMode
-                        ? "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
+                  className={`${navStyles.verticalItem} ${active ? navStyles.verticalActive : ""}`}
                 >
-                  <span className="material-symbols-outlined text-[22px] leading-none opacity-90">{sym}</span>
+                  <span className={`material-symbols-outlined ${navStyles.verticalIcon}`}>{sym}</span>
                   {item.label}
                 </button>
               );
             })}
             </nav>
           </div>
-          <SidebarFooter isDarkMode={isDarkMode} />
+          <SidebarFooter />
         </div>
       )}
     >
-      <div className="max-w-[1600px]">
+      <div className="contentWide">
             {activeSection === 'summary' && (
               <SummarySection
-                isDarkMode={isDarkMode}
                 timezone={timezone}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
@@ -514,14 +498,12 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
             )}
             {activeSection === 'transcription-engine' && (
               <TranscriptionEngine
-                isDarkMode={isDarkMode}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
               />
             )}
             {activeSection === 'recorders' && (
               <ChannelsAndStationsSection
-                isDarkMode={isDarkMode}
                 recordersEnabled={globalSettings.global_enable_edge_devices}
                 globalSettings={globalSettings}
               />
@@ -535,7 +517,6 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
                 handleRemoveKeyword={handleRemoveKeyword}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
-                isDarkMode={isDarkMode}
               />
             )}
             {activeSection === 'keywords-tags' && (
@@ -545,17 +526,13 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
                 setNewKeyword={setNewKeyword}
                 handleAddKeyword={handleAddKeyword}
                 handleRemoveKeyword={handleRemoveKeyword}
-                isDarkMode={isDarkMode}
               />
             )}
             {activeSection === 'user-management' && (
-              <UserManagementSection
-                isDarkMode={isDarkMode}
-              />
+              <UserManagementSection />
             )}
             {activeSection === 'system' && (
               <SystemSection
-                isDarkMode={isDarkMode}
                 showToast={showToast}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
@@ -574,23 +551,19 @@ const SettingsPage = ({ isDarkMode, timezone, timeFormat, setTimeFormat, reverse
               />
             )}
             {activeSection === 'scanner' && (
-              <ScannerTable isDarkMode={isDarkMode} />
+              <ScannerTable />
             )}
-            {/* {activeSection === 'reports' && (
-              <ReportsComponent isDarkMode={isDarkMode} />
-            )} */}
             {activeSection === 'audio' && (
-              <AudioLevelVisualizer isDarkMode={isDarkMode} />
+              <AudioLevelVisualizer />
             )}
             {activeSection === 'Logs' && (
-              <F1TerminalLogs isDarkMode={isDarkMode} syncLogsTabToUrl />
+              <F1TerminalLogs syncLogsTabToUrl />
             )}
       </div>
       </CommandCenterShell>
       <BackupProgressModal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
-        isDarkMode={isDarkMode}
         globalSettings={globalSettings}
       />
     </>

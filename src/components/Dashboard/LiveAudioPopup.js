@@ -3,8 +3,12 @@ import { X, Play, Pause, Volume2, AlertCircle, Wifi, WifiOff } from 'lucide-reac
 import api from '../../utils/apiClient';
 import { io } from 'socket.io-client';
 import logger from '../../utils/logger';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
-const LiveAudioPopup = ({ channel, isDarkMode, onClose}) => {
+const LiveAudioPopup = ({ channel, onClose}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -245,174 +249,122 @@ const LiveAudioPopup = ({ channel, isDarkMode, onClose}) => {
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+    <dialog
+      ref={(dialog) => {
+        if (!dialog) return;
+        if (!dialog.open) dialog.showModal();
+      }}
+      className={modalStyles.dialog}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div
-        className={`${
-          isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        } rounded-lg shadow-2xl border max-w-md w-full max-h-96 overflow-hidden flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          className={`${
-            isDarkMode ? 'bg-gray-900 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200'
-          } px-6 py-4 flex items-center justify-between`}
-        >
-          <div className="flex items-center gap-3">
-            <Volume2 className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Live Audio: {channel.name}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-1 rounded-lg hover:bg-gray-700 transition-colors ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-500'
-            }`}
-          >
-            <X size={20} />
-          </button>
+      {/* Header */}
+      <div className={modalStyles.header}>
+        <div className="row">
+          <Volume2 size={20} aria-hidden="true" />
+          <h3 className={modalStyles.title}>Live Audio: {channel.name}</h3>
         </div>
-
-        {/* Body */}
-        <div
-          className={`${
-            isDarkMode ? 'bg-gray-800' : 'bg-white'
-          } px-6 py-4 flex-1 overflow-y-auto`}
+        <Button
+          onClick={onClose}
+          size="icon"
+          variant="ghost"
+          aria-label={`Close live audio for ${channel.name}`}
         >
-          {/* Connection Status */}
-          <div className="mb-4 p-3 rounded-lg bg-opacity-50 flex items-center gap-2">
-            {isConnected ? (
-              <>
-                <Wifi className="w-4 h-4 text-green-500" />
-                <span className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                  Connected
-                </span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-4 h-4 text-red-500" />
-                <span className={`text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  Disconnected
-                </span>
-              </>
-            )}
-          </div>
+          <X size={20} />
+        </Button>
+      </div>
 
-          {/* Error Message */}
-          {error && (
-            <div
-              className={`mb-4 p-3 rounded-lg flex items-start gap-2 ${
-                isDarkMode
-                  ? 'bg-red-900/30 border border-red-700/50'
-                  : 'bg-red-100/50 border border-red-200'
-              }`}
-            >
-              <AlertCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-              <span className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
-                {error}
-              </span>
-            </div>
-          )}
-
-          {/* Buffer Info */}
-          {bufferInfo && isPlaying && (
-            <div
-              className={`mb-4 p-3 rounded-lg text-sm space-y-2 ${
-                isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
-              }`}
-            >
-              <div className="flex justify-between">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  Buffer Duration:
-                </span>
-                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                  {Math.round(bufferInfo.buffer_duration_ms / 1000)}s
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  Packets:
-                </span>
-                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                  {bufferInfo.buffer_packets || 0}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Channel Info */}
-          <div
-            className={`p-3 rounded-lg text-sm space-y-2 ${
-              isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
-            }`}
-          >
-            <div className="flex justify-between">
-              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Channel ID:</span>
-              <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{channel.id}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Audio Port:</span>
-              <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                {channel.audio_stream_port || 'N/A'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Sample Rate:</span>
-              <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>8 kHz</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer - Control Buttons */}
-        <div
-          className={`${
-            isDarkMode ? 'bg-gray-900 border-t border-gray-700' : 'bg-gray-50 border-t border-gray-200'
-          } px-6 py-4 flex gap-3`}
-        >
-          {!isPlaying ? (
-            <button
-              onClick={playStream}
-              disabled={isLoading || !isConnected}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                isDarkMode
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50'
-              }`}
-            >
-              <Play size={16} />
-              {isLoading ? 'Starting...' : 'Play'}
-            </button>
+      {/* Body */}
+      <div className={`${modalStyles.body} stack`}>
+        {/* Connection Status */}
+        <div>
+          {isConnected ? (
+            <span className="pill pillSuccess">
+              <Wifi size={16} aria-hidden="true" />
+              Connected
+            </span>
           ) : (
-            <button
-              onClick={stopStream}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                isDarkMode
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
-            >
-              <Pause size={16} />
-              Stop
-            </button>
+            <span className="pill pillDanger">
+              <WifiOff size={16} aria-hidden="true" />
+              Disconnected
+            </span>
           )}
+        </div>
 
-          <button
-            onClick={onClose}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              isDarkMode
-                ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-            }`}
-          >
-            Close
-          </button>
+        {/* Error Message */}
+        {error && (
+          <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+            <AlertCircle className={noticeStyles.icon} size={16} aria-hidden="true" />
+            <div className={noticeStyles.body}>
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Buffer Info */}
+        {bufferInfo && isPlaying && (
+          <div className={`${cardStyles.card} ${cardStyles.compact} ${cardStyles.surface} stack stackCompact`}>
+            <div className="rowBetween">
+              <span>Buffer Duration:</span>
+              <strong>{Math.round(bufferInfo.buffer_duration_ms / 1000)}s</strong>
+            </div>
+            <div className="rowBetween">
+              <span>Packets:</span>
+              <strong>{bufferInfo.buffer_packets || 0}</strong>
+            </div>
+          </div>
+        )}
+
+        {/* Channel Info */}
+        <div className={`${cardStyles.card} ${cardStyles.compact} ${cardStyles.surface} stack stackCompact`}>
+          <div className="rowBetween">
+            <span>Channel ID:</span>
+            <strong>{channel.id}</strong>
+          </div>
+          <div className="rowBetween">
+            <span>Audio Port:</span>
+            <strong>{channel.audio_stream_port || 'N/A'}</strong>
+          </div>
+          <div className="rowBetween">
+            <span>Sample Rate:</span>
+            <strong>8 kHz</strong>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Footer - Control Buttons */}
+      <div className={modalStyles.actionsBetween}>
+        {!isPlaying ? (
+          <Button
+            onClick={playStream}
+            disabled={isLoading || !isConnected}
+            variant="primary"
+            className="grow"
+          >
+            <Play size={16} />
+            {isLoading ? 'Starting...' : 'Play'}
+          </Button>
+        ) : (
+          <Button
+            onClick={stopStream}
+            variant="danger"
+            className="grow"
+          >
+            <Pause size={16} />
+            Stop
+          </Button>
+        )}
+
+        <Button onClick={onClose} variant="secondary">
+          Close
+        </Button>
+      </div>
+    </dialog>
   );
 };
 
