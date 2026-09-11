@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../utils/apiClient';
 import logger from '../../utils/logger';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import styles from './ExportCalendar.module.css';
 
-const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, setSelectedRecordings }) => {
+const ExportCalendar = ({ onRecordingsSelected }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [daysWithRecordings, setDaysWithRecordings] = useState(new Set());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -15,15 +18,13 @@ const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Fetch days with recordings for the current month
   useEffect(() => {
     const fetchDaysWithRecordings = async () => {
       try {
-        const response = await api.get(`/recordings/calendar/days`, {
-          params: { year, month: month + 1 }
+        const response = await api.get('/recordings/calendar/days', {
+          params: { year, month: month + 1 },
         });
-        const days = response.data.days || [];
-        setDaysWithRecordings(new Set(days));
+        setDaysWithRecordings(new Set(response.data.days || []));
       } catch (error) {
         logger.error('Failed to fetch days with recordings:', error);
       }
@@ -32,57 +33,54 @@ const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, 
     fetchDaysWithRecordings();
   }, [year, month]);
 
-  // Fetch hours when a day is selected
   useEffect(() => {
-    if (selectedDay) {
-      const fetchHours = async () => {
-        setLoading(true);
-        try {
-          const response = await api.get(`/recordings/calendar/hours`, {
-            params: { year, month: month + 1, day: selectedDay }
-          });
-          const hours = response.data.hours || [];
-          setHoursWithRecordings(hours);
-        } catch (error) {
-          logger.error('Failed to fetch hours:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchHours();
-    } else {
+    if (!selectedDay) {
       setHoursWithRecordings([]);
       setSelectedHour(null);
       setRecordings([]);
+      return;
     }
+
+    const fetchHours = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/recordings/calendar/hours', {
+          params: { year, month: month + 1, day: selectedDay },
+        });
+        setHoursWithRecordings(response.data.hours || []);
+      } catch (error) {
+        logger.error('Failed to fetch hours:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHours();
   }, [selectedDay, year, month]);
 
-  // Fetch recordings when an hour is selected
   useEffect(() => {
-    if (selectedDay && selectedHour !== null) {
-      const fetchRecordings = async () => {
-        setLoading(true);
-        try {
-          const response = await api.get(`/recordings/calendar/recordings`, {
-            params: { year, month: month + 1, day: selectedDay, hour: selectedHour }
-          });
-          const recs = response.data.recordings || [];
-          setRecordings(recs);
-          if (onRecordingsSelected) {
-            onRecordingsSelected(recs);
-          }
-        } catch (error) {
-          logger.error('Failed to fetch recordings:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchRecordings();
-    } else {
+    if (!selectedDay || selectedHour === null) {
       setRecordings([]);
+      return;
     }
+
+    const fetchRecordings = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/recordings/calendar/recordings', {
+          params: { year, month: month + 1, day: selectedDay, hour: selectedHour },
+        });
+        const nextRecordings = response.data.recordings || [];
+        setRecordings(nextRecordings);
+        onRecordingsSelected?.(nextRecordings);
+      } catch (error) {
+        logger.error('Failed to fetch recordings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecordings();
   }, [selectedDay, selectedHour, year, month, onRecordingsSelected]);
 
   const handlePrevMonth = () => {
@@ -110,116 +108,93 @@ const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, 
     setRecordings([]);
   };
 
-  const handleHourClick = (hour) => {
-    setSelectedHour(hour);
-  };
-
-  // Generate calendar days
-  const firstDayOfMonth = new Date(year, month, 1);
-  const lastDayOfMonth = new Date(year, month + 1, 0);
-  const firstDayWeekday = firstDayOfMonth.getDay();
-  const daysInMonth = lastDayOfMonth.getDate();
+  const firstDayWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const calendarDays = [
+    ...Array(firstDayWeekday).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
   ];
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const calendarDays = [];
-  
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < firstDayWeekday; i++) {
-    calendarDays.push(null);
-  }
-  
-  // Add all days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    calendarDays.push(day);
-  }
+  const selectedDateLabel = `${monthNames[month]} ${selectedDay}, ${year}`;
 
   return (
-    <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} p-4 mb-4`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <CalendarIcon className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} />
-          {selectedDay ? (
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              {monthNames[month]} {selectedDay}, {year}
-            </h3>
-          ) : (
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              {monthNames[month]} {year}
-            </h3>
-          )}
+    <div className={`${cardStyles.card} ${styles.calendar}`}>
+      <div className="rowBetween">
+        <div className="row">
+          <CalendarIcon className={styles.headerIcon} aria-hidden="true" />
+          <h3 className={cardStyles.title}>
+            {selectedDay ? selectedDateLabel : `${monthNames[month]} ${year}`}
+          </h3>
         </div>
-        <div className="flex items-center space-x-2">
-          {selectedDay && (
-            <button
+
+        <div className="row">
+          {selectedDay ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
               onClick={handleBackToCalendar}
-              className={`p-2 rounded-md ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              aria-label="Back to calendar"
               title="Back to calendar"
             >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          )}
-          {!selectedDay && (
+              <ArrowLeft aria-hidden="true" />
+            </Button>
+          ) : (
             <>
-              <button
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
                 onClick={handlePrevMonth}
-                className={`p-2 rounded-md ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                aria-label="Previous month"
                 title="Previous month"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
                 onClick={handleNextMonth}
-                className={`p-2 rounded-md ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                aria-label="Next month"
                 title="Next month"
               >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <ChevronRight aria-hidden="true" />
+              </Button>
             </>
           )}
         </div>
       </div>
 
-      {/* Calendar Grid - Only show when no day is selected */}
       {!selectedDay && (
-        <div className="grid grid-cols-7 gap-1 mb-4">
+        <div className={styles.calendarGrid}>
           {weekDays.map((day) => (
-            <div
-              key={day}
-              className={`text-center text-xs font-medium py-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
-            >
+            <div key={day} className={styles.weekday}>
               {day}
             </div>
           ))}
+
           {calendarDays.map((day, index) => {
             if (day === null) {
-              return <div key={`empty-${index}`} className="h-10" />;
+              return <div key={`empty-${index}`} className={styles.emptyDay} aria-hidden="true" />;
             }
-            
+
             const hasRecordings = daysWithRecordings.has(day);
-            const isSelected = selectedDay === day;
-            
+
             return (
               <button
                 key={day}
+                type="button"
                 onClick={() => handleDayClick(day)}
                 disabled={!hasRecordings}
-                className={`h-10 rounded-md text-sm transition-colors ${
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : hasRecordings
-                    ? isDarkMode
-                      ? 'bg-blue-900/30 text-blue-300 hover:bg-blue-800/50'
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    : isDarkMode
-                    ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                }`}
+                className={`${styles.day} ${hasRecordings ? styles.dayAvailable : ''}`}
+                aria-label={`${monthNames[month]} ${day}, ${year}${hasRecordings ? ', recordings available' : ', no recordings'}`}
               >
                 {day}
               </button>
@@ -228,29 +203,25 @@ const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, 
         </div>
       )}
 
-      {/* Hours Selection */}
       {selectedDay && (
-        <div className={`${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-4 mb-4`}>
-          <h4 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            Hours with recordings for {monthNames[month]} {selectedDay}, {year}
-          </h4>
+        <div className={styles.hoursPanel}>
+          <h4 className={styles.hoursTitle}>Hours with recordings for {selectedDateLabel}</h4>
+
           {loading ? (
-            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</div>
+            <div className="centeredContent">
+              <span className="spinner" role="status" aria-label="Loading recording hours" />
+            </div>
           ) : hoursWithRecordings.length === 0 ? (
-            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No hours found</div>
+            <p className={styles.emptyMessage}>No hours found</p>
           ) : (
-            <div className="grid grid-cols-6 gap-2">
+            <div className={styles.hoursGrid}>
               {hoursWithRecordings.map((hour) => (
                 <button
                   key={hour}
-                  onClick={() => handleHourClick(hour)}
-                  className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                    selectedHour === hour
-                      ? 'bg-blue-600 text-white'
-                      : isDarkMode
-                      ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
+                  type="button"
+                  onClick={() => setSelectedHour(hour)}
+                  className={`${styles.hour} ${selectedHour === hour ? styles.hourSelected : ''}`}
+                  aria-pressed={selectedHour === hour}
                 >
                   {String(hour).padStart(2, '0')}:00
                 </button>
@@ -260,15 +231,13 @@ const ExportCalendar = ({ isDarkMode, onRecordingsSelected, selectedRecordings, 
         </div>
       )}
 
-      {/* Recordings Count */}
       {selectedHour !== null && recordings.length > 0 && (
-        <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          Found {recordings.length} recording{recordings.length !== 1 ? 's' : ''} for {monthNames[month]} {selectedDay}, {year} at {String(selectedHour).padStart(2, '0')}:00
-        </div>
+        <p className={styles.recordingCount}>
+          Found {recordings.length} recording{recordings.length !== 1 ? 's' : ''} for {selectedDateLabel} at {String(selectedHour).padStart(2, '0')}:00
+        </p>
       )}
     </div>
   );
 };
 
 export default ExportCalendar;
-

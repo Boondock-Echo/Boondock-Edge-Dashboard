@@ -1,0 +1,127 @@
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  color: var(--ui-text);
+  font-size: 0.875rem;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.item:hover {
+  background: var(--ui-surface-hover);
+}
+
+.active {
+  background: var(--ui-panel);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.info {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active .name {
+  color: var(--ui-text);
+}
+
+.controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+}
+
+.status {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.statusIcon {
+  width: 1rem;
+  height: 1rem;
+  transition: color var(--duration-normal) var(--ease-standard);
+}
+
+.slash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.25rem;
+  height: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.halo {
+  position: absolute;
+  inset: -0.25rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  opacity: 0.5;
+}
+
+.onlineDot {
+  position: absolute;
+  top: -0.125rem;
+  right: -0.125rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  background: currentColor;
+  border-radius: var(--radius-pill);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.busy {
+  display: flex;
+  gap: 0.125rem;
+}
+
+.busyDot {
+  width: 0.25rem;
+  height: 0.25rem;
+  background: currentColor;
+  border-radius: var(--radius-pill);
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.125rem); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statusIcon,
+  .onlineDot,
+  .busyDot {
+    animation: none;
+    transition-duration: 0.01ms;
+  }
+}

@@ -1,9 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Edit2, Search, X, Filter, RotateCw, Check, AlertTriangle, 
     Save, RadioTower } from "lucide-react";
 import { CTCSS_TONES, DCS_CODES } from "./tone-codes";
 
-const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import tableStyles from '../ui/Table.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import { apiFetch } from "../../utils/apiClient";
+const FrequencyManagement = () => {
     // Core state management
     const [frequencies, setFrequencies] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +21,7 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
     const [selectedFrequency, setSelectedFrequency] = useState(null);
     const [showNotification, setShowNotification] = useState(false);
     const [notificationMessage, setNotificationMessage] = useState("");
+    const dialogRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -49,16 +56,16 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
         });
     }, [formData]);
 
-    // Fetch frequencies on component mount and when edgeServerEndpoint changes
+    // Fetch frequencies on component mount
     useEffect(() => {
         fetchFrequencies();
-    }, [edgeServerEndpoint]);
+    }, []);
 
     // API Functions
     const fetchFrequencies = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(`${edgeServerEndpoint}/frequencies`);
+            const response = await apiFetch(`/frequencies`);
             if (!response.ok) throw new Error("Failed to fetch frequencies");
             const data = await response.json();
             setFrequencies(data);
@@ -73,7 +80,7 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
 
     const createFrequency = async (frequencyData) => {
         try {
-            const response = await fetch(`${edgeServerEndpoint}/frequencies`, {
+            const response = await apiFetch(`/frequencies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(frequencyData),
@@ -91,7 +98,7 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
 
     const updateFrequency = async (id, frequencyData) => {
         try {
-            const response = await fetch(`${edgeServerEndpoint}/frequencies/${id}`, {
+            const response = await apiFetch(`/frequencies/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(frequencyData),
@@ -109,7 +116,7 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
 
     const deleteFrequency = async (id) => {
         try {
-            const response = await fetch(`${edgeServerEndpoint}/frequencies/${id}`, {
+            const response = await apiFetch(`/frequencies/${id}`, {
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error("Failed to delete frequency");
@@ -128,14 +135,6 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
         setNotificationMessage(message);
         setShowNotification(true);
         setTimeout(() => setShowNotification(false), 3000);
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "active": return "bg-green-500";
-            case "critical": return "bg-red-500";
-            default: return "bg-gray-500";
-        }
     };
 
     // Form Handling Functions
@@ -196,87 +195,77 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
         setIsModalOpen(true);
     };
 
+    useEffect(() => {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        if (isModalOpen && !dialog.open) dialog.showModal();
+        if (!isModalOpen && dialog.open) dialog.close();
+    }, [isModalOpen]);
+
     const renderModal = () => (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            {/* Modal backdrop - removed blur effect */}
-            <div className="fixed inset-0 bg-black/60" />
+        <dialog
+            ref={dialogRef}
+            className={modalStyles.dialog}
+            onCancel={(event) => { event.preventDefault(); setIsModalOpen(false); }}
+        >
             
             {/* Modal container - improved positioning and scroll handling */}
-            <div className="relative flex min-h-screen items-center justify-center p-4">
-                <div className={`relative w-full max-w-md rounded-2xl ${
-                    isDarkMode ? 'bg-gray-800' : 'bg-white'
-                } p-6 shadow-xl`}>
+            <div className={modalStyles.body}>
                     {/* Modal header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-semibold">
+                    <div className="rowBetween">
+                        <h3 className={cardStyles.title}>
                             {modalMode === 'create' ? 'Add New Frequency' :
                              modalMode === 'edit' ? 'Edit Frequency' : 'Delete Frequency'}
                         </h3>
                         <button
                             onClick={() => setIsModalOpen(false)}
-                            className={`rounded-lg p-1 ${
-                                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                            } transition-colors`}
+                            className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
                         >
-                            <X className="w-5 h-5" />
+                            <X className="iconMedium" />
                         </button>
                     </div>
 
                     {modalMode !== 'delete' ? (
                         <>
                             {/* Preview Card - updated styling */}
-                            <div className={`mb-6 p-4 rounded-lg ${
-                                isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
-                            }`}>
-                                <h4 className="text-sm font-medium mb-3">Preview</h4>
-                                <div className="space-y-2">
+                            <div >
+                                <h4 className={cardStyles.title}>Preview</h4>
+                                <div className="stack">
                                     {/* [Preview content remains the same] */}
                                 </div>
                             </div>
 
                             {/* Form - improved input styling */}
                             <form onSubmit={handleSubmit}>
-                                <div className="space-y-4">
+                                <div className="stack">
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Name</label>
+                                        <label className={formStyles.label}>Name</label>
                                         <input
                                             type="text"
                                             name="name"
                                             value={formData.name}
                                             onChange={handleInputChange}
-                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isDarkMode 
-                                                    ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                    : 'bg-white border-gray-300'
-                                            }`}
+                                            className={formStyles.input}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Frequency (MHz)</label>
+                                        <label className={formStyles.label}>Frequency (MHz)</label>
                                         <input
                                             type="text"
                                             name="frequency"
                                             value={formData.frequency}
                                             onChange={handleInputChange}
-                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isDarkMode 
-                                                    ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                    : 'bg-white border-gray-300'
-                                            }`}
+                                            className={formStyles.input}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="gridTwo">
                                         <div>
-                                            <label className="block text-sm font-medium mb-2">Type</label>
+                                            <label className={formStyles.label}>Type</label>
                                             <select
                                                 name="type"
                                                 value={formData.type}
                                                 onChange={handleInputChange}
-                                                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                    isDarkMode 
-                                                        ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                        : 'bg-white border-gray-300'
-                                                }`}
+                                                className={formStyles.select}
                                             >
                                                 <option value="NFM">NFM</option>
                                                 <option value="FM">FM</option>
@@ -284,16 +273,12 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-2">Tone</label>
+                                            <label className={formStyles.label}>Tone</label>
                                             <select
                                                 name="tone"
                                                 value={formData.tone}
                                                 onChange={handleInputChange}
-                                                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                    isDarkMode 
-                                                        ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                        : 'bg-white border-gray-300'
-                                                }`}
+                                                className={formStyles.select}
                                             >
                                                 <option value="">None</option>
                                                 <optgroup label="CTCSS Tones">
@@ -314,50 +299,38 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Tag</label>
+                                        <label className={formStyles.label}>Tag</label>
                                         <input
                                             type="text"
                                             name="tag"
                                             value={formData.tag}
                                             onChange={handleInputChange}
-                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isDarkMode 
-                                                    ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                    : 'bg-white border-gray-300'
-                                            }`}
+                                            className={formStyles.input}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Person</label>
+                                        <label className={formStyles.label}>Person</label>
                                         <input
                                             type="text"
                                             name="person"
                                             value={formData.person}
                                             onChange={handleInputChange}
-                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isDarkMode 
-                                                    ? 'bg-gray-700 border-gray-600 focus:bg-gray-600' 
-                                                    : 'bg-white border-gray-300'
-                                            }`}
+                                            className={formStyles.input}
                                         />
                                     </div>
-                                    <div className="pt-4 flex justify-end space-x-4">
+                                    <div >
                                         <button
                                             type="button"
                                             onClick={() => setIsModalOpen(false)}
-                                            className={`px-4 py-2 rounded-lg border transition-colors ${
-                                                isDarkMode 
-                                                    ? 'border-gray-600 hover:bg-gray-700' 
-                                                    : 'border-gray-300 hover:bg-gray-100'
-                                            }`}
+                                            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                                            className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                                         >
-                                            <Save className="w-4 h-4" />
+                                            <Save className="iconSmall" />
                                             <span>{modalMode === 'create' ? 'Create' : 'Save Changes'}</span>
                                         </button>
                                     </div>
@@ -366,52 +339,49 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
                         </>
                     ) : (
                         <div>
-                            <div className="flex items-center space-x-4 mb-6">
-                                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                            <div className="row">
+                                <div className="row">
+                                    <AlertTriangle className="iconLarge" />
                                 </div>
                                 <div>
-                                    <h4 className="text-lg font-medium mb-1">Confirm Deletion</h4>
-                                    <p className="text-sm opacity-70">
+                                    <h4 className={cardStyles.title}>Confirm Deletion</h4>
+                                    <p className="mutedText smallText">
                                         Are you sure you want to delete this frequency? This action cannot be undone.
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex justify-end space-x-4">
+                            <div >
                                 <button
                                     onClick={() => setIsModalOpen(false)}
-                                    className={`px-4 py-2 rounded-lg border ${
-                                        isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-                                    }`}
+                                    className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleDelete}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2"
+                                    className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="iconSmall" />
                                     <span>Delete</span>
                                 </button>
                             </div>
                         </div>
                     )}
-                </div>
             </div>
-        </div>
+        </dialog>
     );
 
     return (
-        <div className={isDarkMode ? 'text-gray-100' : 'text-gray-900'}>
+        <div >
             {/* Header Section */}
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'}`}>
-                        <RadioTower className="w-6 h-6 text-white" />
+            <div className="rowBetween">
+                <div className="row">
+                    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                        <RadioTower className="iconLarge" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold">Stations</h3>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <h3 className="pageTitle">Stations</h3>
+                        <p className="mutedText smallText">
                             Add and manage stations for your recordings
                         </p>
                     </div>
@@ -421,92 +391,86 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
                         resetForm();
                         openModal('create', null);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="iconMedium" />
                     <span>Add Station</span>
                 </button>
             </div>
 
             {/* Search and Filter Bar */}
-            <div className={`mb-6 p-4 rounded-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                    <div className="rowBetween">
+                        <div className="grow">
+                            <Search />
                             <input
                                 type="text"
                                 placeholder="Search frequencies..."
-                                className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                                    isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-300'
-                                }`}
+                                className={formStyles.input}
                             />
                         </div>
-                        <button className={`p-2 rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
-                            <Filter className="w-5 h-5" />
+                        <button className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}>
+                            <Filter className="iconMedium" />
                         </button>
                         <button 
                             onClick={fetchFrequencies}
-                            className={`p-2 rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}
+                            className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
                         >
-                            <RotateCw className="w-5 h-5" />
+                            <RotateCw className="iconMedium" />
                         </button>
                     </div>
                 </div>
 
             {/* Frequencies Table */}
-            <div className={`rounded-xl overflow-hidden shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={cardStyles.card}>
                 {isLoading ? (
-                    <div className="p-8 text-center">Loading...</div>
+                    <div >Loading...</div>
                 ) : error ? (
-                    <div className="p-8 text-center text-red-500">{error}</div>
+                    <div >{error}</div>
                 ) : (
-                    <table className="w-full">
-                        <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                    <table className={tableStyles.table}>
+                        <thead >
                             <tr>
-                                <th className="px-6 py-4 text-left">Status</th>
-                                <th className="px-6 py-4 text-left">Name/Frequency</th>
-                                <th className="px-6 py-4 text-left">Type/Tone</th>
-                                <th className="px-6 py-4 text-left">Tag</th>
-                                <th className="px-6 py-4 text-left">Person</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
+                                <th className={tableStyles.header}>Status</th>
+                                <th className={tableStyles.header}>Name/Frequency</th>
+                                <th className={tableStyles.header}>Type/Tone</th>
+                                <th className={tableStyles.header}>Tag</th>
+                                <th className={tableStyles.header}>Person</th>
+                                <th className={tableStyles.header}>Actions</th>
                             </tr>
                         </thead>
-                        <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                        <tbody >
                             {frequencies.map((freq) => (
-                                <tr key={freq.id} className={`${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
-                                    <td className="px-6 py-4">
-                                        <div className={`w-3 h-3 rounded-full ${getStatusColor(freq.status)}`} />
+                                <tr key={freq.id} className={tableStyles.rowInteractive}>
+                                    <td className={tableStyles.cell}>
+                                        <div  />
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium">{freq.name}</div>
-                                        <div className="text-sm text-gray-500">{freq.frequency} MHz</div>
+                                    <td className={tableStyles.cell}>
+                                        <div >{freq.name}</div>
+                                        <div >{freq.frequency} MHz</div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium">{freq.type}</div>
-                                        <div className="text-sm text-gray-500">{freq.tone}</div>
+                                    <td className={tableStyles.cell}>
+                                        <div >{freq.type}</div>
+                                        <div >{freq.tone}</div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs ${
-                                            freq.tag === 'Priority' 
-                                                ? 'bg-red-100 text-red-800' 
-                                                : 'bg-green-100 text-green-800'
-                                        }`}>
+                                    <td className={tableStyles.cell}>
+                                        <span className="pill pillSuccess">
                                             {freq.tag}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">{freq.person}</td>
-                                    <td className="px-6 py-4 text-right">
+                                    <td className={tableStyles.cell}>{freq.person}</td>
+                                    <td className={tableStyles.cell}>
                                         <button
                                             onClick={() => openModal('edit', freq)}
-                                            className="text-blue-600 hover:text-blue-900 mr-4"
+                                            className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                                         >
-                                            <Edit2 className="w-4 h-4" />
+                                            <Edit2 className="iconSmall" />
                                         </button>
                                         <button
                                             onClick={() => openModal('delete', freq)}
-                                            className="text-red-600 hover:text-red-900"
+                                            className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="iconSmall" />
                                         </button>
                                     </td>
                                 </tr>
@@ -520,12 +484,12 @@ const FrequencyManagement = ({ edgeServerEndpoint, isDarkMode }) => {
 
             {/* Notification Toast */}
             {showNotification && (
-                <div className="fixed bottom-4 right-4 z-50">
-                    <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-4 flex items-center space-x-3`}>
-                        <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                            <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div >
+                    <div className="row">
+                        <div className="row">
+                            <Check className="iconMedium" />
                         </div>
-                        <p className="text-sm font-medium">{notificationMessage}</p>
+                        <p className="mutedText smallText">{notificationMessage}</p>
                     </div>
                 </div>
             )}

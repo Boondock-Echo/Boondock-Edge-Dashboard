@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/apiClient';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import modalStyles from '../ui/Modal.module.css';
 import {
   X,
   Database,
@@ -17,11 +21,12 @@ import {
   Square
 } from 'lucide-react';
 
-const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
+const RestoreModal = ({ isOpen, onClose, showToast }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState({});
+  const dialogRef = useRef(null);
   
   // Step 1: Settings files
   const [settingsFiles, setSettingsFiles] = useState([]);
@@ -318,65 +323,50 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
            (selectedChannel && selectedYears.length > 0 && selectedMonths.length > 0 && selectedDays.length > 0);
   };
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`w-full max-w-4xl mx-4 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col ${
-        isDarkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
+    <dialog ref={dialogRef} className={`${modalStyles.dialog} ${modalStyles.wide}`} onCancel={(event) => { event.preventDefault(); if (!restoring) onClose(); }}>
+      <div className={modalStyles.body}>
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            <Database className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h2 className={`text-2xl font-bold ${
-              isDarkMode ? 'text-gray-100' : 'text-gray-900'
-            }`}>
+        <div className="rowBetween">
+          <div className="row">
+            <Database className="iconLarge" />
+            <h2 className="pageTitle">
               Restore Data
             </h2>
           </div>
           <button
             onClick={onClose}
             disabled={restoring}
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkMode 
-                ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200' 
-                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-            } ${restoring ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Progress Steps */}
-        <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
+        <div >
+          <div className="rowBetween">
             {[1, 2, 3].map((step) => (
               <React.Fragment key={step}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                    currentStep === step
-                      ? (isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
-                      : currentStep > step
-                      ? (isDarkMode ? 'bg-green-600 text-white' : 'bg-green-500 text-white')
-                      : (isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500')
-                  }`}>
-                    {currentStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+                <div className="row">
+                  <div className="row">
+                    {currentStep > step ? <CheckCircle className="iconMedium" /> : step}
                   </div>
-                  <span className={`text-sm font-medium ${
-                    currentStep === step
-                      ? (isDarkMode ? 'text-blue-400' : 'text-blue-600')
-                      : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
-                  }`}>
+                  <span className="pill pillAccent">
                     {step === 1 ? 'Settings' : step === 2 ? 'Database' : 'Audio Files'}
                   </span>
                 </div>
                 {step < 3 && (
-                  <ChevronRight className={`w-5 h-5 ${
-                    isDarkMode ? 'text-gray-600' : 'text-gray-400'
-                  }`} />
+                  <ChevronRight className="iconMedium" />
                 )}
               </React.Fragment>
             ))}
@@ -384,71 +374,62 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="grow scrollY">
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <div className="row">
+              <Loader2 className="iconLarge spin" />
             </div>
           )}
 
           {/* Step 1: Settings */}
           {currentStep === 1 && !loading && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <SettingsIcon className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+            <div className="stack">
+              <div className="row">
+                <SettingsIcon className="iconLarge" />
+                <h3 className={cardStyles.title}>
                   Select Settings Files to Restore
                 </h3>
               </div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+              <p className="mutedText smallText">
                 Choose which settings files you want to restore from Boondock Cloud backup.
               </p>
               
               {settingsFiles.length === 0 ? (
-                <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <div className="centeredContent mutedText smallText">
+                  <FileText className="iconLarge" />
                   <p>No settings files found in Boondock Cloud</p>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="rowBetween">
                     <button
                       onClick={handleSelectAllSettings}
-                      className={`text-sm font-medium ${
-                        isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
                       {selectedSettingsFiles.length === settingsFiles.length ? 'Deselect All' : 'Select All'}
                     </button>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <span className="mutedText smallText">
                       {selectedSettingsFiles.length} of {settingsFiles.length} selected
                     </span>
                   </div>
-                  <div className={`space-y-2 max-h-96 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                  } rounded-lg p-4`}>
+                  <div className="scrollPanel">
                     {settingsFiles.map((file, index) => (
                       <label
                         key={index}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedSettingsFiles.includes(file)
-                            ? (isDarkMode ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-                            : (isDarkMode ? 'hover:bg-gray-700 border border-gray-600' : 'hover:bg-gray-100 border border-gray-200')
-                        }`}
+                        className={formStyles.checkbox}
                       >
                         <input
                           type="checkbox"
                           checked={selectedSettingsFiles.includes(file)}
                           onChange={() => handleSettingsFileToggle(file)}
-                          className="hidden"
                         />
                         {selectedSettingsFiles.includes(file) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-500" />
+                          <CheckSquare className="iconMedium" />
                         ) : (
-                          <Square className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <Square className="iconMedium" />
                         )}
-                        <FileText className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-                        <span className={`flex-1 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <FileText className="iconMedium" />
+                        <span className="mutedText smallText">
                           {file}
                         </span>
                       </label>
@@ -461,62 +442,53 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
 
           {/* Step 2: Database */}
           {currentStep === 2 && !loading && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Database className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+            <div className="stack">
+              <div className="row">
+                <Database className="iconLarge" />
+                <h3 className={cardStyles.title}>
                   Select Database Files to Restore
                 </h3>
               </div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+              <p className="mutedText smallText">
                 Choose which database files you want to restore from Boondock Cloud backup.
               </p>
               
               {databaseFiles.length === 0 ? (
-                <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <Database className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <div className="centeredContent mutedText smallText">
+                  <Database className="iconLarge" />
                   <p>No database files found in Boondock Cloud</p>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="rowBetween">
                     <button
                       onClick={handleSelectAllDatabase}
-                      className={`text-sm font-medium ${
-                        isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
                       {selectedDatabaseFiles.length === databaseFiles.length ? 'Deselect All' : 'Select All'}
                     </button>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <span className="mutedText smallText">
                       {selectedDatabaseFiles.length} of {databaseFiles.length} selected
                     </span>
                   </div>
-                  <div className={`space-y-2 max-h-96 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                  } rounded-lg p-4`}>
+                  <div className="scrollPanel">
                     {databaseFiles.map((file, index) => (
                       <label
                         key={index}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedDatabaseFiles.includes(file)
-                            ? (isDarkMode ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-                            : (isDarkMode ? 'hover:bg-gray-700 border border-gray-600' : 'hover:bg-gray-100 border border-gray-200')
-                        }`}
+                        className={formStyles.checkbox}
                       >
                         <input
                           type="checkbox"
                           checked={selectedDatabaseFiles.includes(file)}
                           onChange={() => handleDatabaseFileToggle(file)}
-                          className="hidden"
                         />
                         {selectedDatabaseFiles.includes(file) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-500" />
+                          <CheckSquare className="iconMedium" />
                         ) : (
-                          <Square className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <Square className="iconMedium" />
                         )}
-                        <Database className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-                        <span className={`flex-1 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <Database className="iconMedium" />
+                        <span className="mutedText smallText">
                           {file}
                         </span>
                       </label>
@@ -529,20 +501,20 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
 
           {/* Step 3: Audio Files */}
           {currentStep === 3 && !loading && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Music className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+            <div className="stack stackLarge">
+              <div className="row">
+                <Music className="iconLarge" />
+                <h3 className={cardStyles.title}>
                   Select Audio Files to Restore
                 </h3>
               </div>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+              <p className="mutedText smallText">
                 Select a channel, then choose the year, month, and days to restore audio files.
               </p>
 
               {/* Channel Selection */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={formStyles.label}>
                   Channel
                 </label>
                 <select
@@ -554,11 +526,7 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
                     setSelectedMonths([]);
                     setSelectedDays([]);
                   }}
-                  className={`w-full p-3 rounded-lg border ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-gray-200' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className={formStyles.select}
                 >
                   <option value="">Select a channel...</option>
                   {channels.map((channel, index) => (
@@ -572,43 +540,34 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
               {/* Year Selection */}
               {selectedChannel && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>
                       Years
                     </label>
                     <button
                       onClick={handleSelectAllYears}
-                      className={`text-sm font-medium ${
-                        isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
                       {selectedYears.length === years.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className={`grid grid-cols-4 gap-2 max-h-48 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                  } rounded-lg p-4`}>
+                  <div className="scrollPanel">
                     {years.map((year, index) => (
                       <label
                         key={index}
-                        className={`flex items-center justify-center p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedYears.includes(year)
-                            ? (isDarkMode ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-                            : (isDarkMode ? 'hover:bg-gray-700 border border-gray-600' : 'hover:bg-gray-100 border border-gray-200')
-                        }`}
+                        className={formStyles.checkbox}
                       >
                         <input
                           type="checkbox"
                           checked={selectedYears.includes(year)}
                           onChange={() => handleYearToggle(year)}
-                          className="hidden"
                         />
                         {selectedYears.includes(year) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-500 mr-2" />
+                          <CheckSquare className="iconMedium" />
                         ) : (
-                          <Square className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <Square className="iconMedium" />
                         )}
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <span className="mutedText smallText">
                           {year}
                         </span>
                       </label>
@@ -620,43 +579,34 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
               {/* Month Selection */}
               {selectedChannel && selectedYears.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>
                       Months
                     </label>
                     <button
                       onClick={handleSelectAllMonths}
-                      className={`text-sm font-medium ${
-                        isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
                       {selectedMonths.length === months.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className={`grid grid-cols-4 gap-2 max-h-48 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                  } rounded-lg p-4`}>
+                  <div className="scrollPanel">
                     {months.map((month, index) => (
                       <label
                         key={index}
-                        className={`flex items-center justify-center p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedMonths.includes(month)
-                            ? (isDarkMode ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-                            : (isDarkMode ? 'hover:bg-gray-700 border border-gray-600' : 'hover:bg-gray-100 border border-gray-200')
-                        }`}
+                        className={formStyles.checkbox}
                       >
                         <input
                           type="checkbox"
                           checked={selectedMonths.includes(month)}
                           onChange={() => handleMonthToggle(month)}
-                          className="hidden"
                         />
                         {selectedMonths.includes(month) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-500 mr-2" />
+                          <CheckSquare className="iconMedium" />
                         ) : (
-                          <Square className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <Square className="iconMedium" />
                         )}
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                        <span className="mutedText smallText">
                           {new Date(2000, parseInt(month) - 1).toLocaleString('default', { month: 'short' })} ({month})
                         </span>
                       </label>
@@ -668,45 +618,36 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
               {/* Days Selection */}
               {selectedChannel && selectedYears.length > 0 && selectedMonths.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>
                       Days ({audioFilesCount} files available)
                     </label>
                     <button
                       onClick={handleSelectAllDays}
-                      className={`text-sm font-medium ${
-                        isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                      }`}
+                      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                     >
                       {selectedDays.length === days.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
-                  <div className={`grid grid-cols-7 gap-2 max-h-64 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                  } rounded-lg p-4`}>
+                  <div className="scrollPanel">
                     {days.map((dayStr, index) => {
                       const [, , day] = dayStr.split('-');
                       return (
                         <label
                           key={index}
-                          className={`flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer transition-colors ${
-                            selectedDays.includes(dayStr)
-                              ? (isDarkMode ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-                              : (isDarkMode ? 'hover:bg-gray-700 border border-gray-600' : 'hover:bg-gray-100 border border-gray-200')
-                          }`}
+                          className={formStyles.checkbox}
                         >
                           <input
                             type="checkbox"
                             checked={selectedDays.includes(dayStr)}
                             onChange={() => handleDayToggle(dayStr)}
-                            className="hidden"
                           />
                           {selectedDays.includes(dayStr) ? (
-                            <CheckSquare className="w-5 h-5 text-blue-500 mb-1" />
+                            <CheckSquare className="iconMedium" />
                           ) : (
-                            <Square className={`w-5 h-5 mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                            <Square className="iconMedium" />
                           )}
-                          <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                          <span className="mutedText tinyText">
                             {day}
                           </span>
                         </label>
@@ -720,28 +661,16 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
 
           {/* Restore Progress */}
           {restoreProgress.status && (
-            <div className={`mt-4 p-4 rounded-lg ${
-              restoreProgress.status === 'completed'
-                ? (isDarkMode ? 'bg-green-900/20 border border-green-700' : 'bg-green-50 border border-green-200')
-                : restoreProgress.status === 'error'
-                ? (isDarkMode ? 'bg-red-900/20 border border-red-700' : 'bg-red-50 border border-red-200')
-                : (isDarkMode ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200')
-            }`}>
-              <div className="flex items-center gap-2">
+            <div >
+              <div className="row">
                 {restoreProgress.status === 'completed' ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <CheckCircle className="iconMedium" />
                 ) : restoreProgress.status === 'error' ? (
-                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <AlertCircle className="iconMedium" />
                 ) : (
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                  <Loader2 className="iconMedium spin" />
                 )}
-                <span className={`text-sm font-medium ${
-                  restoreProgress.status === 'completed'
-                    ? (isDarkMode ? 'text-green-300' : 'text-green-800')
-                    : restoreProgress.status === 'error'
-                    ? (isDarkMode ? 'text-red-300' : 'text-red-800')
-                    : (isDarkMode ? 'text-blue-300' : 'text-blue-800')
-                }`}>
+                <span className="pill pillSuccess">
                   {restoreProgress.message}
                 </span>
               </div>
@@ -750,54 +679,40 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
         </div>
 
         {/* Footer */}
-        <div className={`flex justify-between items-center p-6 border-t ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+        <div className="rowBetween">
           <button
             onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
             disabled={currentStep === 1 || restoring}
-            className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-              currentStep === 1 || restoring
-                ? (isDarkMode ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700')
-            }`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="iconMedium" />
             Previous
           </button>
 
-          <div className="flex gap-3">
+          <div className="rowWrap">
             {currentStep < 3 ? (
               <button
                 onClick={() => setCurrentStep(prev => prev + 1)}
                 disabled={!canProceedToNextStep() || restoring}
-                className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-                  !canProceedToNextStep() || restoring
-                    ? (isDarkMode ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
-                    : (isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white')
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
               >
                 Next
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="iconMedium" />
               </button>
             ) : (
               <button
                 onClick={handleRestore}
                 disabled={!hasSelections() || restoring}
-                className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
-                  !hasSelections() || restoring
-                    ? (isDarkMode ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
-                    : (isDarkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white')
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.medium}`}
               >
                 {restoring ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="iconMedium spin" />
                     Restoring...
                   </>
                 ) : (
                   <>
-                    <Download className="w-5 h-5" />
+                    <Download className="iconMedium" />
                     Restore Selected
                   </>
                 )}
@@ -806,9 +721,8 @@ const RestoreModal = ({ isOpen, onClose, isDarkMode, showToast }) => {
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
 export default RestoreModal;
-

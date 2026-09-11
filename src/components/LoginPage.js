@@ -3,7 +3,10 @@ import api from '../utils/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Sun, Moon, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import styles from './ui/Page.module.css';
+import pageStyles from './ui/Page.module.css';
+import formStyles from './ui/Form.module.css';
+import buttonStyles from './ui/Button.module.css';
+import noticeStyles from './ui/Notice.module.css';
 
 const VERSION = process.env.REACT_APP_VERSION || 'v1.4.0';
 const BUILD_DATE = process.env.REACT_APP_BUILD_DATE || 'MAR 16, 2026';
@@ -30,7 +33,7 @@ const BRAND = {
   structureGray: 'var(--ui-panel)',
 };
 
-const LoginPage = ({ isDarkMode, toggleTheme }) => {
+const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
@@ -55,6 +58,16 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
   });
   const [brandingLoaded, setBrandingLoaded] = useState(false);
   const brandingFetchedRef = useRef(false);
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return JSON.parse(localStorage.getItem("isDarkMode")) || false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
+    const root = document.documentElement;
+    root.dataset.uiTheme = isDarkMode ? "night-ops" : "ember-command";
+  }, [isDarkMode]);
 
   useEffect(() => {
     try {
@@ -193,23 +206,12 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
   if (!brandingLoaded) {
     return (
       <div
-        className={styles.loadingPage}
+        className={pageStyles.centered}
         style={{ fontFamily: `${branding.font}, Inter, system-ui, sans-serif` }}
       >
-        <div
-          className={styles.gridBackdrop}
-          style={{
-            backgroundImage:
-              'linear-gradient(rgb(var(--ui-border-rgb) / 0.18) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--ui-border-rgb) / 0.18) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
-          }}
-        />
-        <div className={styles.loadingContent}>
-          <div
-            className={styles.loadingSpinner}
-            style={{ borderLeftColor: actionColor, borderRightColor: actionColor }}
-          />
-          <p className={styles.loadingLabel}>Loading</p>
+        <div className="stack centeredContent">
+          <span className="spinner spinnerLarge" aria-hidden="true" />
+          <p className={pageStyles.subtitle}>Loading</p>
         </div>
       </div>
     );
@@ -217,48 +219,14 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
 
   return (
     <main
-      className={styles.fullScreenPage}
+      className={pageStyles.splitScreen}
       style={{
         fontFamily: `${branding.font}, Inter, system-ui, sans-serif`,
-        '--login-action': actionColor,
       }}
     >
-      {/* Mobile / tablet */}
-      <header
-        className={styles.mobileHeader}
-      >
-        <div className={styles.brandRow}>
-          <div
-            className={styles.logoFrame}
-            style={{
-              boxShadow: '0 0 0 2px rgb(var(--ui-border-rgb) / 0.7), inset 0 -3px 0 0 var(--ui-accent)',
-            }}
-          >
-            {branding.assets.logo ? (
-              <img src={branding.assets.logo} alt="" className={styles.logo} />
-            ) : (
-              <img src={DEFAULT_EDGE_LOGO} alt="" className={styles.smallLogo} />
-            )}
-          </div>
-          {branding.organizationName?.trim() ? (
-            <div className={styles.shrinkable}>
-              <p className={styles.organization}>{branding.organizationName}</p>
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={styles.themeButton}
-          aria-label={isDarkMode ? 'Light mode' : 'Dark mode'}
-        >
-          {isDarkMode ? <Sun className={styles.themeIcon} /> : <Moon className={styles.themeIcon} />}
-        </button>
-      </header>
-
-      {/* Left: hero art — width follows intrinsic 753:1024 vs viewport height (cap 50vw); mobile strip matches aspect */}
+      {/* Hero art — the same region scales or stacks with the responsive grid. */}
       <section
-        className={styles.hero}
+        className={pageStyles.splitScreenMedia}
         aria-hidden
       >
         <img
@@ -266,54 +234,69 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
           alt=""
           width={753}
           height={1024}
-          className={styles.heroImage}
+          className={pageStyles.splitScreenMediaImage}
           draggable={false}
           decoding="async"
         />
-        <div className={styles.heroShade} />
       </section>
 
-      {/* Right: loginnew.html-style panel — white canvas, centered max-w-md, absolute theme toggle */}
-      <section className={styles.panel}>
-        <div className={styles.panelGlow} aria-hidden />
-
-        <nav
-          className={styles.desktopNav}
-          aria-label="Display preferences"
-        >
+      {/* Login panel — one header and one form composition at every viewport size. */}
+      <section className={pageStyles.splitScreenPanel}>
+        <header className={pageStyles.splitScreenHeader}>
+          <div className="row">
+            <div
+              className={pageStyles.brandMark}
+              style={{
+                boxShadow: '0 0 0 2px rgb(var(--ui-border-rgb) / 0.7), inset 0 -3px 0 0 var(--ui-accent)',
+              }}
+            >
+              {branding.assets.logo ? (
+                <img src={branding.assets.logo} alt="" className={pageStyles.brandImage} />
+              ) : (
+                <img src={DEFAULT_EDGE_LOGO} alt="" className={pageStyles.brandImage} />
+              )}
+            </div>
+            {branding.organizationName?.trim() ? (
+              <div className="grow">
+                <p className={pageStyles.brandName}>{branding.organizationName}</p>
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
-            onClick={toggleTheme}
-            className={styles.desktopThemeButton}
+            onClick={() => setIsDarkMode((current) => !current)}
+            className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
             aria-label={isDarkMode ? 'Light mode' : 'Dark mode'}
           >
-            {isDarkMode ? <Sun className={styles.themeIcon} /> : <Moon className={styles.themeIcon} />}
+            {isDarkMode ? <Sun className="material-symbols-outlined" /> : <Moon className="material-symbols-outlined" />}
           </button>
-        </nav>
+        </header>
 
-        <div className={styles.panelBody}>
-          <div className={styles.formContainer}>
-            <header className={styles.formHeader}>
+        <div className={pageStyles.splitScreenBody}>
+          <div className={`${pageStyles.contentNarrow} stackLarge`}>
+            <header className="stackCompact">
             
-              <h1 className={styles.authTitle}>
+              <h1 className={pageStyles.title}>
                 {EDGE_BRAND.title}
               </h1>
-              <p className={styles.authSubtitle}>
+              <p className={pageStyles.subtitle}>
                 {EDGE_BRAND.subtitle}
               </p>
             </header>
 
             {error && (
               <div
-                className={styles.error}
+                className={`${noticeStyles.notice} ${noticeStyles.error}`}
                 role="alert"
               >
-                <span className={`material-symbols-outlined ${styles.errorIcon}`}>error</span>
-                <span>{error}</span>
+                <span className={`material-symbols-outlined ${noticeStyles.icon}`}>error</span>
+                <div className={noticeStyles.body}>
+                  <p>{error}</p>
+                </div>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className={styles.form}>
+            <form onSubmit={handleSubmit} className={formStyles.form}>
               <LabeledInput
                 label="User ID"
                 icon="person"
@@ -337,11 +320,11 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
                   <button
                     type="button"
                     tabIndex={-1}
-                    className={styles.inputAction}
+                    className={formStyles.inputAction}
                     onClick={() => setShowPassword((s) => !s)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className={styles.inputActionIcon} /> : <Eye className={styles.inputActionIcon} />}
+                    {showPassword ? <EyeOff  /> : <Eye  />}
                   </button>
                 }
               />
@@ -358,18 +341,17 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
                   accent={actionColor}
                 />
               )}
-              <div className={styles.formOptions}>
-                <label className={styles.remember}>
+              <div className={formStyles.options}>
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={rememberDevice}
                     onChange={(e) => setRememberDevice(e.target.checked)}
-                    className={styles.checkbox}
                     style={{ accentColor: actionColor }}
                   />
-                  <span className={styles.optionText}>Remember this device</span>
+                  <span className={formStyles.optionText}>Remember this device</span>
                 </label>
-                <span className={styles.optionText}>
+                <span className={formStyles.optionText}>
                   Need help? Ask your admin.
                 </span>
               </div>
@@ -377,18 +359,18 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={styles.submit}
+                  className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium} ${buttonStyles.fullWidth}`}
                 >
                   {isLoading ? (
                     branding.assets.loader ? (
-                      <img src={branding.assets.loader} alt="" className={styles.themeIcon} />
+                      <img src={branding.assets.loader} alt="" width="20" height="20" />
                     ) : (
-                      <span className={styles.submitSpinner} />
+                      <span className="spinner" aria-hidden="true" />
                     )
                   ) : (
                     <>
                       Enter Console
-                      <ArrowRight className={styles.submitIcon} strokeWidth={2} />
+                      <ArrowRight strokeWidth={2} />
                     </>
                   )}
                 </button>
@@ -398,21 +380,16 @@ const LoginPage = ({ isDarkMode, toggleTheme }) => {
         </div>
 
         <footer
-          className={styles.footer}
+          className={pageStyles.splitScreenFooter}
         >
-          <div className={styles.footerItems}>
-            <div className={styles.footerStatus}>
-              <span className={styles.statusDot} aria-hidden />
-              <span className={styles.statusText}>
-                System status: Operational
-              </span>
-            </div>
-            <span className={styles.divider}>|</span>
-            <span className={styles.footerText}>
+          <div className="rowWrap">
+            <span className="pill pillSuccess">System status: Operational</span>
+            <span className={pageStyles.subtitle}>|</span>
+            <span className={pageStyles.subtitle}>
               {VERSION} · {BUILD_DATE}
             </span>
           </div>
-          <p className={`${styles.footerText} ${styles.copyright}`}>
+          <p className={pageStyles.subtitle}>
             Boondock Edge © {new Date().getFullYear()}
           </p>
         </footer>
@@ -436,14 +413,14 @@ function LabeledInput({
   const uid = useId();
   const inputId = `${uid}-${label.replace(/\s+/g, '-').toLowerCase()}`;
   return (
-    <div className={styles.field}>
-      <label htmlFor={inputId} className={styles.fieldLabel}>
+    <div className={formStyles.field}>
+      <label htmlFor={inputId} className={formStyles.label}>
         {label}
       </label>
       <div
-        className={styles.inputFrame}
+        className={formStyles.inputFrame}
       >
-        <span className={styles.inputIcon}>
+        <span className={`material-symbols-outlined ${formStyles.inputIcon}`}>
           {icon}
         </span>
         <input
@@ -454,10 +431,10 @@ function LabeledInput({
           onChange={onChange}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className={`${styles.iconInput} ${trailing ? styles.inputWithAction : ""}`}
+          className={`${formStyles.iconInput} ${trailing ? formStyles.inputWithAction : ""}`}
           style={{ caretColor: accent }}
         />
-        {trailing ? <div className={styles.inputActionWrap}>{trailing}</div> : null}
+        {trailing || null}
       </div>
     </div>
   );

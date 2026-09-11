@@ -1,0 +1,50 @@
+.bar { position: sticky; top: 0; z-index: 30; color: var(--ui-text); background: color-mix(in srgb, var(--ui-background) 88%, transparent); border-bottom: 1px solid var(--ui-border); box-shadow: 0 1px 4px rgb(0 0 0 / 8%); backdrop-filter: blur(12px); }
+.inner { display: flex; align-items: center; justify-content: space-between; height: 4rem; padding-inline: var(--space-6); }
+.brand { min-width: 0; }
+.mobileMark { display: grid; width: 2rem; height: 2rem; place-items: center; background: var(--ui-surface); border-radius: var(--radius-pill); }
+.title { margin: 0; color: var(--ui-text); font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; }
+.subtitle { margin: 0; color: var(--ui-muted); font-size: 0.75rem; }
+.controls { display: flex; flex: 0 0 auto; align-items: center; gap: var(--space-2); }
+.rangeControl { display: flex; align-items: center; gap: var(--space-1); min-width: 0; padding: var(--space-1); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-md); }
+.rangeControl svg { width: 1rem; height: 1rem; color: var(--ui-muted); }
+.rangeLabel { color: var(--ui-muted); font-size: 0.625rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.rangeSelect { width: auto; max-width: 12rem; min-height: 0; padding: 0 var(--space-6) 0 0; font-size: 0.75rem; font-weight: 700; background: transparent; border: 0; }
+.divider { width: 1px; height: 1.5rem; background: var(--ui-border); }
+.liveControl { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); background: var(--ui-surface); border-radius: var(--radius-md); }
+.liveDot { width: 0.5rem; height: 0.5rem; background: var(--ui-border); border-radius: var(--radius-pill); }
+.liveDotActive { background: var(--ui-success); }
+.liveLabel { color: var(--ui-muted); font-size: 0.625rem; font-weight: 700; }
+.customRange { padding: var(--space-2) var(--space-8); background: var(--ui-surface); border-top: 1px solid var(--ui-border); }
+.customRangeHeader { margin-bottom: var(--space-2); }
+.customRangeTitle { color: var(--ui-muted); font-size: 0.625rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.customRangeGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.viewOverlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / 50%); backdrop-filter: blur(8px); transition: opacity var(--duration-normal); }
+.viewOverlayClosing { opacity: 0; }
+.viewModal { position: relative; width: min(90%, 28rem); overflow: hidden; color: var(--ui-text); background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); box-shadow: 0 1rem 3rem rgb(0 0 0 / 30%); transition: transform var(--duration-normal); }
+.viewModalClosing { transform: scale(0.95); }
+.accentBar { position: absolute; top: 0; left: 0; width: 100%; height: 0.25rem; background: var(--ui-accent); }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); border-bottom: 1px solid var(--ui-border); }
+.modalTitle { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: 0.05em; }
+.modalBody { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6); }
+.settingList { display: flex; flex-direction: column; gap: var(--space-3); }
+.settingRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--radius-md); }
+.settingRowActive { background: var(--ui-accent-subtle); border-color: var(--ui-accent); }
+.settingInfo { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.settingIcon { display: grid; width: 1.75rem; height: 1.75rem; place-items: center; color: var(--ui-accent); background: var(--ui-panel); border-radius: var(--radius-md); }
+.settingIcon svg { width: 0.875rem; height: 0.875rem; }
+.settingLabel { color: var(--ui-text); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+.groupLabel { display: flex; align-items: center; gap: var(--space-2); color: var(--ui-accent); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+.groupLabel svg { width: 0.875rem; height: 0.875rem; }
+.modalFooter { display: flex; justify-content: flex-end; padding: var(--space-3) var(--space-6); border-top: 1px solid var(--ui-border); }
+.mobileOnly { display: none; }
+.desktopOnly { display: inline-flex; }
+@media (max-width: 48rem) {
+  .inner { padding-inline: var(--space-3); }
+  .title, .subtitle, .rangeLabel, .liveLabel, .divider, .desktopOnly { display: none; }
+  .mobileOnly { display: grid; }
+  .rangeSelect { max-width: 6.5rem; }
+  .customRange { padding-inline: var(--space-3); }
+  .customRangeGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .modalBody { padding: var(--space-4); gap: var(--space-4); }
+  .settingRow { padding: var(--space-2); }
+}

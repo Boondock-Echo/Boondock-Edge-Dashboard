@@ -1,0 +1,302 @@
+.root {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  color: var(--ui-text);
+  background: var(--ui-background);
+}
+
+.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-overlay);
+  height: 100dvh;
+}
+
+.embedded {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.multiSelectToolbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-header);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--ui-surface) 95%, transparent);
+  border-bottom: 1px solid var(--ui-border);
+  backdrop-filter: blur(0.5rem);
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.scroller {
+  overflow-y: auto;
+  scrollbar-color: var(--ui-muted) var(--ui-surface);
+}
+
+.scrollerFullscreen {
+  height: 100dvh;
+  padding: var(--space-4);
+}
+
+.scrollerEmbedded {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-3) var(--space-8) 0;
+}
+
+.scrollAnchor { height: 1px; }
+
+.item {
+  position: relative;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
+  background: color-mix(in srgb, var(--ui-surface) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent);
+  border-radius: var(--radius-lg);
+  transition:
+    background-color var(--duration-normal) var(--ease-standard),
+    border-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.item:hover {
+  background: var(--ui-surface-hover);
+  border-color: var(--ui-border);
+}
+
+.itemMobile {
+  display: flex;
+  flex-direction: column;
+}
+
+.itemDesktop {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.selectable { cursor: pointer; }
+
+.selected {
+  background: var(--ui-accent-subtle);
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 70%, transparent);
+}
+
+.headerRow,
+.bodyRow {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.bodyRow {
+  flex: 1 1 0;
+  width: 0;
+}
+
+.contentStack,
+.desktopContent {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.selectionBox {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  color: var(--ui-button-text);
+  border: 2px solid var(--ui-border);
+  border-radius: var(--radius-sm);
+}
+
+.selectionBoxSelected {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+}
+
+.selectionCheck {
+  color: var(--ui-button-text);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.desktopSelection {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  padding-top: 0.125rem;
+}
+
+.transcript {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ui-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.transcriptDesktop { overflow-wrap: anywhere; }
+.clickable { cursor: pointer; }
+
+.clampOne,
+.clampTwo {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+
+.clampOne { -webkit-line-clamp: 1; }
+.clampTwo { -webkit-line-clamp: 2; }
+
+.transcriptToggle {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 0.125rem 0.375rem;
+  margin-top: 0.125rem;
+  color: var(--ui-accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.transcriptToggle:hover { background: var(--ui-accent-subtle); }
+
+.channelBadge {
+  max-width: 13.5rem;
+  color: var(--ui-text);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  border: 1px solid var(--ui-border);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duration {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--ui-accent);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.feedLeft {
+  display: flex;
+  flex: 0 0 auto;
+  max-width: 13.5rem;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.feedSubline {
+  color: var(--ui-muted);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.inlineBadge { margin-left: var(--space-2); }
+
+.mobileActions {
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--ui-border);
+}
+
+.tagPanel {
+  padding: var(--space-2);
+  margin-top: var(--space-2);
+  background: var(--ui-surface);
+  border-radius: var(--radius-lg);
+}
+
+.inlinePlayer { margin-top: var(--space-2); }
+.tagsRow,
+.tagDropdown { margin-top: var(--space-1); }
+
+.desktopActions {
+  align-self: flex-start;
+  padding-top: 0.125rem;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.item:hover .desktopActions,
+.desktopActions:focus-within { opacity: 1; }
+
+.countBar {
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-4);
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  background: color-mix(in srgb, var(--ui-background) 95%, transparent);
+  border-top: 1px solid var(--ui-border);
+  backdrop-filter: blur(0.5rem);
+}
+
+.allLoaded {
+  padding: var(--space-4);
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.scrollNewest {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-6);
+  z-index: var(--layer-toast);
+  box-shadow: 0 0.25rem 0.875rem color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+
+.scrollNewestDown svg:last-child,
+.arrowDown { transform: rotate(180deg); }
+
+@media (max-width: 48rem) {
+  .scrollerEmbedded { padding: var(--space-3) var(--space-4) 0; }
+  .toolbarActions { width: 100%; justify-content: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .desktopActions { transition-duration: 0.01ms; }
+}

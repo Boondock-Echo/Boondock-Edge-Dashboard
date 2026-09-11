@@ -11,11 +11,11 @@ import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
 import {
   SettingsPageHero,
   SettingsSectionWidth,
-  settingsMainCardClass,
 } from './SettingsSectionLayout';
+import cardStyles from '../ui/Card.module.css';
+
 
 const ChannelsAndStationsSection = ({
-  isDarkMode,
   recordersEnabled,
   globalSettings,
 }) => {
@@ -60,22 +60,19 @@ const ChannelsAndStationsSection = ({
   }, [activeTab, edgeRecordersEnabled, usbRecordersEnabled]);
 
   const tabClassName = 'flex max-w-max shrink-0 items-center gap-1 whitespace-nowrap md:gap-2';
-  const card = settingsMainCardClass(isDarkMode);
 
   return (
     <SettingsSectionWidth>
       <SettingsPageHero
-        isDarkMode={isDarkMode}
         title="Recorders"
         description="Configure channels, frequencies, and connected recorders."
         icon={<span className="material-symbols-outlined text-2xl">mic_none</span>}
       />
 
-      <div className={`rounded-xl border p-6 md:p-8 ${card}`}>
-        <SettingsSubnav isDarkMode={isDarkMode} embedded aria-label="Recorder sections">
+      <div className={`rounded-xl border p-6 md:p-8 ${cardStyles.card}`}>
+        <SettingsSubnav embedded aria-label="Recorder sections">
           {edgeRecordersEnabled && (
             <SettingsSubnavTab
-              isDarkMode={isDarkMode}
               active={activeTab === 'recorders'}
               onClick={() => handleTabChange('recorders')}
               className={tabClassName}
@@ -86,7 +83,6 @@ const ChannelsAndStationsSection = ({
           )}
           {usbRecordersEnabled && (
             <SettingsSubnavTab
-              isDarkMode={isDarkMode}
               active={activeTab === 'usb-recorders'}
               onClick={() => handleTabChange('usb-recorders')}
               className={tabClassName}
@@ -96,7 +92,6 @@ const ChannelsAndStationsSection = ({
             </SettingsSubnavTab>
           )}
           <SettingsSubnavTab
-            isDarkMode={isDarkMode}
             active={activeTab === 'channels'}
             onClick={() => handleTabChange('channels')}
             className={tabClassName}
@@ -105,7 +100,6 @@ const ChannelsAndStationsSection = ({
             Channels
           </SettingsSubnavTab>
           <SettingsSubnavTab
-            isDarkMode={isDarkMode}
             active={activeTab === 'stations'}
             onClick={() => handleTabChange('stations')}
             className={tabClassName}
@@ -114,7 +108,6 @@ const ChannelsAndStationsSection = ({
             Stations
           </SettingsSubnavTab>
           <SettingsSubnavTab
-            isDarkMode={isDarkMode}
             active={activeTab === 'health'}
             onClick={() => handleTabChange('health')}
             className={tabClassName}
@@ -126,28 +119,20 @@ const ChannelsAndStationsSection = ({
 
         {activeTab === 'recorders' && (
           <RecorderDevices
-            isDarkMode={isDarkMode}
             enabled={recordersEnabled}
           />
         )}
         {activeTab === 'usb-recorders' && (
-          <USBRecorders
-            isDarkMode={isDarkMode}
-            globalSettings={globalSettings}
-          />
+          <USBRecorders globalSettings={globalSettings} />
         )}
         {activeTab === 'channels' && (
-          <ChannelSettings
-            isDarkMode={isDarkMode}
-          />
+          <ChannelSettings />
         )}
         {activeTab === 'stations' && (
-          <FrequencyManagement
-            isDarkMode={isDarkMode}
-          />
+          <FrequencyManagement />
         )}
         {activeTab === 'health' && (
-          <Health isDarkMode={isDarkMode} />
+          <Health />
         )}
       </div>
     </SettingsSectionWidth>

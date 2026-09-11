@@ -1,0 +1,27 @@
+.themeButton {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+.swatches {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.swatch,
+.accentDot {
+  flex: 0 0 auto;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-pill);
+}
+
+.swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.accentDot {
+  width: 0.5rem;
+  height: 0.5rem;
+}

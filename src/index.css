@@ -1,17 +1,43 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
   font-family: var(--font-body);
   color: var(--ui-text);
   background: var(--ui-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 200ms ease, color 200ms ease;
+  transition: background-color var(--duration-normal) var(--ease-standard), color var(--duration-normal) var(--ease-standard);
 }
 
 h1,
 h2,
 h3,
-.font-headline {
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: var(--ui-accent);
 }
 
 .material-symbols-outlined {
@@ -30,79 +56,13 @@ h3,
   -webkit-font-smoothing: antialiased;
 }
 
-.glass-panel {
-  background: rgb(var(--ui-panel-rgb) / 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-@keyframes summary-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.15); }
-}
-
-.summary-pulse-dot {
-  animation: summary-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Live / alert indicator (dashboard.html ledger) */
-@keyframes ledger-live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-danger) 55%, transparent);
-    transform: scale(0.95);
-  }
-  70% {
-    box-shadow: 0 0 0 10px transparent;
-    transform: scale(1);
-  }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
-    transform: scale(0.95);
-  }
-}
-
-.ledger-live-pulse {
-  animation: ledger-live-pulse 2s ease-in-out infinite;
-}
-
-@keyframes flash {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-.animate-flash {
-  animation: flash 0.5s infinite;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(1rem);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Fix for documentation viewer - prevent pre tags from displaying as plain text */
-.documentation-viewer {
-  display: block !important;
-}
-
-/* Critical: Override any pre tag that wraps the entire ReactMarkdown output */
-/* This handles browser extensions or external scripts wrapping content */
+/* Keep documentation-viewer overrides global because they target generated markup. */
+.documentation-viewer { display: block !important; }
 .documentation-viewer > pre[data-cursor-element-id],
 .documentation-viewer > pre:only-child,
 .documentation-viewer pre:first-child:last-child,
 .documentation-viewer pre[style*="white-space: pre-wrap"],
 .documentation-viewer pre[style*="word-wrap: break-word"] {
-  /* Completely remove pre tag behavior */
   all: initial !important;
   display: block !important;
   white-space: normal !important;
@@ -118,31 +78,216 @@ h3,
   overflow: visible !important;
 }
 
-/* Ensure children of problematic pre tags render correctly */
 .documentation-viewer > pre[data-cursor-element-id] > *,
-.documentation-viewer > pre:only-child > * {
-  display: block !important;
-  white-space: normal !important;
-}
-
-/* Ensure prose classes work correctly */
-.documentation-viewer .prose {
-  display: block !important;
-  white-space: normal !important;
-}
-
+.documentation-viewer > pre:only-child > *,
+.documentation-viewer .prose,
 .documentation-viewer .prose > * {
   display: block !important;
+  white-space: normal !important;
 }
 
-/* Override pre tags that are not code blocks */
 .documentation-viewer pre:not([class*="language-"]):not([class*="hljs"]) {
+  display: block !important;
   white-space: normal !important;
   word-wrap: normal !important;
-  display: block !important;
 }
 
 .documentation-viewer pre code {
   display: block;
   white-space: pre;
 }
+
+/* Generic inline code and Material Symbol sizing */
+:not(pre) > code {
+  padding-inline: var(--space-1);
+  color: var(--ui-text);
+  font-family: monospace;
+  font-size: 0.875em;
+  background: var(--ui-surface);
+  border-radius: var(--radius-sm);
+}
+
+.iconSmall { width: 1rem; height: 1rem; }
+.iconMedium { width: 1.25rem; height: 1.25rem; }
+.iconLarge { width: 1.5rem; height: 1.5rem; }
+.material-symbols-outlined.iconSmall { width: auto; height: auto; font-size: 18px; }
+.material-symbols-outlined.iconMedium { width: auto; height: auto; font-size: 22px; }
+
+/* Application shell and shared layout primitives */
+.app {
+  display: flex;
+  min-height: 100dvh;
+  color: var(--ui-text);
+  background: var(--ui-background);
+}
+
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.row { display: flex; align-items: center; gap: var(--space-3); }
+.rowWrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.rowBetween { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.rowBetweenStart { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.preview { max-height: 8rem; padding: var(--space-3); margin-top: var(--space-2); overflow-y: auto; color: var(--ui-text); background: var(--ui-surface); border-radius: var(--radius-sm); }
+.stack { display: flex; flex-direction: column; gap: var(--space-4); }
+.stackCompact { gap: var(--space-1); }
+.stackLarge { gap: var(--space-6); }
+.grow { flex: 1 1 auto; min-width: 0; }
+.noShrink { flex: none; }
+.fullWidth { width: 100%; }
+.contentWide { width: min(100%, 100rem); margin-inline: auto; }
+.gridTwo, .gridThree { display: grid; gap: var(--space-6); }
+.gridTwo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gridThree { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.splitPane {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  min-height: 7.5rem;
+}
+.splitPane > * { min-width: 0; }
+.centeredContent { display: grid; min-height: 4rem; place-items: center; }
+.divider { width: 100%; margin: var(--space-4) 0; border: 0; border-top: 1px solid var(--ui-border); }
+
+.actionsEnd { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3); }
+.eyebrow { margin: 0 0 var(--space-3); color: var(--ui-muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.avatar { display: inline-grid; flex: 0 0 auto; place-items: center; width: 2.5rem; height: 2.5rem; color: var(--ui-accent); background: var(--ui-accent-subtle); border-radius: var(--radius-pill); }
+.qrFrame { display: flex; justify-content: center; padding: var(--space-4); background: #fff; border-radius: var(--radius-md); }
+.qrCode { display: block; max-width: min(20rem, 100%); height: auto; }
+
+@media (max-width: 48rem) {
+  .gridTwo,
+  .gridThree { grid-template-columns: 1fr; }
+  .splitPane { grid-template-columns: 1fr; }
+}
+
+/* Generic compact status/tag primitive */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.125rem var(--space-2);
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  background: var(--ui-surface);
+  border-radius: var(--radius-pill);
+}
+
+.pillAccent { color: var(--ui-accent); background: var(--ui-accent-subtle); }
+.pillSuccess { color: var(--ui-success); background: var(--ui-success-subtle); }
+.pillWarning { color: var(--ui-warning); background: color-mix(in srgb, var(--ui-warning) 14%, transparent); }
+.pillDanger { color: var(--ui-danger); background: var(--ui-danger-subtle); }
+
+/* Generic interactive pill/chip behavior */
+.pillInteractive {
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--duration-normal) var(--ease-standard),
+    color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.pillInteractive:hover {
+  background: var(--ui-panel);
+}
+
+.pillActive {
+  color: var(--ui-accent);
+  background: var(--ui-accent-subtle);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+
+.pillCount {
+  opacity: 0.5;
+}
+
+/* Generic loading indicator and rotation primitive */
+.spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid color-mix(in srgb, var(--ui-accent) 30%, transparent);
+  border-top-color: var(--ui-accent);
+  border-radius: var(--radius-pill);
+  animation: spin 700ms linear infinite;
+}
+
+.spinnerSmall { width: 1rem; height: 1rem; }
+.spinnerLarge { width: 1.5rem; height: 1.5rem; }
+.spin { animation: spin 1s linear infinite; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1400ms; }
+  .spin { animation-duration: 2s; }
+}
+
+/* Generic progress/meter primitive */
+.meter {
+  width: 100%;
+  height: 0.375rem;
+  overflow: hidden;
+  background: var(--ui-border);
+  border-radius: var(--radius-pill);
+}
+
+.meterFill {
+  height: 100%;
+  background: var(--ui-accent);
+  border-radius: inherit;
+  transition: width var(--duration-normal) var(--ease-standard);
+}
+
+/* Generic page and section composition */
+.pageHeader { margin-bottom: var(--space-8); }
+.pageTitle { margin: 0; color: var(--ui-text); font-family: var(--font-heading); font-size: 1.875rem; font-weight: 800; letter-spacing: -0.025em; }
+.pageSubtitle { margin: var(--space-1) 0 0; color: var(--ui-muted); font-size: 0.875rem; }
+.settingsWidth { width: min(100%, 64rem); margin-inline: auto; }
+.screenCenter { display: grid; min-height: 100dvh; place-items: center; padding: var(--space-4); }
+.scrollY { min-height: 0; overflow-y: auto; }
+
+.iconTile { display: grid; flex: none; place-items: center; width: 2.5rem; height: 2.5rem; color: var(--ui-button-text); border-radius: var(--radius-md); }
+.iconTileAccent { background: var(--ui-accent); }
+.iconTileSuccess { background: var(--ui-success); }
+.iconTileWarning { background: var(--ui-warning); }
+.iconTileDanger { background: var(--ui-danger); }
+.iconTileMuted { background: var(--ui-muted); }
+
+.mutedText { color: var(--ui-muted); }
+.smallText { font-size: 0.875rem; }
+.tinyText { font-size: 0.75rem; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.codeBlock {
+  display: block;
+  width: 100%;
+  padding: var(--space-3);
+  overflow: auto;
+  color: var(--ui-text);
+  font-family: monospace;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+.scrollPanel { max-height: 20rem; overflow-y: auto; padding-right: var(--space-1); }
+
+.sidebarSection { padding-inline: var(--space-6); margin-bottom: var(--space-6); }
+.sidebarTitle { margin: 0; color: var(--ui-text); font-family: var(--font-heading); font-size: 1.125rem; font-weight: 600; }
+.sidebarSubtitle { margin: var(--space-1) 0 0; color: var(--ui-muted); font-size: 0.875rem; }
+
+.gridMainAside { display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); gap: var(--space-6); }
+@media (max-width: 64rem) { .gridMainAside { grid-template-columns: 1fr; } }
+.columnFill { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }

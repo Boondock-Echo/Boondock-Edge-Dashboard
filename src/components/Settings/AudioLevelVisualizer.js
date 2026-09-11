@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, Square, ChevronDown, Settings, BarChart3, Bluetooth, Save, Maximize2 } from 'lucide-react';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import navStyles from '../ui/Navigation.module.css';
+import styles from '../ui/AudioLevelVisualizer.module.css';
 
 const AudioLevelVisualizer = () => {
   // State for the component
@@ -222,7 +227,7 @@ const AudioLevelVisualizer = () => {
       barData.forEach((value, index) => {
         const x = index * (width / barData.length);
         const y = height - (value / 100) * height;
-        
+
         if (index === 0) {
           ctx.lineTo(x, y);
         } else {
@@ -316,125 +321,85 @@ const AudioLevelVisualizer = () => {
   };
   
   const gainOptions = ['0 dB', '3 dB', '6 dB', '9 dB', '12 dB', '15 dB'];
-  
-  const themeClass = theme === 'dark' 
-    ? 'bg-gray-900 text-white'
-    : 'bg-white text-slate-800';
-  
-  const cardClass = theme === 'dark'
-    ? 'bg-gray-900/60 border-gray-800'
-    : 'bg-white border-gray-200';
-  
+
   return (
-    <div className={`${themeClass} p-0 w-full max-w-4xl mx-auto transition-all duration-300`}>
-      <div className={`rounded-2xl shadow-lg border p-4 ${cardClass}`}>
+    <div className={styles.root} data-visualizer-theme={theme}>
+      <div className={cardStyles.card}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg shadow-lg bg-blue-600">
-              <Volume2 className="text-white" size={24} />
+        <div className="rowBetweenStart">
+          <div className="row">
+            <div className={styles.headerIcon}>
+              <Volume2 size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Audio Level Visualizer</h1>
-              <p className="text-sm opacity-70">Professional studio quality</p>
+              <h1>Audio Level Visualizer</h1>
+              <p className={cardStyles.description}>Professional studio quality</p>
             </div>
           </div>
-          
-          <div className="flex space-x-3">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-md transition-all ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-blue-100 hover:bg-blue-200'}`}
-            >
+          <div className="row">
+            <Button onClick={toggleTheme} size="icon" aria-label="Toggle visualizer theme">
               {theme === 'dark' ? '🌙' : '☀️'}
-            </button>
-            
-            <button
-              onClick={toggleRecording}
-              className={`px-4 py-2 rounded-md font-medium transition-all duration-300 shadow-lg ${
-                isRecording 
-                  ? 'bg-red-600 hover:bg-red-700 text-white' 
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-              }`}
-            >
+            </Button>
+            <Button onClick={toggleRecording} variant={isRecording ? 'danger' : 'success'}>
               {isRecording ? 'Stop' : 'Start'}
-            </button>
+            </Button>
           </div>
         </div>
         
         {/* Tabs */}
-        <div className="flex border-b border-gray-700 mb-6">
+        <div className={navStyles.subnav}>
           <button
             onClick={() => setActiveTab('levels')}
-            className={`px-4 py-2 font-medium transition-all ${activeTab === 'levels' 
-              ? 'border-b-2 border-blue-500 text-blue-500' 
-              : 'hover:text-blue-400 opacity-70'}`}
+            className={`${navStyles.tab} ${activeTab === 'levels' ? navStyles.active : ''}`}
           >
             Audio Levels
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`px-4 py-2 font-medium transition-all ${activeTab === 'settings' 
-              ? 'border-b-2 border-blue-500 text-blue-500' 
-              : 'hover:text-blue-400 opacity-70'}`}
+            className={`${navStyles.tab} ${activeTab === 'settings' ? navStyles.active : ''}`}
           >
-            <div className="flex items-center">
-              <Settings size={14} className="mr-1" />
+            <span className="row">
+              <Settings size={14} />
               Settings
-            </div>
+            </span>
           </button>
         </div>
         
         {activeTab === 'levels' ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className={`md:col-span-3 ${cardClass} p-4 rounded-lg flex items-center transition-all duration-300`}>
-                <span className="text-gray-400 whitespace-nowrap mr-3">Recording Trigger Level:</span>
-                <div className="relative w-full flex-1 mr-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={triggerLevel}
-                    onChange={handleTriggerChange}
-                    className="w-full h-2 bg-slate-700/50 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div 
-                    className="absolute h-2 bg-blue-500 rounded-l-lg" 
-                    style={{ width: `${triggerLevel}%`, top: '50%', transform: 'translateY(-50%)' }}
-                  ></div>
-                  <div 
-                    className="absolute w-5 h-5 bg-white rounded-full shadow-lg cursor-pointer"
-                    style={{ left: `${triggerLevel}%`, top: '50%', transform: 'translateY(-50%)', boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)' }}
-                  >
-                    <div className="absolute inset-1 bg-blue-500 rounded-full"></div>
-                  </div>
-                </div>
-                <span className="text-blue-400 font-mono min-w-12 text-right">{triggerLevel.toFixed(1)}</span>
+          <div className="stackLarge">
+            <div className={styles.controlsGrid}>
+              <div className={`${cardStyles.card} ${cardStyles.compact} ${styles.triggerControl}`}>
+                <span>Recording Trigger Level:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={triggerLevel}
+                  onChange={handleTriggerChange}
+                  className={formStyles.range}
+                />
+                <span className={styles.monoValue}>{triggerLevel.toFixed(1)}</span>
               </div>
-              
-              <div className={`${cardClass} p-4 rounded-lg transition-all duration-300`}>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Gain:</span>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowGainDropdown(!showGainDropdown)}
-                      className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-100'} px-3 py-1 rounded flex items-center justify-between min-w-24 transition-all hover:bg-opacity-80`}
-                    >
+              <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                <div className="rowBetween">
+                  <span>Gain:</span>
+                  <div className={styles.dropdownAnchor}>
+                    <Button onClick={() => setShowGainDropdown(!showGainDropdown)} size="small">
                       <span>{gain}</span>
                       <ChevronDown size={16} />
-                    </button>
-                    
+                    </Button>
                     {showGainDropdown && (
-                      <div className={`absolute right-0 mt-1 ${theme === 'dark' ? 'bg-slate-700' : 'bg-white'} rounded-md shadow-lg z-10 w-24 border ${theme === 'dark' ? 'border-slate-600' : 'border-gray-200'}`}>
+                      <div className={styles.dropdown}>
                         {gainOptions.map((option) => (
-                          <div
+                          <button
                             key={option}
-                            className={`px-3 py-2 ${theme === 'dark' ? 'hover:bg-slate-600' : 'hover:bg-blue-50'} cursor-pointer text-sm transition-all`}
+                            type="button"
+                            className={styles.dropdownOption}
                             onClick={() => selectGain(option)}
                           >
                             {option}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -443,127 +408,70 @@ const AudioLevelVisualizer = () => {
               </div>
             </div>
             
-            <div className={`relative mb-6 ${cardClass} rounded-lg overflow-hidden shadow-lg transition-all duration-300`}>
-              <div className="absolute left-0 top-0 w-10 h-full flex flex-col justify-between p-2 text-xs text-gray-400 font-mono bg-opacity-70">
+            <div className={styles.visualizer}>
+              <div className={styles.scale}>
                 <div>100</div>
                 <div>80</div>
                 <div>10</div>
                 <div>0</div>
               </div>
-              
-              <div className="flex justify-between items-center p-2 border-b border-gray-700/30">
-                <button
-                  onClick={toggleVisualMode}
-                  className={`text-xs flex items-center space-x-1 ${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-100'} px-2 py-1 rounded`}
-                >
+              <div className={styles.visualizerToolbar}>
+                <Button onClick={toggleVisualMode} size="small">
                   <BarChart3 size={14} />
                   <span>{visualMode === 'bars' ? 'Bar View' : 'Wave View'}</span>
-                </button>
-                
-                <div className="flex space-x-2">
-                  <button className={`p-1 rounded ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-blue-100'} transition-all`}>
-                    <Save size={14} />
-                  </button>
-                  <button className={`p-1 rounded ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-blue-100'} transition-all`}>
-                    <Maximize2 size={14} />
-                  </button>
+                </Button>
+                <div className="row">
+                  <Button size="icon" aria-label="Save visualization"><Save size={14} /></Button>
+                  <Button size="icon" aria-label="Expand visualization"><Maximize2 size={14} /></Button>
                 </div>
               </div>
-              
-              <div className="ml-10 h-64">
-                <canvas 
-                  ref={canvasRef} 
-                  className="w-full h-full"
-                  style={{ width: '100%', height: '100%' }}
-                />
+              <div className={styles.canvasFrame}>
+                <canvas ref={canvasRef} className={styles.canvas} />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`${cardClass} p-4 rounded-lg transition-all duration-300 transform hover:scale-105`}>
-                <h3 className="text-gray-400 text-sm mb-2">Current Values</h3>
-                <div className="flex justify-between">
-                  <div>
-                    <div className="text-2xl font-mono text-green-400">{currentRMS.toFixed(1)}</div>
-                    <div className="text-sm text-gray-400">RMS</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-mono text-orange-400">{currentLevel.toFixed(1)}</div>
-                    <div className="text-sm text-gray-400">Level</div>
-                  </div>
+            <div className="gridThree">
+              <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                <h3 className={cardStyles.description}>Current Values</h3>
+                <div className="rowBetween">
+                  <div><div className={styles.monoValue}>{currentRMS.toFixed(1)}</div><div className={cardStyles.description}>RMS</div></div>
+                  <div><div className={styles.monoValue}>{currentLevel.toFixed(1)}</div><div className={cardStyles.description}>Level</div></div>
                 </div>
               </div>
-              
-              <div className={`${cardClass} p-4 rounded-lg flex flex-col items-center justify-center transition-all duration-300 transform hover:scale-105`}>
-                <h3 className="text-gray-400 text-sm mb-2">Current Level</h3>
-                <div className="text-3xl font-mono relative">
-                  <span className="text-orange-400">{currentDisplay.toFixed(1)}</span>
-                  <div className="absolute -bottom-3 left-0 w-full h-1 bg-orange-400 rounded-full opacity-50"></div>
-                </div>
+              <div className={`${cardStyles.card} ${cardStyles.compact} ${styles.metricCard}`}>
+                <h3 className={cardStyles.description}>Current Level</h3>
+                <div className={styles.metricValue}>{currentDisplay.toFixed(1)}</div>
               </div>
-              
-              <div className={`${cardClass} p-4 rounded-lg flex flex-col items-center justify-center transition-all duration-300 transform hover:scale-105`}>
-                <h3 className="text-gray-400 text-sm mb-2">Peak Level</h3>
-                <div className="text-3xl font-mono relative">
-                  <span className="text-red-500">{peakLevel.toFixed(1)}</span>
-                  <div className="absolute -bottom-3 left-0 w-full h-1 bg-red-500 rounded-full opacity-50"></div>
-                </div>
+              <div className={`${cardStyles.card} ${cardStyles.compact} ${styles.metricCard}`}>
+                <h3 className={cardStyles.description}>Peak Level</h3>
+                <div className={styles.metricValue}>{peakLevel.toFixed(1)}</div>
               </div>
             </div>
-          </>
+          </div>
         ) : (
-          <div className={`${cardClass} p-6 rounded-lg mb-6 transition-all duration-300`}>
-            <h2 className="text-xl font-bold mb-4">Advanced Settings</h2>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-medium">Visualization Mode</h3>
-                  <p className="text-sm text-gray-400">Choose how audio levels are displayed</p>
-                </div>
-                <button
-                  onClick={toggleVisualMode}
-                  className={`${
-                    theme === 'dark' ? 'bg-slate-700' : 'bg-blue-100'
-                  } px-3 py-2 rounded-lg flex items-center space-x-2`}
-                >
-                  <BarChart3 size={16} />
-                  <span>{visualMode === 'bars' ? 'Bar Mode' : 'Wave Mode'}</span>
-                </button>
+          <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+            <h2>Advanced Settings</h2>
+            <div className="stackLarge">
+              <div className="rowBetween">
+                <div><h3>Visualization Mode</h3><p className={cardStyles.description}>Choose how audio levels are displayed</p></div>
+                <Button onClick={toggleVisualMode}><BarChart3 size={16} /><span>{visualMode === 'bars' ? 'Bar Mode' : 'Wave Mode'}</span></Button>
               </div>
-              
-              <div className="border-t border-gray-700/30 pt-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">Bluetooth Audio Input</h3>
-                    <p className="text-sm text-gray-400">Connect to Bluetooth audio source</p>
-                  </div>
-                  <button className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-100'} px-3 py-2 rounded-lg flex items-center space-x-2`}>
-                    <Bluetooth size={16} />
-                    <span>Connect</span>
-                  </button>
-                </div>
+              <hr className="divider" />
+              <div className="rowBetween">
+                <div><h3>Bluetooth Audio Input</h3><p className={cardStyles.description}>Connect to Bluetooth audio source</p></div>
+                <Button><Bluetooth size={16} /><span>Connect</span></Button>
               </div>
-              
-              <div className="border-t border-gray-700/30 pt-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">Color Theme</h3>
-                    <p className="text-sm text-gray-400">Choose light or dark mode</p>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-100'} px-3 py-2 rounded-lg flex items-center space-x-2`}
-                  >
-                    <span>{theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span>
-                  </button>
-                </div>
+              <hr className="divider" />
+              <div className="rowBetween">
+                <div><h3>Color Theme</h3><p className={cardStyles.description}>Choose light or dark mode</p></div>
+                <Button onClick={toggleTheme}><span>{theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span></Button>
               </div>
             </div>
           </div>
         )}
         
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-gray-500">
+        <div className={styles.footer}>
           <p>Audio Level Visualizer Pro • 2025 Edition</p>
         </div>
       </div>

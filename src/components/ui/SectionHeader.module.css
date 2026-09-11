@@ -1,0 +1,35 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--ui-text);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ui-button-text);
+  border-radius: var(--radius-md);
+}
+
+.accent { background: var(--ui-accent); }
+.success { background: var(--ui-success); }
+.warning { background: var(--ui-warning); }
+.danger { background: var(--ui-danger); }
+.muted { background: var(--ui-muted); }
+
+.title {
+  margin: 0;
+  color: var(--ui-text);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+}

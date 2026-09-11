@@ -83,4 +83,14 @@ html[data-ui-theme="ember-command"] {
   --ui-accent-subtle: color-mix(in srgb, var(--ui-accent) 14%, transparent);
   --ui-accent-subtle-hover: color-mix(in srgb, var(--ui-accent) 22%, transparent);
   --ui-focus-ring: var(--ui-accent);
+
+  /* React Toastify follows the active application theme. */
+  --toastify-color-light: var(--ui-panel);
+  --toastify-color-dark: var(--ui-panel);
+  --toastify-text-color-light: var(--ui-text);
+  --toastify-text-color-dark: var(--ui-text);
+  --toastify-color-success: var(--ui-success);
+  --toastify-color-error: var(--ui-danger);
+  --toastify-color-info: var(--ui-accent);
+  --toastify-color-warning: var(--ui-warning);
 }

@@ -5,8 +5,11 @@ import { ArrowLeft, Package, Upload, RotateCcw, AlertTriangle, CheckCircle2 } fr
 import { toast } from 'react-toastify';
 import { useAuth } from '../AuthContext';
 import Button from '../ui/Button';
-import { Spinner } from '../ui/Spinner';
-import styles from '../ui/Page.module.css';
+import pageStyles from '../ui/Page.module.css';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import listStyles from '../ui/List.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
 const VersionPage = () => {
   const navigate = useNavigate();
@@ -99,112 +102,112 @@ const VersionPage = () => {
 
   if (!user) {
     return (
-      <div className={styles.centered}>
+      <div className={pageStyles.centered}>
         <AlertTriangle size={48} />
         <h1>Sign in required</h1>
         <p>Log in to manage release packages.</p>
-        <Link to="/login" className={styles.link}>Go to login</Link>
+        <Link to="/login" className={pageStyles.link}>Go to login</Link>
       </div>
     );
   }
 
   return (
-    <main className={styles.page}>
-      <div className={styles.container}>
-        <header className={styles.header}>
+    <main className={pageStyles.page}>
+      <div className={`${pageStyles.container} stack`}>
+        <header className={pageStyles.header}>
           <Button size="icon" onClick={() => navigate(-1)} aria-label="Back" title="Back">
             <ArrowLeft size={20} />
           </Button>
-          <div className={styles.headerIcon}>
+          <div className={pageStyles.headerIcon}>
             <Package size={24} />
           </div>
           <div>
-            <h1 className={styles.title}>Software version</h1>
-            <p className={styles.subtitle}>
+            <h1 className={pageStyles.title}>Software version</h1>
+            <p className={pageStyles.subtitle}>
               Apply a full release (UI + server) or roll back to a previous snapshot. Also available on{' '}
-              <Link to="/release" className={styles.link}>Release notes</Link>
+              <Link to="/release" className={pageStyles.link}>Release notes</Link>
               .
             </p>
           </div>
         </header>
 
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Current</h2>
-          {loading && <p className={styles.muted}>Loading…</p>}
+        <section className={`${cardStyles.card} stack`}>
+          <h2 className={cardStyles.title}>Current</h2>
+          {loading && <p className={cardStyles.description}>Loading…</p>}
           {!loading && !current && (
-            <p className={styles.muted}>No release has been applied through this system yet (or state is new).</p>
+            <p className={cardStyles.description}>No release has been applied through this system yet (or state is new).</p>
           )}
           {!loading && current && (
-            <ul className={styles.details}>
+            <ul className={listStyles.list}>
               {current.version && (
-                <li><span className={styles.label}>Version:</span> {current.version}</li>
+                <li><strong>Version:</strong> {current.version}</li>
               )}
               {current.build_id && (
-                <li><span className={styles.label}>Build id:</span> {current.build_id}</li>
+                <li><strong>Build id:</strong> {current.build_id}</li>
               )}
               {current.applied_at && (
-                <li><span className={styles.label}>Applied:</span> {current.applied_at}</li>
+                <li><strong>Applied:</strong> {current.applied_at}</li>
               )}
             </ul>
           )}
         </section>
 
-        <section className={styles.card}>
-          <h2 className={`${styles.cardTitle} ${styles.cardTitleCompact}`}>
+        <section className={`${cardStyles.card} stack`}>
+          <h2 className={`${cardStyles.title} ${cardStyles.title}`}>
             <Upload size={16} />
             Install release
           </h2>
-          <p className={styles.description}>
-            Upload a <code className={styles.code}>.zip</code> created by{' '}
-            <code className={styles.code}>pack_boondock_release.py</code> (includes React build and Python <code className={styles.code}>app</code>).
+          <p className={cardStyles.description}>
+            Upload a <code>.zip</code> created by{' '}
+            <code>pack_boondock_release.py</code> (includes React build and Python <code>app</code>).
           </p>
-          <div className={styles.formRow}>
-            <div className={styles.grow}>
+          <div className="rowWrap">
+            <div className="grow">
               <input
                 ref={fileRef}
                 type="file"
                 accept=".zip,application/zip"
-                className={styles.file}
+                className={formStyles.file}
               />
             </div>
-            <label className={styles.check}>
+            <label className={formStyles.checkbox}>
               <input
                 type="checkbox"
                 checked={installDeps}
                 onChange={(e) => setInstallDeps(e.target.checked)}
               />
-              Run <code className={styles.code}>pip install -r requirements.txt</code> after
+              Run <code>pip install -r requirements.txt</code> after
             </label>
             <Button variant="primary" disabled={applying} onClick={onApply}>
-              {applying && <Spinner size="small" label="Installing release" />}
+              {applying && <span className="spinner spinnerSmall" role="status" aria-label="Installing release" />}
               {applying ? 'Installing…' : 'Apply update'}
             </Button>
           </div>
         </section>
 
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>
+        <section className={`${cardStyles.card} stack`}>
+          <h2 className={cardStyles.title}>
             <RotateCcw size={16} />
             Snapshots &amp; rollback
           </h2>
-          <p className={styles.description}>
+          <p className={cardStyles.description}>
             The last few states before an upgrade are kept on disk. Restart the server after a rollback.
           </p>
-          {loading && <p className={styles.muted}>Loading list…</p>}
+          {loading && <p className={cardStyles.description}>Loading list…</p>}
           {!loading && (!status?.backups || status.backups.length === 0) && (
-            <p className={styles.muted}>No backups yet.</p>
+            <p className={cardStyles.description}>No backups yet.</p>
           )}
           {!loading && status?.backups?.length > 0 && (
-            <ul className={styles.list}>
+            <ul className={listStyles.list}>
               {status.backups.map((b) => (
-                <li key={b.id} className={styles.listItem}>
-                  <div className={styles.listContent}>
-                    <div className={styles.identifier}>{b.id}</div>
+                <li key={b.id} className={listStyles.item}>
+                  <div className={listStyles.content}>
+                    <div className={listStyles.identifier}>{b.id}</div>
                     {b.label && <div>{b.label}</div>}
                     {b.version && b.type === 'pre_update' && (
-                      <div className={styles.listMeta}>Was before: {b.version} ({b.build_id})</div>
+                      <div className={listStyles.metaSmall}>Was before: {b.version} ({b.build_id})</div>
                     )}
-                    {b.created_at && <div className={styles.listMeta}>{b.created_at}</div>}
+                    {b.created_at && <div className={listStyles.metaSmall}>{b.created_at}</div>}
                   </div>
                   <Button
                     disabled={!!rolling}
@@ -220,9 +223,9 @@ const VersionPage = () => {
           )}
         </section>
 
-        <aside className={styles.notice}>
-          <CheckCircle2 size={20} />
-          <div>
+        <aside className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
+          <CheckCircle2 size={20} className={noticeStyles.icon} />
+          <div className={noticeStyles.body}>
             <p><strong>After any apply or rollback</strong></p>
             <p>
               Restart the Boondock Edge / Waitress / systemd service on this machine so the server loads new Python code

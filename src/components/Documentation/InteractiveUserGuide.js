@@ -39,8 +39,9 @@ import {
   Moon
 } from 'lucide-react';
 import PageSpecificDocumentation from './PageSpecificDocumentation';
+import styles from '../ui/Documentation.module.css';
 
-const InteractiveUserGuide = ({ isDarkMode }) => {
+const InteractiveUserGuide = () => {
   const [searchParams] = useSearchParams();
   const pageParam = searchParams.get('page');
   const tabParam = searchParams.get('tab');
@@ -96,6 +97,10 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
     return baseSections;
   };
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return JSON.parse(localStorage.getItem("isDarkMode")) || false;
+  });
+  
   const [expandedSections, setExpandedSections] = useState(getInitialSections);
   const [copiedText, setCopiedText] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +118,7 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
     const parts = text.split(regex);
     return parts.map((part, idx) => 
       regex.test(part) ? (
-        <mark key={idx} className={`${isDarkMode ? 'bg-yellow-600/30 text-yellow-200' : 'bg-yellow-200 text-yellow-900'} px-1 rounded`}>
+        <mark key={idx} className={styles.highlight}>
           {part}
         </mark>
       ) : part
@@ -163,21 +168,17 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
   const SectionHeader = ({ title, icon: Icon, isExpanded, onClick, children }) => (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between p-4 rounded-lg transition-all ${
-        isDarkMode 
-          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-          : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-      }`}
+      className={styles.sectionToggle}
     >
-      <div className="flex items-center gap-3">
-        <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-        <h3 className="text-lg font-semibold">{title}</h3>
+      <div className={"row"}>
+        <Icon className={`${styles.iconMedium} ${styles.accentIcon}`} />
+        <h3 className={styles.heading4}>{title}</h3>
         {children}
       </div>
       {isExpanded ? (
-        <ChevronDown className="w-5 h-5" />
+        <ChevronDown className={`${styles.iconMedium} ${styles.accentIcon}`} />
       ) : (
-        <ChevronRight className="w-5 h-5" />
+        <ChevronRight className={`${styles.iconMedium} ${styles.accentIcon}`} />
       )}
     </button>
   );
@@ -190,40 +191,34 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
     if (!shouldShow) return null;
     
     return (
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-start gap-4">
-          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-            isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600'
-          }`}>
+      <div className={styles.card}>
+        <div className={styles.rowStart}>
+          <div className={styles.stepNumber}>
             {number}
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {Icon && <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />}
-              <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className={"grow"}>
+            <div className={"row"}>
+              {Icon && <Icon className={`${styles.iconMedium} ${styles.accentIcon}`} />}
+              <h4 className={styles.emphasis}>
                 {highlightText(title, searchQuery)}
               </h4>
             </div>
-            <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={styles.bodyText}>
               {highlightText(description, searchQuery)}
             </p>
           {code && (
-            <div className="relative group">
-              <div className={`p-3 rounded-md font-mono text-xs overflow-x-auto ${
-                isDarkMode ? 'bg-gray-900 text-gray-300' : 'bg-gray-100 text-gray-800'
-              }`}>
+            <div className={styles.codeWrap}>
+              <div className={styles.codeBlock}>
                 {code}
               </div>
               <button
                 onClick={() => copyToClipboard(code, `code-${number}`)}
-                className={`absolute top-2 right-2 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                  isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                }`}
+                className={styles.copyButton}
               >
                 {copiedText === `code-${number}` ? (
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className={`${styles.iconSmall} ${styles.successIcon}`} />
                 ) : (
-                  <Copy className="w-4 h-4" />
+                  <Copy className={styles.iconSmall} />
                 )}
               </button>
             </div>
@@ -244,23 +239,23 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
     if (!shouldShow) return null;
     
     return (
-      <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-3 mb-3">
-          {Icon && <Icon className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />}
-          <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+      <div className={styles.card}>
+        <div className={"row"}>
+          {Icon && <Icon className={`${styles.iconMedium} ${styles.accentIcon}`} />}
+          <h4 className={styles.emphasis}>
             {highlightText(title, searchQuery)}
           </h4>
         </div>
-        <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        <p className={styles.bodyText}>
           {highlightText(description, searchQuery)}
         </p>
-        <ol className="space-y-2 ml-6">
+        <ol className={styles.orderedList}>
           {steps.map((step, idx) => {
             const stepMatches = matchesSearch(step);
             if (searchQuery && !stepMatches) return null;
             return (
-              <li key={idx} className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <span className="font-semibold">{idx + 1}.</span> {highlightText(step, searchQuery)}
+              <li key={idx} className={styles.bodyText}>
+                <span className={styles.emphasis}>{idx + 1}.</span> {highlightText(step, searchQuery)}
               </li>
             );
           })}
@@ -277,20 +272,20 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
     if (!shouldShow) return null;
     
     return (
-      <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-start gap-3">
-          <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-          <div className="flex-1">
-            <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+      <div className={styles.card}>
+        <div className={styles.rowStart}>
+          <AlertCircle className={`${styles.iconMedium} ${styles.dangerIcon}`} />
+          <div className={"grow"}>
+            <h4 className={styles.emphasis}>
               {highlightText(problem, searchQuery)}
             </h4>
-            <ul className="space-y-2">
+            <ul className={"stack stackCompact"}>
               {solutions.map((solution, idx) => {
                 const solutionMatches = matchesSearch(solution);
                 if (searchQuery && !solutionMatches) return null;
                 return (
-                  <li key={idx} className={`text-sm flex items-start gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    <CheckCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                  <li key={idx} className={styles.rowStart}>
+                    <CheckCircle className={`${styles.iconSmall} ${styles.successIcon}`} />
                     <span>{highlightText(solution, searchQuery)}</span>
                   </li>
                 );
@@ -328,62 +323,51 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
   const showPageSpecificDocs = pageParam && pageParam !== 'general';
 
   return (
-    <div className={`space-y-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+    <div className={"stack"}>
       {/* Context Banner */}
       {contextMessage && (
-        <div className={`p-4 rounded-lg border mb-4 ${
-          isDarkMode 
-            ? 'bg-blue-900/20 border-blue-800/50 text-blue-200' 
-            : 'bg-blue-50 border-blue-200 text-blue-800'
-        }`}>
-          <div className="flex items-center gap-2">
-            <HelpCircle className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <p className="text-sm font-medium">{contextMessage}</p>
+        <div className={styles.card}>
+          <div className={"row"}>
+            <HelpCircle className={`${styles.iconMedium} ${styles.accentIcon}`} />
+            <p className={styles.emphasis}>{contextMessage}</p>
           </div>
         </div>
       )}
 
       {/* Search Bar */}
-      <div className={`sticky top-0 z-10 p-4 rounded-lg border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'} mb-4 backdrop-blur-sm`}>
-        <div className="relative">
-          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+      <div className={styles.searchBar}>
+        <div className={styles.searchWrap}>
+          <Search className={styles.searchIcon} />
           <input
             type="text"
             placeholder="Search documentation..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full pl-10 pr-10 py-2 rounded-md border ${
-              isDarkMode 
-                ? 'bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500' 
-                : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            className={styles.searchInput}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded ${
-                isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-              }`}
+              className={styles.searchClear}
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon className={styles.iconSmall} />
             </button>
           )}
         </div>
         {searchQuery && (
-          <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Searching for: <span className="font-semibold">{searchQuery}</span>
+          <p className={styles.caption}>
+            Searching for: <span className={styles.emphasis}>{searchQuery}</span>
           </p>
         )}
       </div>
 
       {/* Page-Specific Documentation */}
       {showPageSpecificDocs && (
-        <div className="mb-6">
+        <div className={styles.sectionGap}>
           <PageSpecificDocumentation
             page={pageParam}
             tab={tabParam}
             globalTab={globalTabParam}
-            isDarkMode={isDarkMode}
             highlightText={highlightText}
             matchesSearch={matchesSearch}
             searchQuery={searchQuery}
@@ -403,15 +387,15 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('gettingStarted')}
         />
         {expandedSections.gettingStarted && (
-          <div className="mt-4 space-y-4 p-4">
+          <div className={styles.sectionContent}>
             <StepCard
               number="1"
               title="Access the Dashboard"
               description="Open your web browser and navigate to the Boondock Edge server URL"
               icon={BookOpen}
             >
-              <div className={`mt-3 p-3 rounded-md ${isDarkMode ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+              <div className={styles.callout}>
+                <p className={styles.caption}>
                   💡 <strong>Tip:</strong> Bookmark the URL for quick access
                 </p>
               </div>
@@ -430,13 +414,13 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
               description="Look at the dashboard to see connected devices. Green = Online, Red = Needs Attention"
               icon={Radio}
             >
-              <div className={`mt-3 p-3 rounded-md font-mono text-xs ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <div className={styles.codeBlock}>
+                <div className={"row"}>
+                  <div className={`${styles.statusDot} ${styles.statusSuccess}`}></div>
                   <span>Device Online</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <div className={"row"}>
+                  <div className={`${styles.statusDot} ${styles.statusDanger}`}></div>
                   <span>Device Offline</span>
                 </div>
               </div>
@@ -461,13 +445,13 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('howItWorks')}
         />
         {expandedSections.howItWorks && (
-          <div className="mt-4 space-y-4 p-4">
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className={styles.sectionContent}>
+            <div className={styles.card}>
+              <h4 className={styles.emphasis}>
                 System Flow Diagram
               </h4>
-              <div className={`p-4 rounded-md font-mono text-xs ${isDarkMode ? 'bg-gray-900 text-gray-300' : 'bg-gray-100 text-gray-800'}`}>
-                <pre className="whitespace-pre-wrap">
+              <div className={styles.mono}>
+                <pre className={styles.codeBlock}>
 {`┌─────────────────────────────────────┐
 │   Boondock Edge Device              │
 │   (Hardware Recorder)               │
@@ -494,11 +478,11 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
               </div>
             </div>
 
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={styles.card}>
+              <h4 className={styles.emphasis}>
                 Recording Process
               </h4>
-              <div className="space-y-3">
+              <div className={"stack"}>
                 {[
                   { step: 'Device Listens', desc: 'Continuously monitors audio input' },
                   { step: 'Audio Detection', desc: 'When audio exceeds threshold, recording starts' },
@@ -507,15 +491,13 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
                   { step: 'Transcription', desc: 'Server processes audio to create text' },
                   { step: 'Storage', desc: 'Recording and transcript stored in dashboard' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600'
-                    }`}>
+                  <div key={idx} className={styles.rowStart}>
+                    <div className={"row"}>
                       {idx + 1}
                     </div>
                     <div>
-                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.step}</p>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.desc}</p>
+                      <p className={styles.emphasis}>{item.step}</p>
+                      <p className={styles.bodyText}>{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -534,7 +516,7 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('commonTasks')}
         />
         {expandedSections.commonTasks && (
-          <div className="mt-4 space-y-4 p-4">
+          <div className={styles.sectionContent}>
             <TaskCard
               title="Find a Specific Recording"
               description="Search through all recordings to find a specific conversation or event"
@@ -597,7 +579,7 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('troubleshooting')}
         />
         {expandedSections.troubleshooting && (
-          <div className="mt-4 space-y-4 p-4">
+          <div className={styles.sectionContent}>
             <TroubleshootingCard
               problem="No Recordings Appearing"
               solutions={[
@@ -650,20 +632,20 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('quickReference')}
         />
         {expandedSections.quickReference && (
-          <div className="mt-4 p-4">
-            <div className={`overflow-x-auto rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <table className="min-w-full">
+          <div className={styles.sectionContent}>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
                 <thead>
-                  <tr className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-                    <th className={`px-4 py-3 text-left text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <tr>
+                    <th className={styles.emphasis}>
                       Action
                     </th>
-                    <th className={`px-4 py-3 text-left text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <th className={styles.emphasis}>
                       Location
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody >
                   {[
                     { action: 'View recordings', location: 'Main Dashboard' },
                     { action: 'Search recordings', location: 'Search bar (top of dashboard)' },
@@ -674,11 +656,11 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
                     { action: 'Set keywords', location: 'Settings → Keywords' },
                     { action: 'Change settings', location: 'Settings → Global Settings' }
                   ].map((row, idx) => (
-                    <tr key={idx} className={isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <tr key={idx}>
+                      <td className={styles.bodyText}>
                         {row.action}
                       </td>
-                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <td className={styles.bodyText}>
                         {row.location}
                       </td>
                     </tr>
@@ -687,23 +669,21 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
               </table>
             </div>
 
-            <div className={`mt-4 p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={styles.card}>
+              <h4 className={styles.emphasis}>
                 Keyboard Shortcuts
               </h4>
-              <div className="space-y-2">
+              <div className={"stack stackCompact"}>
                 {[
                   { key: 'Ctrl/Cmd + F', action: 'Focus search bar' },
                   { key: 'Esc', action: 'Close modals/dialogs' },
                   { key: 'Arrow Keys', action: 'Navigate through messages (when focused)' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <kbd className={`px-2 py-1 rounded text-xs font-mono ${
-                      isDarkMode ? 'bg-gray-900 text-gray-300 border border-gray-700' : 'bg-gray-100 text-gray-800 border border-gray-300'
-                    }`}>
+                  <div key={idx} className={"row"}>
+                    <kbd className={styles.mono}>
                       {item.key}
                     </kbd>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <span className={styles.bodyText}>
                       {item.action}
                     </span>
                   </div>
@@ -723,96 +703,96 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('interfaceControls')}
         />
         {expandedSections.interfaceControls && (
-          <div className="mt-4 space-y-4 p-4">
+          <div className={styles.sectionContent}>
             {/* Top Bar Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <Settings className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <Settings className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Top Bar Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <CheckCheck className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Select Messages Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <CheckCheck className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Select Messages Button</h5>
+                      <p className={styles.bodyText}>
                         Toggles multi-select mode. When active, you can select multiple messages for batch operations like delete, download, or tag. Click again to exit select mode.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <FileText className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Incident Reports Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <FileText className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Incident Reports Button</h5>
+                      <p className={styles.bodyText}>
                         Opens the Incident Reports page where you can view, create, and manage incident reports based on recordings.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Filter className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Filter Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Filter className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Filter Button</h5>
+                      <p className={styles.bodyText}>
                         Opens the filter panel to set custom date ranges, time ranges, and other filtering options. Use this to narrow down recordings by specific time periods.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Eye className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>View Settings Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Eye className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>View Settings Button</h5>
+                      <p className={styles.bodyText}>
                         Opens view customization options. Toggle visibility of time, car/unit, channel, and person fields. Adjust timestamp display format and other view preferences.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Settings className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Settings className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Settings Button</h5>
+                      <p className={styles.bodyText}>
                         Opens the Settings page (admin only). Access system configuration, channel management, user management, keywords, and other administrative functions.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
                     {isDarkMode ? (
-                      <Sun className={`w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-400`} />
+                      <Sun className={`${styles.iconMedium} ${styles.warningIcon}`} />
                     ) : (
-                      <Moon className={`w-5 h-5 mt-0.5 flex-shrink-0 text-blue-600`} />
+                      <Moon className={`${styles.iconMedium} ${styles.accentIcon}`} />
                     )}
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Theme Toggle Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Theme Toggle Button</h5>
+                      <p className={styles.bodyText}>
                         Switches between light and dark mode. Your preference is saved and will persist across sessions.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Clock className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>System Clock</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Clock className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>System Clock</h5>
+                      <p className={styles.bodyText}>
                         Displays the current system time and timezone. Click to adjust system time (admin only). Shows timezone abbreviation below the time.
                       </p>
                     </div>
@@ -822,66 +802,66 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
             </div>
 
             {/* Sidebar Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <Radio className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <Radio className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Sidebar Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Search className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Search Bar</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Search className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Search Bar</h5>
+                      <p className={styles.bodyText}>
                         Search through all recordings by typing keywords, phrases, or any text from transcripts. Results update in real-time as you type.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Radio className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Channel Toggle</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Radio className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Channel Toggle</h5>
+                      <p className={styles.bodyText}>
                         Click a channel name to toggle it on/off. Active channels show recordings, inactive channels are hidden. Each channel has a color indicator and message count.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Settings className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Channel Settings Icon</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Settings className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Channel Settings Icon</h5>
+                      <p className={styles.bodyText}>
                         Click the settings icon next to a channel to configure its name, color, and other properties. Opens a modal with channel configuration options.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Tag className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Keyword Toggle</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Tag className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Keyword Toggle</h5>
+                      <p className={styles.bodyText}>
                         Click a keyword to highlight it in all recordings. Active keywords are highlighted in the transcript text. Shows count of occurrences next to each keyword.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Documentation Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <BookOpen className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Documentation Button</h5>
+                      <p className={styles.bodyText}>
                         Opens the user guide documentation in a new tab. Contains detailed instructions, troubleshooting, and reference information.
                       </p>
                     </div>
@@ -891,102 +871,102 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
             </div>
 
             {/* Message Card Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <MessageSquare className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <MessageSquare className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Message Card Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Play className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Play/Pause Audio Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Play className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Play/Pause Audio Button</h5>
+                      <p className={styles.bodyText}>
                         Click to play the audio recording. Click again to pause. The button changes to a pause icon when playing. Only one audio can play at a time.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Volume2 className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Expand Audio Player</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Volume2 className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Expand Audio Player</h5>
+                      <p className={styles.bodyText}>
                         Click the audio icon or waveform to expand the audio player. Shows playback controls, timeline, speed controls, and waveform visualization.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Trash2 className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Delete Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Trash2 className={`${styles.iconMedium} ${styles.dangerIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Delete Button</h5>
+                      <p className={styles.bodyText}>
                         Permanently deletes the recording and transcript. Requires confirmation. Only available if you have delete permissions. Cannot be undone.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Tag className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Tag Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Tag className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Tag Button</h5>
+                      <p className={styles.bodyText}>
                         Add or manage tags for the recording. Tags help categorize and organize recordings. Click to view existing tags or add new ones.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <FileText className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Incident Report Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <FileText className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Incident Report Button</h5>
+                      <p className={styles.bodyText}>
                         Create an incident report from this recording. Opens a modal to fill in incident details, add notes, and save the report.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Download className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Download Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Download className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Download Button</h5>
+                      <p className={styles.bodyText}>
                         Downloads the audio file to your computer. In multi-select mode, you can download multiple recordings as a ZIP file.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <ExternalLink className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Advanced Player Button</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <ExternalLink className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Advanced Player Button</h5>
+                      <p className={styles.bodyText}>
                         Opens the advanced audio player in a new page with enhanced controls, waveform analysis, and playback features.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Message Checkbox (Multi-Select Mode)</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Check className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Message Checkbox (Multi-Select Mode)</h5>
+                      <p className={styles.bodyText}>
                         In multi-select mode, checkboxes appear on messages. Select multiple messages to perform batch operations like delete, download, or tag.
                       </p>
                     </div>
@@ -996,78 +976,78 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
             </div>
 
             {/* Audio Player Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <Volume2 className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <Volume2 className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Audio Player Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Play className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Play/Pause</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Play className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Play/Pause</h5>
+                      <p className={styles.bodyText}>
                         Main playback control. Toggles between playing and pausing the audio.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <SkipBack className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Skip Backward</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <SkipBack className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Skip Backward</h5>
+                      <p className={styles.bodyText}>
                         Jumps backward by a set interval (typically 10 seconds). Useful for replaying missed audio.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <SkipForward className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Skip Forward</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <SkipForward className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Skip Forward</h5>
+                      <p className={styles.bodyText}>
                         Jumps forward by a set interval (typically 10 seconds). Useful for skipping ahead.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <ArrowUpDown className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Playback Speed Control</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <ArrowUpDown className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Playback Speed Control</h5>
+                      <p className={styles.bodyText}>
                         Adjust playback speed (0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x). Useful for faster review or detailed analysis.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} rounded`}></div>
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Progress Timeline</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <div className={`${styles.iconMedium} ${styles.accentIcon}`}></div>
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Progress Timeline</h5>
+                      <p className={styles.bodyText}>
                         Click anywhere on the timeline to jump to that position in the audio. Shows current time and total duration.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Volume2 className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Volume Control</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Volume2 className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Volume Control</h5>
+                      <p className={styles.bodyText}>
                         Adjust audio volume using the volume slider. Mute/unmute with the volume icon.
                       </p>
                     </div>
@@ -1077,54 +1057,54 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
             </div>
 
             {/* Filter & View Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <Filter className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <Filter className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Filter & View Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Clock className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Time Filter Dropdown</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Clock className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Time Filter Dropdown</h5>
+                      <p className={styles.bodyText}>
                         Quick time filters: All, Last 30 mins, Last 1 hour, Last 2 hours, Last 4 hours, Last 8 hours, Last 1 Day, Last 2 Days, Last Week. Select a preset to filter recordings.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Calendar className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Custom Date Range</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Calendar className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Custom Date Range</h5>
+                      <p className={styles.bodyText}>
                         In the filter panel, set start and end dates to view recordings within a specific date range. Can also set custom time ranges.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <ArrowUpDown className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Sort Order Toggle</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <ArrowUpDown className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Sort Order Toggle</h5>
+                      <p className={styles.bodyText}>
                         Toggle between ascending (oldest first) and descending (newest first) sort order. Located in pagination footer or view settings.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <Eye className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>View Toggles</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <Eye className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>View Toggles</h5>
+                      <p className={styles.bodyText}>
                         In View Settings: Toggle visibility of Time, Car/Unit, Channel, and Person fields. Show/hide full timestamps. Customize what information is displayed on each message card.
                       </p>
                     </div>
@@ -1134,54 +1114,54 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
             </div>
 
             {/* Pagination Controls */}
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <ArrowRight className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <ArrowRight className={`${styles.iconMedium} ${styles.accentIcon}`} />
                 Pagination Controls
               </h4>
-              <div className="space-y-4">
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <ChevronLeft className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Previous Page</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={"stack"}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <ChevronLeft className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Previous Page</h5>
+                      <p className={styles.bodyText}>
                         Navigate to the previous page of results. Disabled when on the first page.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <ChevronRight className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Next Page</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <ChevronRight className={`${styles.iconMedium} ${styles.accentIcon}`} />
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Next Page</h5>
+                      <p className={styles.bodyText}>
                         Navigate to the next page of results. Disabled when on the last page.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} rounded`}></div>
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Records Per Page</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <div className={`${styles.iconMedium} ${styles.accentIcon}`}></div>
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Records Per Page</h5>
+                      <p className={styles.bodyText}>
                         Dropdown to select how many messages to display per page (10, 20, 50, 100). Your preference is saved.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'} rounded`}></div>
-                    <div className="flex-1">
-                      <h5 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Page Number Input</h5>
-                      <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className={styles.subtlePanel}>
+                  <div className={styles.rowStart}>
+                    <div className={`${styles.iconMedium} ${styles.accentIcon}`}></div>
+                    <div className={"grow"}>
+                      <h5 className={styles.emphasis}>Page Number Input</h5>
+                      <p className={styles.bodyText}>
                         Type a page number to jump directly to that page. Shows current page and total pages.
                       </p>
                     </div>
@@ -1202,47 +1182,47 @@ const InteractiveUserGuide = ({ isDarkMode }) => {
           onClick={() => toggleSection('bestPractices')}
         />
         {expandedSections.bestPractices && (
-          <div className="mt-4 space-y-4 p-4">
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <CheckCircle className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+          <div className={styles.sectionContent}>
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <CheckCircle className={`${styles.iconMedium} ${styles.successIcon}`} />
                 Optimizing Recording Quality
               </h4>
-              <ul className="space-y-2 ml-7">
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <ul className={styles.orderedList}>
+                <li className={styles.bodyText}>
                   <strong>Set Appropriate Threshold:</strong> Too high may miss quiet audio, too low may record background noise
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   <strong>Monitor Channel Status:</strong> Regularly check that channels show as "Active"
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   <strong>Use Keywords Effectively:</strong> Add common terms you search for as keywords
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   <strong>Regular Maintenance:</strong> Check device status weekly and review system logs
                 </li>
               </ul>
             </div>
 
-            <div className={`p-5 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <h4 className={`font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <Lightbulb className={`w-5 h-5 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
+            <div className={styles.card}>
+              <h4 className={"row"}>
+                <Lightbulb className={`${styles.iconMedium} ${styles.warningIcon}`} />
                 Daily Operations
               </h4>
-              <ul className="space-y-2 ml-7">
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <ul className={styles.orderedList}>
+                <li className={styles.bodyText}>
                   ✅ Check the dashboard daily for new recordings
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   ✅ Configure keywords for important terms
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   ✅ Use date ranges to focus on specific time periods
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   ✅ Name channels clearly for easy identification
                 </li>
-                <li className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li className={styles.bodyText}>
                   ✅ Only grant necessary access levels to users
                 </li>
               </ul>

@@ -2,11 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/apiClient';
 import { X, Settings2, Mic, Wifi, FileText, Sliders, RefreshCw } from 'lucide-react';
 
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import tableStyles from '../ui/Table.module.css';
+import modalStyles from '../ui/Modal.module.css';
 const DeviceSettingsModal = ({ 
   isOpen, 
   onClose, 
   devicePort, 
-  isDarkMode,
   monitorMessages = [],
   deviceStatus = {},
   serialData = {}
@@ -74,6 +79,7 @@ const DeviceSettingsModal = ({
 
   const responseTimeoutRef = useRef(null);
   const lastCommandRef = useRef(null);
+  const dialogRef = useRef(null);
 
   // Watch for responses in monitor messages
   useEffect(() => {
@@ -885,144 +891,129 @@ const DeviceSettingsModal = ({
     }
   };
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const modalClasses = isDarkMode 
-    ? 'bg-gray-900 border-gray-700 text-gray-100'
-    : 'bg-white border-gray-200 text-gray-900';
-
-  const inputClasses = isDarkMode
-    ? 'bg-gray-800 border-gray-700 text-gray-100 focus:border-blue-500 focus:ring-blue-500'
-    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500';
-
-  const buttonClasses = isDarkMode
-    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-    : 'bg-blue-500 hover:bg-blue-600 text-white';
-
-  const tabButtonClasses = (isActive) => isDarkMode
-    ? isActive 
-      ? 'bg-blue-600 text-white border-blue-500'
-      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
-    : isActive
-      ? 'bg-blue-500 text-white border-blue-400'
-      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className={`w-full max-w-4xl max-h-[90vh] rounded-xl border shadow-2xl ${modalClasses} flex flex-col`}>
+    <dialog
+      ref={dialogRef}
+      className={`${modalStyles.dialog} ${modalStyles.wide}`}
+      onCancel={(event) => { event.preventDefault(); if (!saving) onClose(); }}
+    >
+      <div className={modalStyles.body}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <Settings2 className="w-6 h-6 text-blue-500" />
+        <div className="rowBetween">
+          <div className="row">
+            <Settings2 className="iconLarge" />
             <div>
-              <h2 className="text-2xl font-bold">Device Settings</h2>
-              <p className="text-sm text-gray-400">{devicePort}</p>
+              <h2 className="pageTitle">Device Settings</h2>
+              <p className="mutedText smallText">{devicePort}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="row">
             <button
               onClick={fetchCurrentSettings}
               disabled={loading}
-              className={`p-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
               title="Refresh Settings"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`iconMedium ${loading ? 'spin' : ''}`} />
             </button>
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg hover:bg-gray-700 transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.icon}`}
             >
-              <X className="w-5 h-5" />
+              <X className="iconMedium" />
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-700 overflow-x-auto">
+        <div className={tableStyles.scroll}>
           <button
             onClick={() => setActiveTab('recorder')}
-            className={`px-6 py-3 border-b-2 transition-colors flex items-center gap-2 ${tabButtonClasses(activeTab === 'recorder')}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="iconSmall" />
             Recorder
           </button>
           <button
             onClick={() => setActiveTab('network')}
-            className={`px-6 py-3 border-b-2 transition-colors flex items-center gap-2 ${tabButtonClasses(activeTab === 'network')}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <Wifi className="w-4 h-4" />
+            <Wifi className="iconSmall" />
             Network
           </button>
           <button
             onClick={() => setActiveTab('logging')}
-            className={`px-6 py-3 border-b-2 transition-colors flex items-center gap-2 ${tabButtonClasses(activeTab === 'logging')}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="iconSmall" />
             Logging
           </button>
           <button
             onClick={() => setActiveTab('advanced')}
-            className={`px-6 py-3 border-b-2 transition-colors flex items-center gap-2 ${tabButtonClasses(activeTab === 'advanced')}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <Sliders className="w-4 h-4" />
+            <Sliders className="iconSmall" />
             Advanced
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="grow scrollY">
           {loading && (
-            <div className="flex justify-center items-center py-8">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="row">
+              <span className="spinner spinnerSmall" aria-hidden="true" />
             </div>
           )}
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-900/20 border border-red-700 text-red-400 text-sm">
+            <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700 text-green-400 text-sm">
+            <div className={`${noticeStyles.notice} ${noticeStyles.success}`}>
               {success}
             </div>
           )}
 
           {/* Recorder Settings Tab */}
           {activeTab === 'recorder' && !loading && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+            <div className="stack stackLarge">
+              <div className="gridTwo">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">Audio Threshold</label>
-                    <span className="text-sm font-semibold">{recorderSettings.audioThreshold?.toFixed(1) || '50.0'}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>Audio Threshold</label>
+                    <span className="mutedText smallText">{recorderSettings.audioThreshold?.toFixed(1) || '30.0'}</span>
                   </div>
                   
                   {/* Visual slider matching audio level bar */}
-                  <div className="mb-2">
-                    <div className={`relative h-6 rounded-full overflow-hidden mb-2 ${
-                      isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                    }`}>
+                  <div >
+                    <div >
                       {/* Background gradient showing dB range */}
-                      <div className="absolute inset-0 flex">
-                        <div className="flex-1 bg-gray-500"></div>
-                        <div className="flex-1 bg-blue-500"></div>
-                        <div className="flex-1 bg-orange-500"></div>
-                        <div className="flex-1 bg-red-500"></div>
+                      <div >
+                        <div className="grow"></div>
+                        <div className="grow"></div>
+                        <div className="grow"></div>
+                        <div className="grow"></div>
                       </div>
                       {/* Threshold threshold marker */}
                       {(() => {
-                        const threshold = recorderSettings.audioThreshold || 50.0;
-                        // const audioRange = 70; // -80 to -10 dB range
-                        // const thresholdPercent = Math.max(0, Math.min(100, ((threshold + 80) / audioRange) * 100));
-                        const thresholdPercent = Math.max(0, Math.min(100, threshold * 100));
+                        const threshold = recorderSettings.audioThreshold || 30.0;
+                        // const audioRange = 60; // 0 to 60 = -80 to -20 dB range
                         return (
                           <div
-                            className={`absolute top-0 h-full w-1 ${
-                              isDarkMode ? 'bg-yellow-400' : 'bg-yellow-600'
-                            } z-10 shadow-lg`}
-                            style={{ left: `${thresholdPercent}%` }}
+                            
+                            style={{ left: `${threshold / 60}%` }}
                           />
                         );
                       })()}
@@ -1031,18 +1022,16 @@ const DeviceSettingsModal = ({
                     {/* Slider input */}
                     <input
                       type="range"
-                      min="-80"
-                      max="-10"
+                      min="0"
+                      max="60"
                       step="0.5"
-                      value={recorderSettings.audioThreshold || -45.0}
+                      value={recorderSettings.audioThreshold || 30.0}
                       onChange={(e) => handleRecorderSettingChange('audioThreshold', parseFloat(e.target.value))}
-                      className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-                        isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
-                      } accent-blue-500`}
+                      className={formStyles.range}
                       style={{
                         background: `linear-gradient(to right, 
-                          ${isDarkMode ? '#374151' : '#d1d5db'} 0%, 
-                          ${isDarkMode ? '#374151' : '#d1d5db'} 20%,
+                          var(--ui-border) 0%, 
+                          var(--ui-border) 20%,
                           #3b82f6 20%,
                           #3b82f6 50%,
                           #f97316 50%,
@@ -1053,20 +1042,20 @@ const DeviceSettingsModal = ({
                     />
                   </div>
                   
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>-80 dB</span>
                     <span>-45 dB</span>
                     <span>-10 dB</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div >
                     Lower values = more sensitive (triggers on quieter sounds)
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">Min Recording (ms)</label>
-                    <span className="text-sm font-semibold">{recorderSettings.minRecording || 1000}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>Min Recording (ms)</label>
+                    <span className="mutedText smallText">{recorderSettings.minRecording || 1000}</span>
                   </div>
                   <input
                     type="range"
@@ -1075,9 +1064,9 @@ const DeviceSettingsModal = ({
                     step="100"
                     value={recorderSettings.minRecording || 1000}
                     onChange={(e) => handleRecorderSettingChange('minRecording', parseInt(e.target.value, 10))}
-                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} accent-blue-500`}
+                    className={formStyles.range}
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>1000</span>
                     <span>5500</span>
                     <span>10000</span>
@@ -1085,9 +1074,9 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">Max Recording (ms)</label>
-                    <span className="text-sm font-semibold">{recorderSettings.maxRecording || 30000}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>Max Recording (ms)</label>
+                    <span className="mutedText smallText">{recorderSettings.maxRecording || 30000}</span>
                   </div>
                   <input
                     type="range"
@@ -1096,9 +1085,9 @@ const DeviceSettingsModal = ({
                     step="1000"
                     value={recorderSettings.maxRecording || 30000}
                     onChange={(e) => handleRecorderSettingChange('maxRecording', parseInt(e.target.value, 10))}
-                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} accent-blue-500`}
+                    className={formStyles.range}
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>5000</span>
                     <span>32500</span>
                     <span>60000</span>
@@ -1106,9 +1095,9 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">Silence Threshold (ms)</label>
-                    <span className="text-sm font-semibold">{recorderSettings.silenceThreshold || 1000}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>Silence Threshold (ms)</label>
+                    <span className="mutedText smallText">{recorderSettings.silenceThreshold || 1000}</span>
                   </div>
                   <input
                     type="range"
@@ -1117,9 +1106,9 @@ const DeviceSettingsModal = ({
                     step="100"
                     value={recorderSettings.silenceThreshold || 1000}
                     onChange={(e) => handleRecorderSettingChange('silenceThreshold', parseInt(e.target.value, 10))}
-                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} accent-blue-500`}
+                    className={formStyles.range}
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>1000</span>
                     <span>3000</span>
                     <span>5000</span>
@@ -1127,9 +1116,9 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">Pre-Record (ms)</label>
-                    <span className="text-sm font-semibold">{recorderSettings.preRecord || 200}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>Pre-Record (ms)</label>
+                    <span className="mutedText smallText">{recorderSettings.preRecord || 200}</span>
                   </div>
                   <input
                     type="range"
@@ -1138,9 +1127,9 @@ const DeviceSettingsModal = ({
                     step="10"
                     value={recorderSettings.preRecord || 200}
                     onChange={(e) => handleRecorderSettingChange('preRecord', parseInt(e.target.value, 10))}
-                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} accent-blue-500`}
+                    className={formStyles.range}
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>100</span>
                     <span>300</span>
                     <span>500</span>
@@ -1148,11 +1137,11 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Gain (dB)</label>
+                  <label className={formStyles.label}>Gain (dB)</label>
                   <select
                     value={recorderSettings.gain !== undefined ? recorderSettings.gain : 3}
                     onChange={(e) => handleRecorderSettingChange('gain', parseInt(e.target.value, 10))}
-                    className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                    className={formStyles.select}
                   >
                     <option value="-3">-3 dB</option>
                     <option value="0">0 dB</option>
@@ -1167,21 +1156,17 @@ const DeviceSettingsModal = ({
                   </select>
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-6">
+              <div className="rowBetween">
                 <button
                   onClick={handleSetRecorderDefaults}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                    isDarkMode
-                      ? 'bg-amber-700 hover:bg-amber-600 text-white'
-                      : 'bg-amber-500 hover:bg-amber-600 text-white'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   Set Defaults
                 </button>
                 <button
                   onClick={handleSaveRecorderSettings}
                   disabled={saving}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${buttonClasses} ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   {saving ? 'Saving...' : 'Save Settings'}
                 </button>
@@ -1191,28 +1176,28 @@ const DeviceSettingsModal = ({
 
           {/* Network Settings Tab */}
           {activeTab === 'network' && !loading && (
-            <div className="space-y-4">
-              <div className="space-y-4">
+            <div className="stack">
+              <div className="stack">
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">WiFi Network 1</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h3 className={cardStyles.title}>WiFi Network 1</h3>
+                  <div className="gridTwo">
                     <div>
-                      <label className="block text-sm font-medium mb-2">SSID</label>
+                      <label className={formStyles.label}>SSID</label>
                       <input
                         type="text"
                         value={networkSettings.ssid0}
                         onChange={(e) => handleNetworkSettingChange('ssid0', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                        className={formStyles.input}
                         placeholder="Network Name"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">Password</label>
+                      <label className={formStyles.label}>Password</label>
                       <input
                         type="password"
                         value={networkSettings.pass0}
                         onChange={(e) => handleNetworkSettingChange('pass0', e.target.value)}
-                        className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                        className={formStyles.input}
                         placeholder="Password"
                       />
                     </div>
@@ -1220,67 +1205,67 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Static IP Configuration</h3>
-                  <div className="mb-3">
-                    <label className="flex items-center gap-2">
+                  <h3 className={cardStyles.title}>Static IP Configuration</h3>
+                  <div >
+                    <label className={formStyles.checkbox}>
                       <input
                         type="checkbox"
                         checked={networkSettings.staticIpEnabled}
                         onChange={(e) => handleNetworkSettingChange('staticIpEnabled', e.target.checked)}
-                        className="w-4 h-4"
+                        
                       />
-                      <span className="text-sm font-medium">Enable Static IP</span>
+                      <span className="mutedText smallText">Enable Static IP</span>
                     </label>
                   </div>
                   {networkSettings.staticIpEnabled && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="gridTwo">
                       <div>
-                        <label className="block text-sm font-medium mb-2">IP Address</label>
+                        <label className={formStyles.label}>IP Address</label>
                         <input
                           type="text"
                           value={networkSettings.staticIp}
                           onChange={(e) => handleNetworkSettingChange('staticIp', e.target.value)}
-                          className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                          className={formStyles.input}
                           placeholder="192.168.1.100"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">Subnet Mask</label>
+                        <label className={formStyles.label}>Subnet Mask</label>
                         <input
                           type="text"
                           value={networkSettings.staticSubnet}
                           onChange={(e) => handleNetworkSettingChange('staticSubnet', e.target.value)}
-                          className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                          className={formStyles.input}
                           placeholder="255.255.255.0"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">Gateway</label>
+                        <label className={formStyles.label}>Gateway</label>
                         <input
                           type="text"
                           value={networkSettings.staticGateway}
                           onChange={(e) => handleNetworkSettingChange('staticGateway', e.target.value)}
-                          className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                          className={formStyles.input}
                           placeholder="192.168.1.1"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">DNS 1</label>
+                        <label className={formStyles.label}>DNS 1</label>
                         <input
                           type="text"
                           value={networkSettings.staticDns1}
                           onChange={(e) => handleNetworkSettingChange('staticDns1', e.target.value)}
-                          className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                          className={formStyles.input}
                           placeholder="8.8.8.8"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">DNS 2</label>
+                        <label className={formStyles.label}>DNS 2</label>
                         <input
                           type="text"
                           value={networkSettings.staticDns2}
                           onChange={(e) => handleNetworkSettingChange('staticDns2', e.target.value)}
-                          className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                          className={formStyles.input}
                           placeholder="8.8.4.4"
                         />
                       </div>
@@ -1289,9 +1274,9 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium">WiFi TX Power</label>
-                    <span className="text-sm font-semibold">{networkSettings.wifiTxPower || 8}</span>
+                  <div className="rowBetween">
+                    <label className={formStyles.label}>WiFi TX Power</label>
+                    <span className="mutedText smallText">{networkSettings.wifiTxPower || 8}</span>
                   </div>
                   <input
                     type="range"
@@ -1299,9 +1284,9 @@ const DeviceSettingsModal = ({
                     max="10"
                     value={networkSettings.wifiTxPower || 8}
                     onChange={(e) => handleNetworkSettingChange('wifiTxPower', parseInt(e.target.value, 10))}
-                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'} accent-blue-500`}
+                    className={formStyles.range}
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <div >
                     <span>1</span>
                     <span>5.5</span>
                     <span>10</span>
@@ -1309,40 +1294,40 @@ const DeviceSettingsModal = ({
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">API Hosts</h3>
-                  <div className="space-y-4">
+                  <h3 className={cardStyles.title}>API Hosts</h3>
+                  <div className="stack">
                     {/* API Host 0 */}
-                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-300 bg-gray-50'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold">API Host 1</h4>
-                        <label className="flex items-center gap-2">
+                    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                      <div className="rowBetween">
+                        <h4 className={cardStyles.title}>API Host 1</h4>
+                        <label className={formStyles.checkbox}>
                           <input
                             type="checkbox"
                             checked={networkSettings.apiEnabled0 || false}
                             onChange={(e) => handleNetworkSettingChange('apiEnabled0', e.target.checked)}
-                            className="w-4 h-4"
+                            
                           />
-                          <span className="text-xs font-medium">Enabled</span>
+                          <span className="mutedText tinyText">Enabled</span>
                         </label>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="gridTwo">
                         <div>
-                          <label className="block text-xs font-medium mb-1">Host</label>
+                          <label className={formStyles.label}>Host</label>
                           <input
                             type="text"
                             value={networkSettings.apiHost0 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiHost0', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="api.example.com"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1">Port</label>
+                          <label className={formStyles.label}>Port</label>
                           <input
                             type="number"
                             value={networkSettings.apiPort0 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiPort0', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="7001"
                           />
                         </div>
@@ -1350,37 +1335,37 @@ const DeviceSettingsModal = ({
                     </div>
 
                     {/* API Host 1 */}
-                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-300 bg-gray-50'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold">API Host 2</h4>
-                        <label className="flex items-center gap-2">
+                    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                      <div className="rowBetween">
+                        <h4 className={cardStyles.title}>API Host 2</h4>
+                        <label className={formStyles.checkbox}>
                           <input
                             type="checkbox"
                             checked={networkSettings.apiEnabled1 || false}
                             onChange={(e) => handleNetworkSettingChange('apiEnabled1', e.target.checked)}
-                            className="w-4 h-4"
+                            
                           />
-                          <span className="text-xs font-medium">Enabled</span>
+                          <span className="mutedText tinyText">Enabled</span>
                         </label>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="gridTwo">
                         <div>
-                          <label className="block text-xs font-medium mb-1">Host</label>
+                          <label className={formStyles.label}>Host</label>
                           <input
                             type="text"
                             value={networkSettings.apiHost1 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiHost1', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="api.example.com"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1">Port</label>
+                          <label className={formStyles.label}>Port</label>
                           <input
                             type="number"
                             value={networkSettings.apiPort1 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiPort1', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="7001"
                           />
                         </div>
@@ -1388,37 +1373,37 @@ const DeviceSettingsModal = ({
                     </div>
 
                     {/* API Host 2 */}
-                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-300 bg-gray-50'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold">API Host 3</h4>
-                        <label className="flex items-center gap-2">
+                    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                      <div className="rowBetween">
+                        <h4 className={cardStyles.title}>API Host 3</h4>
+                        <label className={formStyles.checkbox}>
                           <input
                             type="checkbox"
                             checked={networkSettings.apiEnabled2 || false}
                             onChange={(e) => handleNetworkSettingChange('apiEnabled2', e.target.checked)}
-                            className="w-4 h-4"
+                            
                           />
-                          <span className="text-xs font-medium">Enabled</span>
+                          <span className="mutedText tinyText">Enabled</span>
                         </label>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="gridTwo">
                         <div>
-                          <label className="block text-xs font-medium mb-1">Host</label>
+                          <label className={formStyles.label}>Host</label>
                           <input
                             type="text"
                             value={networkSettings.apiHost2 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiHost2', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="api.example.com"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1">Port</label>
+                          <label className={formStyles.label}>Port</label>
                           <input
                             type="number"
                             value={networkSettings.apiPort2 || ''}
                             onChange={(e) => handleNetworkSettingChange('apiPort2', e.target.value)}
-                            className={`w-full px-2 py-1.5 text-sm rounded border ${inputClasses}`}
+                            className={formStyles.input}
                             placeholder="7001"
                           />
                         </div>
@@ -1427,11 +1412,11 @@ const DeviceSettingsModal = ({
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end mt-6">
+              <div >
                 <button
                   onClick={handleSaveNetworkSettings}
                   disabled={saving}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${buttonClasses} ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   {saving ? 'Saving...' : 'Save Settings'}
                 </button>
@@ -1441,59 +1426,59 @@ const DeviceSettingsModal = ({
 
           {/* Logging Settings Tab */}
           {activeTab === 'logging' && !loading && (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-700 hover:bg-gray-800/50 cursor-pointer">
+            <div className="stack">
+              <div className="stack">
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={loggingSettings.debug || false}
                     onChange={(e) => handleLoggingSettingChange('debug', e.target.checked)}
-                    className="w-4 h-4"
+                    
                   />
-                  <span className="text-sm font-medium">Debug</span>
+                  <span className="mutedText smallText">Debug</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-700 hover:bg-gray-800/50 cursor-pointer">
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={loggingSettings.info || false}
                     onChange={(e) => handleLoggingSettingChange('info', e.target.checked)}
-                    className="w-4 h-4"
+                    
                   />
-                  <span className="text-sm font-medium">Info</span>
+                  <span className="mutedText smallText">Info</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-700 hover:bg-gray-800/50 cursor-pointer">
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={loggingSettings.warn || false}
                     onChange={(e) => handleLoggingSettingChange('warn', e.target.checked)}
-                    className="w-4 h-4"
+                    
                   />
-                  <span className="text-sm font-medium">Warning</span>
+                  <span className="mutedText smallText">Warning</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-700 hover:bg-gray-800/50 cursor-pointer">
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={loggingSettings.error || false}
                     onChange={(e) => handleLoggingSettingChange('error', e.target.checked)}
-                    className="w-4 h-4"
+                    
                   />
-                  <span className="text-sm font-medium">Error</span>
+                  <span className="mutedText smallText">Error</span>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-700 hover:bg-gray-800/50 cursor-pointer">
+                <label className={formStyles.checkbox}>
                   <input
                     type="checkbox"
                     checked={loggingSettings.fatal || false}
                     onChange={(e) => handleLoggingSettingChange('fatal', e.target.checked)}
-                    className="w-4 h-4"
+                    
                   />
-                  <span className="text-sm font-medium">Fatal</span>
+                  <span className="mutedText smallText">Fatal</span>
                 </label>
               </div>
-              <div className="flex justify-end mt-6">
+              <div >
                 <button
                   onClick={handleSaveLoggingSettings}
                   disabled={saving}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${buttonClasses} ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   {saving ? 'Saving...' : 'Save Settings'}
                 </button>
@@ -1503,14 +1488,14 @@ const DeviceSettingsModal = ({
 
           {/* Advanced Settings Tab */}
           {activeTab === 'advanced' && !loading && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="stack">
+              <div className="gridTwo">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Use SD Card</label>
+                  <label className={formStyles.label}>Use SD Card</label>
                   <select
                     value={advancedSettings.useSdCard}
                     onChange={(e) => handleAdvancedSettingChange('useSdCard', e.target.value === 'true')}
-                    className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                    className={formStyles.select}
                   >
                     <option value="">-- Select --</option>
                     <option value="true">Yes</option>
@@ -1518,11 +1503,11 @@ const DeviceSettingsModal = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Record to SD Card</label>
+                  <label className={formStyles.label}>Record to SD Card</label>
                   <select
                     value={advancedSettings.recordToSdCard}
                     onChange={(e) => handleAdvancedSettingChange('recordToSdCard', e.target.value === 'true')}
-                    className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                    className={formStyles.select}
                   >
                     <option value="">-- Select --</option>
                     <option value="true">Yes</option>
@@ -1530,23 +1515,23 @@ const DeviceSettingsModal = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Timezone Offset (hours)</label>
+                  <label className={formStyles.label}>Timezone Offset (hours)</label>
                   <input
                     type="number"
                     min="-12"
                     max="14"
                     value={advancedSettings.timezoneOffset}
                     onChange={(e) => handleAdvancedSettingChange('timezoneOffset', e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                    className={formStyles.input}
                     placeholder="-5"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">RTC Enabled</label>
+                  <label className={formStyles.label}>RTC Enabled</label>
                   <select
                     value={advancedSettings.rtcEnabled}
                     onChange={(e) => handleAdvancedSettingChange('rtcEnabled', e.target.value === 'true')}
-                    className={`w-full px-3 py-2 rounded-lg border ${inputClasses}`}
+                    className={formStyles.select}
                   >
                     <option value="">-- Select --</option>
                     <option value="true">Yes</option>
@@ -1554,11 +1539,11 @@ const DeviceSettingsModal = ({
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end mt-6">
+              <div >
                 <button
                   onClick={handleSaveAdvancedSettings}
                   disabled={saving}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${buttonClasses} ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                 >
                   {saving ? 'Saving...' : 'Save Settings'}
                 </button>
@@ -1567,9 +1552,8 @@ const DeviceSettingsModal = ({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 };
 
 export default DeviceSettingsModal;
-

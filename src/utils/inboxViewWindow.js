@@ -165,8 +165,8 @@ export function getRecordingTimestampFromFilename(filename, timestamp) {
   if (isValid) {
     return `${dateTimeParts[0]}${dateTimeParts[1]}${dateTimeParts[2]}_${dateTimeParts[3]}${dateTimeParts[4]}${dateTimeParts[5]}`;
   } else {
-    console.error('Time invalid from filename: ' + filename);
-    console.log(parsed);
+    // console.error('Time invalid from filename: ' + filename);
+    // console.log(parsed);
     return timestamp;
   }
 }

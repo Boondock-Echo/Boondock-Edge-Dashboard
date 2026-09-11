@@ -1,23 +1,23 @@
 import React from 'react';
-import styles from '../ui/Page.module.css';
+import cardStyles from '../ui/Card.module.css';
 
 const iconVariants = {
-  blue: styles.accentTile,
-  purple: styles.accentTile,
-  green: styles.successTile,
-  red: styles.dangerTile,
-  orange: styles.warningTile,
-  gray: styles.mutedTile,
+  blue: 'iconTileAccent',
+  purple: 'iconTileAccent',
+  green: 'iconTileSuccess',
+  red: 'iconTileDanger',
+  orange: 'iconTileWarning',
+  gray: 'iconTileMuted',
 };
 
 const SettingsSectionHeader = ({ icon: Icon, title, description, iconColor = 'blue' }) => (
-  <header className={styles.sectionHeader}>
-    <div className={`${styles.sectionHeaderIcon} ${iconVariants[iconColor] || styles.accentTile}`}>
+  <header className={cardStyles.header}>
+    <div className={`iconTile ${iconVariants[iconColor] || 'iconTileAccent'}`}>
       <Icon size={18} />
     </div>
-    <div className={styles.grow}>
-      <h2 className={styles.cardTitleCompact}>{title}</h2>
-      <p className={styles.subtitle}>{description}</p>
+    <div className="grow">
+      <h2 className={cardStyles.title}>{title}</h2>
+      <p className={cardStyles.description}>{description}</p>
     </div>
   </header>
 );

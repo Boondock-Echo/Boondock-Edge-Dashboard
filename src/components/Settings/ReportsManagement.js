@@ -1,5 +1,5 @@
 import { apiFetch } from '../../utils/apiClient';
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search,
   ChevronDown, ChevronUp, Radio, MapPin, Download, Edit, Trash2, Copy, FileDown } from 'lucide-react';
@@ -7,79 +7,44 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { buildIncidentReportPdfBlob, incidentReportPdfFilename, fetchBrandingForPdf } from '../../utils/incidentReportPdf';
 import InlineAudioPlayer from '../InlineAudioPlayer';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import navStyles from '../ui/Navigation.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import styles from '../ui/ReportsManagement.module.css';
 
 /**
  * AUDIO PLAYER
  */
+// TO-DO should be using InlineAudioPlayer
 const AudioPlayer = ({
   audioId,
   url,
   source,
   transcription,
   recordedAt,
-  themeClasses,
   formatDate,
-  isDarkMode,
   isCompact = false
 }) => {
   return (
-    <div className={`rounded-xl ${isCompact ? 'p-2.5' : 'p-4'} border transition-all duration-200 hover:shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-800 hover:bg-slate-800/70' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-      <div className="flex items-start space-x-3">
-        <div
-          className={`
-            ${isCompact ? 'w-8 h-8' : 'w-10 h-10'} flex-shrink-0
-            ${themeClasses.cardHover}
-            ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}
-            rounded-full flex items-center justify-center
-            cursor-pointer transition-all duration-200
-            group
-          `}
-        >
-          <InlineAudioPlayer
-            ownerId={`report:${audioId}`}
-            src={url}
-            className={`
-              p-2 rounded-full
-              bg-transparent
-              ${themeClasses.secondaryBtn}
-              focus:outline-none focus:ring-2 ${isDarkMode ? 'focus:ring-blue-500' : 'focus:ring-blue-500'}
-            `}
-          />
-        </div>
-
-        <div className="flex-1">
-          <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 ${isCompact ? 'mb-0.5' : ''}`}>
-            <span className={`text-xs uppercase tracking-wide font-bold ${themeClasses.staticText}`}>{source}</span>
-            <span className={`text-[11px] ${themeClasses.staticMutedText}`}>{formatDate(recordedAt)}</span>
+    <div className={styles.audioItem}>
+      <div className="rowBetweenStart">
+        <InlineAudioPlayer ownerId={`report:${audioId}`} src={url} />
+        <div className={styles.audioBody}>
+          <div className="rowWrap">
+            <span className="eyebrow">{source}</span>
+            <span className="tinyText mutedText">{formatDate(recordedAt)}</span>
           </div>
-          <p className={`${isCompact ? 'mt-0.5 text-xs leading-5' : 'mt-1 text-sm'} ${themeClasses.staticSecondaryText}`}>{transcription}</p>
-          <div className={`${isCompact ? 'mt-1.5' : 'mt-2'} flex flex-wrap gap-4 text-[11px] ${themeClasses.staticMutedText}`}>
-            <span className="inline-flex items-center space-x-1">
-              <Clock className="w-3 h-3" />
-              <span>{formatDate(recordedAt)}</span>
-            </span>
-            <span className="inline-flex items-center space-x-1">
-              <Mic className="w-3 h-3" />
-              <span>{source}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => navigator.clipboard?.writeText(transcription || '')}
-              className={`inline-flex items-center space-x-1 font-semibold ${themeClasses.staticAccent} hover:underline`}
-            >
-              <Copy className="w-3 h-3" />
-              <span>COPY</span>
-            </button>
-            <span className="inline-flex items-center space-x-1 font-semibold">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${themeClasses.staticAccent} hover:underline`}
-              >
-                SAVE AUDIO
-              </a>
-            </span>
+          <p className={styles.audioTranscript}>{transcription}</p>
+          <div className={styles.audioMeta}>
+            <span className="row"><Clock className="iconSmall" /><span>{formatDate(recordedAt)}</span></span>
+            <span className="row"><Mic className="iconSmall" /><span>{source}</span></span>
+            <Button type="button" size="small" variant="ghost" onClick={() => navigator.clipboard?.writeText(transcription || '')}>
+              <Copy /><span>COPY</span>
+            </Button>
+            <a href={url} target="_blank" rel="noopener noreferrer">SAVE AUDIO</a>
           </div>
         </div>
       </div>
@@ -90,8 +55,8 @@ const AudioPlayer = ({
 /**
  * TAB NAVIGATION
  */
-const Tabs = ({ activeTab, setActiveTab, themeClasses, isDarkMode, isCompact = false }) => (
-  <nav className={`flex border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+const Tabs = ({ activeTab, setActiveTab, isCompact = false }) => (
+  <nav className={navStyles.subnav} aria-label="Incident report detail">
     {[
       { key: 'transcription', label: 'Transcription', icon: FileText },
       { key: 'metadata', label: 'Metadata', icon: Tag }
@@ -102,16 +67,9 @@ const Tabs = ({ activeTab, setActiveTab, themeClasses, isDarkMode, isCompact = f
         <button
           key={tab.key}
           onClick={() => setActiveTab(tab.key)}
-          className={`
-            flex items-center ${isCompact ? 'px-4 py-2.5 text-xs' : 'px-6 py-4 text-sm'} font-semibold
-            transition-colors duration-200
-            ${isActive
-              ? `${isDarkMode ? 'border-b-2 border-blue-400 text-slate-100' : 'border-b-2 border-[#003178] text-[#003178]'}`
-              : `${isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
-          `}
+          className={`${navStyles.tab} ${isActive ? navStyles.active : ''}`}
         >
-          <Icon className={`w-4 h-4 mr-2 ${isActive ? (isDarkMode ? 'text-blue-500' : 'text-blue-500') : ''}`} />
-          {tab.label}
+          <span className="row"><Icon className="iconSmall" />{tab.label}</span>
         </button>
       );
     })}
@@ -125,8 +83,6 @@ const ReportListItem = ({
   report,
   isExpanded,
   onClick,
-  themeClasses,
-  isDarkMode,
   isCompact = false,
   formatDate,
   getRelativeTime,
@@ -136,102 +92,68 @@ const ReportListItem = ({
   setSelectedIncident, // Add setSelectedIncident prop
 }) => {
   const severityClasses = {
-    high: `bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700/30`,
-    medium: `bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700/30`,
-    low: `bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/30`
+    high: 'pillDanger',
+    medium: 'pillWarning',
+    low: 'pillSuccess'
   }[report.severity.toLowerCase()];
   const incidentCode = `RE-${String(report.id).padStart(5, '0')}`;
 
   return (
     <div
       onClick={() => onClick(report.id)}
-      className={`
-        ${isCompact ? 'p-2.5' : 'p-4'} rounded-xl transition-all duration-200 cursor-pointer border
-        ${isExpanded
-          ? `${isDarkMode ? 'bg-blue-500/15 border-blue-500/60' : 'bg-blue-50 border-[#003178]/30'}`
-          : `${isDarkMode ? 'bg-slate-900 border-slate-800 hover:bg-slate-800/70' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
-      `}
+      className={`${styles.reportItem} ${isExpanded ? styles.reportItemActive : ''}`}
     >
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-1">
-            <span className={`text-[11px] font-bold tracking-tight ${isExpanded ? themeClasses.accent : themeClasses.staticMutedText}`}>
-              {incidentCode}
-            </span>
-            <span className={`text-[10px] uppercase ${themeClasses.staticMutedText}`}>
-              {getRelativeTime(report.date)}
-            </span>
+      <div className="rowBetweenStart">
+        <div className="grow">
+          <div className="rowBetween">
+            <span className={styles.reportCode}>{incidentCode}</span>
+            <span className="tinyText mutedText">{getRelativeTime(report.date)}</span>
           </div>
-          <h3 className={`font-semibold ${isCompact ? 'text-xs' : 'text-sm'} ${isExpanded ? themeClasses.accent : themeClasses.primaryText}`}>
-            {report.title}
-          </h3>
-          <div className={`flex flex-wrap items-center text-[10px] ${isCompact ? 'mt-0.5 space-x-2' : 'mt-1 space-x-3'} ${themeClasses.staticMutedText}`}>
-            <span className="inline-flex items-center space-x-1">
-              <Calendar className="w-3 h-3" />
-              <span>{formatDate(report.date)}</span>
-            </span>
-            <span className="inline-flex items-center space-x-1">
-              <MapPin className="w-3 h-3" />
-              <span>{report.location}</span>
-            </span>
+          <h3 className={styles.reportTitle}>{report.title}</h3>
+          <div className={styles.reportMeta}>
+            <span className="row"><Calendar className="iconSmall" /><span>{formatDate(report.date)}</span></span>
+            <span className="row"><MapPin className="iconSmall" /><span>{report.location}</span></span>
           </div>
         </div>
-        <button className="p-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {isExpanded
-            ? <ChevronUp className={`w-4 h-4 ${themeClasses.accent}`} />
-            : <ChevronDown className={`w-4 h-4 ${themeClasses.mutedText}`} />
-          }
-        </button>
+        <Button size="icon" variant="ghost" aria-label={isExpanded ? 'Collapse report' : 'Expand report'}>
+          {isExpanded ? <ChevronUp /> : <ChevronDown />}
+        </Button>
       </div>
 
       {isExpanded && (
-        <div className={`${isCompact ? 'mt-2 pl-0' : 'mt-3 pl-1'}`}>
-          <div className="flex items-center space-x-3 flex-wrap">
-            <div className={`px-2 py-0.5 rounded-md text-xs flex items-center border ${severityClasses}`}>
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              {report.severity} Severity
-            </div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">
-              {report.audios.length} audio file{report.audios.length !== 1 ? 's' : ''}
-            </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              Active
-            </span>
-            {/* Edit Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering the parent onClick
-                setSelectedIncident(report);
-                setIsUpdateModalOpen(true);
-              }}
-              className={`p-2 rounded-full ${themeClasses.secondaryBtn} shadow-sm hover:shadow transition-shadow`}
-              title="Edit Incident"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            {/* Delete Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering the parent onClick
-                deleteIncident(report.id);
-              }}
-              disabled={deleteLoading}
-              className={`p-2 rounded-full ${deleteLoading ? 'bg-red-400' : 'bg-red-600'} hover:bg-red-700 text-white shadow hover:shadow-lg transition-shadow`}
-              title="Delete Incident"
-            >
-              {deleteLoading ? (
-                <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <Trash2 className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-          <button
-            type="button"
-            className={`${isCompact ? 'mt-2 text-[10px] px-2 py-1' : 'mt-3 text-[11px] px-3 py-1.5'} font-bold rounded-lg ${isDarkMode ? 'bg-blue-500/15 text-blue-300 hover:bg-blue-500/25' : 'bg-blue-50 text-[#003178] hover:bg-blue-100'}`}
+        <div className={styles.expandedActions}>
+          <span className={`pill ${severityClasses}`}><AlertTriangle className="iconSmall" />{report.severity} Severity</span>
+          <span className="pill">{report.audios.length} audio file{report.audios.length !== 1 ? 's' : ''}</span>
+          <span className="pill pillAccent">Active</span>
+          {/* Edit Button */}
+          <Button
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the parent onClick
+              setSelectedIncident(report);
+              setIsUpdateModalOpen(true);
+            }}
+            size="icon"
+            variant="ghost"
+            title="Edit Incident"
+            aria-label="Edit incident"
           >
-            Click to view details
-          </button>
+            <Edit />
+          </Button>
+          {/* Delete Button */}
+          <Button
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the parent onClick
+              deleteIncident(report.id);
+            }}
+            disabled={deleteLoading}
+            size="icon"
+            variant="danger"
+            title="Delete Incident"
+            aria-label="Delete incident"
+          >
+            {deleteLoading ? <span className="spinner spinnerSmall" /> : <Trash2 />}
+          </Button>
+          <span className="tinyText mutedText">Click to view details</span>
         </div>
       )}
     </div>
@@ -241,14 +163,13 @@ const ReportListItem = ({
 /**
  * UPDATE INCIDENT MODAL
  */
+// TO-DO Check with Mark if this need to be implemented or removed
 const UpdateIncidentModal = ({ 
   isOpen, 
   onClose, 
   incident, 
   onUpdate, 
-  themeClasses, 
   formatDate,
-  isDarkMode 
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -357,215 +278,127 @@ const UpdateIncidentModal = ({
 
   
 
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-  <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] transition-opacity duration-300 ease-out"
-      role="dialog"
+    <dialog
+      ref={dialogRef}
+      className={modalStyles.dialog}
       aria-labelledby="modal-title"
-      aria-modal="true"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+      // Add focus:outline-none to prevent default focus ring since we handle it
+      // biome-ignore lint/a11y/noAutofocus: Autofocus is used here to trap focus in the modal
+      autoFocus
     >
-      <div
-        className={`rounded-xl p-8 w-full max-w-lg mx-4 ${
-          isDarkMode ? 'bg-gray-900' : 'bg-white'
-        } shadow-2xl transform transition-all duration-300 ease-out scale-100 hover:scale-100 focus:scale-100`}
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={-1}
-        // Add focus:outline-none to prevent default focus ring since we handle it
-        // biome-ignore lint/a11y/noAutofocus: Autofocus is used here to trap focus in the modal
-        autoFocus
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2
-            id="modal-title"
-            className={`text-2xl font-semibold ${
-              isDarkMode ? 'text-gray-100' : 'text-gray-900'
-            } tracking-tight`}
-          >
-            Update Incident
-          </h2>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-full ${
-              isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-            } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-            aria-label="Close modal"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+      <div className={modalStyles.header}>
+        <h2 id="modal-title" className={modalStyles.title}>Update Incident</h2>
+        <Button onClick={onClose} size="icon" variant="ghost" aria-label="Close modal">
+          <span className="material-symbols-outlined">close</span>
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className={`${formStyles.form} ${modalStyles.body}`}>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Incident Name <span aria-hidden="true">*</span></label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className={formStyles.input}
+            required
+            aria-required="true"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label
-              className={`block text-sm font-medium ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              } mb-2`}
-            >
-              Incident Name <span className="text-red-500">*</span>
-            </label>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Description</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className={formStyles.textarea}
+            rows={4}
+          />
+        </div>
+
+        <div className="gridTwo">
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>Start Time <span aria-hidden="true">*</span></label>
             <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full p-3 rounded-lg border ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-              } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+              type="datetime-local"
+              value={formData.startTime}
+              step="1"
+              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+              className={formStyles.input}
               required
               aria-required="true"
             />
           </div>
 
-          <div>
-            <label
-              className={`block text-sm font-medium ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              } mb-2`}
-            >
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className={`w-full p-3 rounded-lg border ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-              } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
-              rows={4}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label
-                className={`block text-sm font-medium ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                } mb-2`}
-              >
-                Start Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.startTime}
-                step="1"
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                className={`w-full p-3 rounded-lg border ${
-                  isDarkMode
-                    ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                    : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                  } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
-                required
-                aria-required="true"
-              />
-            </div>
-
-            <div>
-              <label
-                className={`block text-sm font-medium ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                } mb-2`}
-              >
-                End Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.endTime}
-                step="1"
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                className={`w-full p-3 rounded-lg border ${
-                  isDarkMode
-                    ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                    : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                  } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
-                required
-                aria-required="true"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              className={`block text-sm font-medium ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              } mb-2`}
-            >
-              Severity <span className="text-red-500">*</span>
-              <span
-                className="ml-2 text-xs text-gray-500 cursor-help"
-                title="Low: Minor impact, Medium: Moderate impact, High: Critical impact"
-              >
-                (?)
-              </span>
-            </label>
-            <select
-              value={formData.severity}
-              onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-              className={`w-full p-3 rounded-lg border ${
-                isDarkMode
-                  ? 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500'
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-              } transition-all duration-200 focus:ring-2 focus:ring-offset-2`}
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>End Time <span aria-hidden="true">*</span></label>
+            <input
+              type="datetime-local"
+              value={formData.endTime}
+              step="1"
+              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+              className={formStyles.input}
               required
               aria-required="true"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+            />
           </div>
+        </div>
 
-          <div className="mt-8 flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className={`px-5 py-2.5 rounded-lg ${
-                isDarkMode
-                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500`}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className={`px-5 py-2.5 rounded-lg ${
-                isDarkMode
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              } transition-colors duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
-              disabled={formData.name === '' || formData.startTime === '' || formData.endTime === '' || formData.severity === ''}
-            >
-              Update
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>
+            Severity <span aria-hidden="true">*</span>
+            <span className="tinyText mutedText" title="Low: Minor impact, Medium: Moderate impact, High: Critical impact"> (?)</span>
+          </label>
+          <select
+            value={formData.severity}
+            onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+            className={formStyles.select}
+            required
+            aria-required="true"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        <div className={modalStyles.actions}>
+          <Button type="button" onClick={onClose}>Cancel</Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={formData.name === '' || formData.startTime === '' || formData.endTime === '' || formData.severity === ''}
+          >
+            Update
+          </Button>
+        </div>
+      </form>
+    </dialog>
   );
+
 };
 
 /**
  * MAIN INCIDENT REPORTS UI
  */
 const IncidentReportsUI = ({ 
-  isDarkMode = false,
   densityMode = 'comfortable',
   timeFormat = "24h",
   isUpdateModalOpen,
@@ -592,41 +425,6 @@ const IncidentReportsUI = ({
   const [settingsTimezone, setSettingsTimezone] = useState(null);
   const [channelsById, setChannelsById] = useState({});
   const isCompact = densityMode === 'compact';
-
-  // THEME CLASSES
-  const themeClasses = {
-    mainBg: isDarkMode ? 'bg-slate-950' : 'bg-slate-50',
-    contentBg: isDarkMode ? 'bg-slate-900' : 'bg-white',
-    header: isDarkMode ? 'bg-slate-900' : 'bg-white',
-    sidebarBg: isDarkMode ? 'bg-slate-950' : 'bg-slate-50',
-    primaryText: isDarkMode ? 'text-slate-100' : 'text-slate-900',
-    secondaryText: isDarkMode ? 'text-slate-300' : 'text-slate-700',
-    mutedText: isDarkMode ? 'text-slate-400' : 'text-slate-500',
-    border: isDarkMode ? 'border-slate-800' : 'border-slate-200',
-    cardHover: isDarkMode ? 'hover:bg-slate-800/60' : 'hover:bg-slate-100',
-    input: isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300',
-    inputFocus: isDarkMode
-      ? 'focus:ring-blue-500 focus:border-blue-500'
-      : 'focus:ring-blue-500 focus:border-blue-500',
-    primaryBtn: 'bg-blue-600 hover:bg-blue-700 text-white',
-    secondaryBtn: isDarkMode
-      ? 'bg-slate-800 hover:bg-slate-700 text-white'
-      : 'bg-slate-100 hover:bg-slate-200 text-slate-700',
-    accent: isDarkMode ? 'text-blue-300' : 'text-[#003178]',
-    accentBg: isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50',
-    selectedItem: isDarkMode
-      ? 'bg-blue-900/50 ring-1 ring-blue-500/50'
-      : 'bg-blue-50 ring-1 ring-blue-200',
-    // Additional static colors for better dark mode visibility
-    staticText: isDarkMode ? 'text-gray-100' : 'text-gray-800',
-    staticSecondaryText: isDarkMode ? 'text-gray-300' : 'text-gray-600',
-    staticMutedText: isDarkMode ? 'text-gray-400' : 'text-gray-500',
-    staticAccent: isDarkMode ? 'text-blue-400' : 'text-blue-600',
-    staticIcon: isDarkMode ? 'text-blue-400' : 'text-blue-500',
-    staticSuccess: isDarkMode ? 'text-green-400' : 'text-green-600',
-    staticWarning: isDarkMode ? 'text-amber-400' : 'text-amber-600',
-    staticError: isDarkMode ? 'text-red-400' : 'text-red-600',
-  };
 
   // PARSE / FORMAT DATES
   const parseCustomDate = (dateString) => {
@@ -1054,9 +852,11 @@ const IncidentReportsUI = ({
   // LOADING STATE
   if (loading) {
     return (
-      <div className={`flex flex-col items-center justify-center h-screen ${themeClasses.mainBg} ${themeClasses.staticText}`}>
-        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4"></div>
-        <p className={`text-lg ${themeClasses.staticText}`}>Loading incident reports...</p>
+      <div className="screenCenter">
+        <div className="stack centeredContent">
+          <span className="spinner spinnerLarge" aria-label="Loading incident reports" />
+          <p>Loading incident reports...</p>
+        </div>
       </div>
     );
   }
@@ -1064,71 +864,57 @@ const IncidentReportsUI = ({
   // ERROR STATE
   if (error && reports.length === 0) {
     return (
-      <div className={`flex flex-col items-center justify-center h-screen ${themeClasses.mainBg} ${themeClasses.staticText}`}>
-        <div className={`p-6 rounded-lg ${themeClasses.contentBg} max-w-md text-center shadow-lg`}>
-          <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-          <h2 className={`text-xl font-bold mb-2 ${themeClasses.staticText}`}>Unable to Load Reports</h2>
-          <p className={`${themeClasses.staticSecondaryText} mb-4`}>{error}</p>
-          <button
-            className={`px-4 py-2 rounded ${themeClasses.primaryBtn}`}
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
+      <div className="screenCenter">
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+          <AlertTriangle className={noticeStyles.icon} />
+          <div className={noticeStyles.body}>
+            <p><strong>Unable to Load Reports</strong></p>
+            <p>{error}</p>
+            <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col h-screen ${themeClasses.mainBg} overflow-hidden`}>
-      <div className="flex flex-1 overflow-hidden relative">
+    <div className={`${styles.root} ${isCompact ? styles.compact : ''}`}>
+      <div className={styles.workspace}>
         {/* SIDEBAR */}
-        <aside
-          className={`
-            absolute lg:relative lg:flex w-full ${isCompact ? 'lg:w-[30%]' : 'lg:w-4/12'} border-r ${themeClasses.border} ${themeClasses.sidebarBg} z-10 h-full flex-col 
-            transform transition-transform duration-300
-            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          `}
-        >
-          <div className={`${isCompact ? 'p-2.5' : 'p-4'} sticky top-0 z-10 ${themeClasses.sidebarBg} border-b ${themeClasses.border}`}>
-            <div className="relative">
-              <Search className={`absolute left-3 ${isCompact ? 'top-2.5' : 'top-3'} w-4 h-4 ${themeClasses.mutedText}`} />
+        <aside className={`${styles.sidebar} ${isMobileMenuOpen ? styles.sidebarOpen : ''}`}>
+          <div className={styles.sidebarHeader}>
+            <div className={formStyles.inputFrame}>
+              <Search className={formStyles.inputIcon} />
               <input
                 type="text"
                 placeholder="Filter by unit or ID..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className={`
-                  w-full pl-10 pr-4 ${isCompact ? 'py-1.5 text-xs' : 'py-2 text-sm'} rounded-lg ${themeClasses.input} 
-                  ${themeClasses.inputFocus} ${themeClasses.primaryText}
-                `}
+                className={formStyles.iconInput}
               />
             </div>
-            <div className={`flex justify-between items-center ${isCompact ? 'mt-2.5' : 'mt-4'}`}>
-              <h2 className={`${isCompact ? 'text-sm' : 'text-lg'} font-bold ${themeClasses.staticText}`}>Incident Reports</h2>
-              <span className={`text-xs px-2 py-1 rounded-md ${themeClasses.accentBg} ${themeClasses.staticText}`}>
-                {filteredReports.length}
-              </span>
+            <div className="rowBetween">
+              <h2 className={cardStyles.title}>Incident Reports</h2>
+              <span className="pill pillAccent">{filteredReports.length}</span>
             </div>
           </div>
 
-          <div className="overflow-y-auto flex-1 custom-scrollbar">
+          <div className={styles.sidebarList}>
             {filteredReports.length === 0 ? (
-              <div className={`flex flex-col items-center justify-center h-full ${themeClasses.staticMutedText}`}>
-                <File className="w-12 h-12 mb-2 opacity-50" />
-                <p className={`text-sm ${themeClasses.staticMutedText}`}>No matching reports found</p>
+              <div className={styles.empty}>
+                <div>
+                  <File className="iconLarge" />
+                  <p>No matching reports found</p>
+                </div>
               </div>
             ) : (
-              <div className={`${isCompact ? 'space-y-2 p-2' : 'space-y-3 p-3'}`}>
+              <div className="stackCompact">
                 {filteredReports.map(r => (
                   <ReportListItem
                     key={r.id}
                     report={r}
                     isExpanded={expandedReportId === r.id}
                     onClick={toggleReport}
-                    themeClasses={themeClasses}
-                    isDarkMode={isDarkMode}
                     isCompact={isCompact}
                     formatDate={formatDate}
                     getRelativeTime={getRelativeTime}
@@ -1144,123 +930,60 @@ const IncidentReportsUI = ({
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className={`w-full ${isCompact ? 'lg:w-[70%]' : 'lg:w-8/12'} flex flex-col h-full ${themeClasses.contentBg}`}>
+        <main className={styles.main}>
           {selectedIncident ? (
             <Fragment>
               {/* HEADER */}
-              <header className={`${isCompact ? 'p-3.5' : 'p-6'} border-b ${themeClasses.border} ${themeClasses.contentBg}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h2 className={`${isCompact ? 'text-lg' : 'text-2xl'} font-bold ${themeClasses.staticText}`}>
-                        {selectedIncident.title}
-                      </h2>
-                      <span className={`text-[10px] uppercase font-black tracking-wider px-2 py-1 rounded ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-[#003178]'}`}>
-                        Live Ledger
-                      </span>
+              <header className={styles.mainHeader}>
+                <div className="rowBetweenStart">
+                  <div className="grow">
+                    <div className="rowWrap">
+                      <h2 className="pageTitle">{selectedIncident.title}</h2>
+                      <span className="pill pillAccent">Live Ledger</span>
                     </div>
-                    <div className={`flex flex-wrap items-center ${isCompact ? 'space-x-3 mt-1 text-xs' : 'space-x-6 mt-2 text-sm'} ${themeClasses.staticSecondaryText}`}>
-                      <span>Created on {formatDate(selectedIncident.date)}</span>
-                    </div>
+                    <p className="smallText mutedText">Created on {formatDate(selectedIncident.date)}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => exportReportAsTxt(selectedIncident)}
-                      className={`
-                        ${isCompact ? 'px-2.5 py-1.5' : 'px-3 py-2'} rounded-xl ${themeClasses.secondaryBtn}
-                        border ${themeClasses.border} transition-shadow
-                      `}
-                      title="Export plain text"
-                    >
-                      <span className={`inline-flex items-center gap-2 ${isCompact ? 'text-xs' : 'text-sm'} font-semibold`}>
-                        <FileText className="w-4 h-4" />
-                        TXT
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => exportReportAsPdf(selectedIncident)}
-                      disabled={exportingPdf}
-                      className={`
-                        ${isCompact ? 'px-2.5 py-1.5' : 'px-3 py-2'} rounded-xl ${themeClasses.secondaryBtn}
-                        border ${isDarkMode ? 'border-blue-500/40' : 'border-[#003178]/35'} transition-shadow
-                        ${isDarkMode ? 'ring-1 ring-blue-500/20' : ''}
-                        ${exportingPdf ? 'opacity-50 cursor-not-allowed' : ''}
-                      `}
-                      title="Export styled PDF for records"
-                    >
-                      <span className={`inline-flex items-center gap-2 ${isCompact ? 'text-xs' : 'text-sm'} font-semibold`}>
-                        <FileDown className="w-4 h-4" />
-                        Export PDF
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => exportReportAsZip(selectedIncident)}
-                      disabled={exporting}
-                      className={`
-                        ${isCompact ? 'px-2.5 py-1.5' : 'px-3 py-2'} rounded-xl ${themeClasses.primaryBtn} 
-                        ${exporting ? 'opacity-50 cursor-not-allowed' : ''}
-                        border border-transparent transition-shadow
-                      `}
-                      title="ZIP with text and audio files"
-                    >
-                      <span className={`inline-flex items-center gap-2 ${isCompact ? 'text-xs' : 'text-sm'} font-semibold`}>
-                        <Download className="w-4 h-4" />
-                        Download
-                      </span>
-                    </button>
+                  <div className="rowWrap noShrink">
+                    <Button size={isCompact ? 'small' : 'medium'} onClick={() => exportReportAsTxt(selectedIncident)} title="Export plain text">
+                      <FileText /> TXT
+                    </Button>
+                    <Button size={isCompact ? 'small' : 'medium'} onClick={() => exportReportAsPdf(selectedIncident)} disabled={exportingPdf} title="Export styled PDF for records">
+                      <FileDown /> Export PDF
+                    </Button>
+                    <Button size={isCompact ? 'small' : 'medium'} variant="primary" onClick={() => exportReportAsZip(selectedIncident)} disabled={exporting} title="ZIP with text and audio files">
+                      <Download /> Download
+                    </Button>
                   </div>
                 </div>
-                <div className={`${isCompact ? 'mt-3 p-2.5 text-xs gap-2' : 'mt-6 p-4 text-sm gap-4'} grid grid-cols-2 md:grid-cols-4 ${themeClasses.staticSecondaryText} ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'} rounded-xl border ${themeClasses.border}`}>
-                  <div>
-                    <span className={`block ${isCompact ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-wider ${themeClasses.staticMutedText}`}>Start Time</span>
-                    <span className="font-medium">{formatDate(selectedIncident.startTime)}</span>
-                  </div>
-                  <div>
-                    <span className={`block ${isCompact ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-wider ${themeClasses.staticMutedText}`}>End Time</span>
-                    <span className="font-medium">{formatDate(selectedIncident.endTime)}</span>
-                  </div>
-                  <div>
-                    <span className={`block ${isCompact ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-wider ${themeClasses.staticMutedText}`}>Message Count</span>
-                    <span className="font-medium">{selectedIncident.audios.length} transmissions</span>
-                  </div>
-                  <div>
-                    <span className={`block ${isCompact ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-wider ${themeClasses.staticMutedText}`}>Identifier</span>
-                    <span className={`font-medium ${themeClasses.accent}`}>RE-{String(selectedIncident.id).padStart(5, '0')}</span>
-                  </div>
+
+                <div className={styles.summaryGrid}>
+                  <div><span className={styles.summaryLabel}>Start Time</span><span>{formatDate(selectedIncident.startTime)}</span></div>
+                  <div><span className={styles.summaryLabel}>End Time</span><span>{formatDate(selectedIncident.endTime)}</span></div>
+                  <div><span className={styles.summaryLabel}>Message Count</span><span>{selectedIncident.audios.length} transmissions</span></div>
+                  <div><span className={styles.summaryLabel}>Identifier</span><span className="pill pillAccent">RE-{String(selectedIncident.id).padStart(5, '0')}</span></div>
                 </div>
-                <div className={`${isCompact ? 'mt-3 p-2.5' : 'mt-6 p-4'} ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} rounded-xl border ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} shadow-sm`}>
-                  <h3 className={`font-semibold uppercase ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-2'} tracking-wider ${themeClasses.staticMutedText}`}>Incident Description</h3>
-                  <p className={`${themeClasses.staticSecondaryText}`}>
-                    {selectedIncident.description || 'No description available.'}
-                  </p>
+
+                <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                  <p className="eyebrow">Incident Description</p>
+                  <p className={cardStyles.description}>{selectedIncident.description || 'No description available.'}</p>
                 </div>
               </header>
 
               {/* TABS & CONTENT */}
-              <div className={`flex-1 flex flex-col overflow-hidden ${isCompact ? 'mt-2 mx-3 mb-3' : 'mt-4 mx-6 mb-6'} ${isDarkMode ? 'bg-slate-900' : 'bg-white'} rounded-2xl border ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} shadow-sm`}>
+              <div className={styles.contentCard}>
                 <Tabs
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
-                  themeClasses={themeClasses}
-                  isDarkMode={isDarkMode}
                   isCompact={isCompact}
                 />
-                <div className={`flex-1 overflow-y-auto ${isCompact ? 'p-3 space-y-3' : 'p-6 space-y-6'} ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                <div className={styles.scrollContent}>
                   {activeTab === 'transcription' && (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className={`${isCompact ? 'text-sm' : 'text-lg'} font-semibold ${themeClasses.staticText}`}>
-                          Transcriptions
-                        </h3>
-                        <div className={`flex items-center space-x-1 ${themeClasses.staticSuccess} text-sm font-medium`}>
-                          <span className={`${isDarkMode ? 'bg-red-400' : 'bg-[#720009]'} w-2 h-2 rounded-full`}></span>
-                          <span>Verified</span>
-                        </div>
+                    <div className="stack">
+                      <div className="rowBetween">
+                        <h3 className={cardStyles.title}>Transcriptions</h3>
+                        <span className="pill pillSuccess">Verified</span>
                       </div>
-                      <div className={isCompact ? 'space-y-2' : 'space-y-4'}>
+                      <div className="stack">
                         {selectedIncident.audios.map(audio => (
                           <AudioPlayer
                             key={audio.id}
@@ -1269,9 +992,7 @@ const IncidentReportsUI = ({
                             source={getDisplaySource(audio.source)}
                             transcription={audio.transcription}
                             recordedAt={audio.recordedAt}
-                            themeClasses={themeClasses}
                             formatDate={formatDate}
-                            isDarkMode={isDarkMode}
                             isCompact={isCompact}
                           />
                         ))}
@@ -1280,58 +1001,13 @@ const IncidentReportsUI = ({
                   )}
 
                   {activeTab === 'metadata' && (
-                    <div>
-                      <h3 className={`${isCompact ? 'text-sm mb-2' : 'text-lg mb-4'} font-semibold ${themeClasses.staticText}`}>
-                        Incident Metadata
-                      </h3>
-                      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 ${isCompact ? 'gap-3' : 'gap-6'}`}>
-                        <div className={`${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} rounded-xl p-4 flex items-center space-x-3 shadow-sm border`}>
-                          <MapPin className={`w-5 h-5 ${themeClasses.staticIcon}`} />
-                          <div>
-                            <div className={`text-xs ${themeClasses.staticMutedText}`}>
-                              Channels Involved
-                            </div>
-                            <div className={`text-sm ${themeClasses.staticText}`}>
-                              {getChannelsInvolvedLabel(selectedIncident)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} rounded-xl p-4 flex items-center space-x-3 shadow-sm border`}>
-                          <AlertTriangle className={`w-5 h-5 ${themeClasses.staticError}`} />
-                          <div>
-                            <div className={`text-xs ${themeClasses.staticMutedText}`}>
-                              Severity
-                            </div>
-                            <div className={`text-sm ${themeClasses.staticText}`}>
-                              {selectedIncident.severity}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} rounded-xl p-4 flex items-center space-x-3 shadow-sm border`}>
-                          <Tag className={`w-5 h-5 ${themeClasses.staticIcon}`} />
-                          <div>
-                            <div className={`text-xs ${themeClasses.staticMutedText}`}>
-                              Incident ID
-                            </div>
-                            <div className={`text-sm ${themeClasses.staticText}`}>
-                              {selectedIncident.id}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} rounded-xl p-4 flex items-center space-x-3 shadow-sm border`}>
-                          <Clock className={`w-5 h-5 ${themeClasses.staticIcon}`} />
-                          <div>
-                            <div className={`text-xs ${themeClasses.staticMutedText}`}>
-                              Created At
-                            </div>
-                            <div className={`text-sm ${themeClasses.staticText}`}>
-                              {formatDate(selectedIncident.date)}
-                            </div>
-                          </div>
-                        </div>
+                    <div className="stack">
+                      <h3 className={cardStyles.title}>Incident Metadata</h3>
+                      <div className="gridTwo">
+                        <div className={styles.metadataCard}><MapPin className="iconMedium" /><div><div className="tinyText mutedText">Channels Involved</div><div className="smallText">{getChannelsInvolvedLabel(selectedIncident)}</div></div></div>
+                        <div className={styles.metadataCard}><AlertTriangle className="iconMedium" /><div><div className="tinyText mutedText">Severity</div><div className="smallText">{selectedIncident.severity}</div></div></div>
+                        <div className={styles.metadataCard}><Tag className="iconMedium" /><div><div className="tinyText mutedText">Incident ID</div><div className="smallText">{selectedIncident.id}</div></div></div>
+                        <div className={styles.metadataCard}><Clock className="iconMedium" /><div><div className="tinyText mutedText">Created At</div><div className="smallText">{formatDate(selectedIncident.date)}</div></div></div>
                       </div>
                     </div>
                   )}
@@ -1339,55 +1015,28 @@ const IncidentReportsUI = ({
               </div>
             </Fragment>
           ) : (
-            <div className={`flex flex-col items-center justify-center h-full ${themeClasses.staticMutedText}`}>
-              <div className={`p-8 rounded-2xl ${isDarkMode ? 'bg-slate-800' : 'bg-blue-50'} mb-4 shadow-lg`}>
-                <Radio className={`w-16 h-16 ${themeClasses.staticAccent} opacity-60`} />
+            <div className={styles.empty}>
+              <div>
+                <Radio className="iconLarge" />
+                <h3>No Incident Selected</h3>
+                <p>Select an incident report from the list to view details.</p>
               </div>
-              <h3 className={`text-xl font-medium ${themeClasses.staticSecondaryText} mb-2`}>
-                No Incident Selected
-              </h3>
-              <p className={`text-sm max-w-md text-center ${themeClasses.staticMutedText}`}>
-                Select an incident report from the list to view details.
-              </p>
             </div>
           )}
         </main>
       </div>
 
       {/* MOBILE MENU TOGGLE */}
-      <div className="lg:hidden fixed bottom-6 right-6 z-20">
-        <button
-          className="bg-blue-600 text-white p-3 rounded-full shadow-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onClick={() => setIsMobileMenuOpen(prev => !prev)}
-        >
-          <List className="w-6 h-6" />
-        </button>
+      <div className={styles.floatingToggle}>
+        <Button size="icon" variant="primary" onClick={() => setIsMobileMenuOpen(prev => !prev)} aria-label="Toggle incident report list">
+          <List />
+        </Button>
       </div>
 
       {/* GLOBAL SCROLLBAR STYLES */}
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: ${isDarkMode ? 'rgba(15,23,42,0.1)' : 'rgba(243,244,246,0.7)'};
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: ${isDarkMode ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)'};
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: ${isDarkMode ? 'rgba(99,102,241,0.5)' : 'rgba(99,102,241,0.4)'};
-        }
-        @media (max-width: 768px) {
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 3px;
-          }
-        }
-      `}</style>
-
     </div>
   );
+
 };
 
 export default IncidentReportsUI;

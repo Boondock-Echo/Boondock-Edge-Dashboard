@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/apiClient';
 import { Activity, Calendar, RefreshCw, AlertCircle, Cpu, HardDrive, MemoryStick } from 'lucide-react';
 
-const Health = ({ isDarkMode }) => {
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import tableStyles from '../ui/Table.module.css';
+
+const Health = () => {
   const [healthStats, setHealthStats] = useState([]);
   const [systemHealth, setSystemHealth] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -170,27 +176,11 @@ const Health = ({ isDarkMode }) => {
     }
   };
 
-  const containerClasses = isDarkMode
-    ? 'bg-gray-800/50 border-gray-700'
-    : 'bg-gray-50 border-gray-200';
-
-  const cardClasses = isDarkMode
-    ? 'bg-gray-800 border-gray-700'
-    : 'bg-white border-gray-200';
-
-  const textClasses = isDarkMode
-    ? 'text-gray-300'
-    : 'text-gray-700';
-
-  const labelClasses = isDarkMode
-    ? 'text-gray-400'
-    : 'text-gray-600';
-
   if (loading && healthStats.length === 0) {
     return (
-      <div className={`rounded-lg border p-6 ${containerClasses}`}>
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+      <div className={cardStyles.card}>
+        <div className="row">
+          <RefreshCw className="iconLarge spin" />
         </div>
       </div>
     );
@@ -199,42 +189,34 @@ const Health = ({ isDarkMode }) => {
   return (
     <>
       {/* Recorder Health Section */}
-      <div className={`rounded-lg border p-4 md:p-6 ${containerClasses}`}>
+      <div className={`${cardStyles.card} ${cardStyles.compact}`}>
         {/* Header with date picker and refresh */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-            <Activity className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      <div className="rowBetween">
+        <div className="row">
+          <div className={cardStyles.card}>
+            <Activity className="iconMedium" />
           </div>
           <div>
-            <h3 className={`text-lg font-semibold ${textClasses}`}>Recorder Health</h3>
-            <p className={`text-sm ${labelClasses}`}>Monitor recording device health and activity</p>
+            <h3 className={cardStyles.title}>Recorder Health</h3>
+            <p className="mutedText smallText">Monitor recording device health and activity</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className={`w-4 h-4 ${labelClasses}`} />
+        <div className="row">
+          <div className="row">
+            <Calendar className="iconSmall" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className={`px-3 py-2 rounded-lg border text-sm ${
-                isDarkMode
-                  ? 'bg-gray-700 border-gray-600 text-gray-300'
-                  : 'bg-white border-gray-300 text-gray-700'
-              }`}
+              className={formStyles.input}
             />
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-              isDarkMode
-                ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-            } ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`iconSmall ${refreshing ? 'spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -242,59 +224,58 @@ const Health = ({ isDarkMode }) => {
 
       {/* Device Health Table */}
       <div 
-        className={`mt-4 rounded-lg border p-4 md:p-6 ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'border-gray-200'}`}
-        style={!isDarkMode ? { backgroundColor: 'var(--toastify-color-light)' } : {}}
+        className={`${cardStyles.card} ${cardStyles.compact}`}
       >
         {healthStats.length === 0 ? (
-          <div className={`rounded-lg border p-12 text-center ${cardClasses}`}>
-            <Activity className={`w-12 h-12 mx-auto mb-4 ${labelClasses}`} />
-            <p className={textClasses}>No health data available for the selected date</p>
+          <div className={cardStyles.card}>
+            <Activity className="iconLarge" />
+            <p >No health data available for the selected date</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className={tableStyles.scroll}>
+            <table className={tableStyles.table}>
               <thead>
-                <tr className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Device</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Events</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Uploads</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Errors</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Connection Loss</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Uptime</th>
-                  <th className={`text-left py-3 px-4 font-semibold ${labelClasses}`}>Last Activity</th>
+                <tr className={tableStyles.row}>
+                  <th className={tableStyles.header}>Device</th>
+                  <th className={tableStyles.header}>Events</th>
+                  <th className={tableStyles.header}>Uploads</th>
+                  <th className={tableStyles.header}>Errors</th>
+                  <th className={tableStyles.header}>Connection Loss</th>
+                  <th className={tableStyles.header}>Uptime</th>
+                  <th className={tableStyles.header}>Last Activity</th>
                 </tr>
               </thead>
               <tbody>
                 {healthStats.map((device, index) => (
                   <tr
                     key={device.mac_address || index}
-                    className={`border-b ${isDarkMode ? 'border-gray-700 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-gray-50'}`}
+                    className={tableStyles.rowInteractive}
                   >
-                    <td className={`py-3 px-4 ${textClasses}`}>
-                      <div className="flex flex-col">
-                        <div className="font-medium">
+                    <td className={tableStyles.cell}>
+                      <div >
+                        <div >
                           {(() => {
                             const normalizedMac = device.mac_address ? device.mac_address.toUpperCase().replace(/[:-]/g, '') : '';
                             return channelMap[normalizedMac] || `Device ${device.mac_address}`;
                           })()}
                         </div>
-                        <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <div >
                           {device.mac_address}
                         </div>
                       </div>
                     </td>
-                    <td className={`py-3 px-4 ${textClasses}`}>{device.event_count || 0}</td>
-                    <td className={`py-3 px-4 ${textClasses}`}>{device.file_upload_count || 0}</td>
-                    <td className={`py-3 px-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                    <td className={tableStyles.cell}>{device.event_count || 0}</td>
+                    <td className={tableStyles.cell}>{device.file_upload_count || 0}</td>
+                    <td className={tableStyles.cell}>
                       {device.error_count || 0}
                     </td>
-                    <td className={`py-3 px-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                    <td className={tableStyles.cell}>
                       {device.connection_loss_count || 0}
                     </td>
-                    <td className={`py-3 px-4 ${textClasses} font-mono`}>
+                    <td className={tableStyles.cell}>
                       {device.uptime_formatted || '00:00:00'}
                     </td>
-                    <td className={`py-3 px-4 ${textClasses} text-xs`}>
+                    <td className={tableStyles.cellMuted}>
                       {formatDateTime(device.last_activity)}
                     </td>
                   </tr>
@@ -307,60 +288,60 @@ const Health = ({ isDarkMode }) => {
     </div>
 
     {/* System Health Section */}
-    <div className={`mt-8 rounded-lg border p-4 md:p-6 ${containerClasses}`}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-            <Cpu className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+    <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+        <div className="row">
+          <div className={cardStyles.card}>
+            <Cpu className="iconMedium" />
           </div>
           <div>
-            <h3 className={`text-lg font-semibold ${textClasses}`}>System Health</h3>
-            <p className={`text-sm ${labelClasses}`}>CPU, Memory, and Disk Usage</p>
+            <h3 className={cardStyles.title}>System Health</h3>
+            <p className="mutedText smallText">CPU, Memory, and Disk Usage</p>
           </div>
         </div>
 
         {systemLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+          <div className="row">
+            <RefreshCw className="iconLarge spin" />
           </div>
         ) : !systemHealth || (!systemHealth.cpu && !systemHealth.memory && !systemHealth.disk) ? (
-          <div className={`rounded-lg border p-12 text-center ${cardClasses}`}>
-            <Cpu className={`w-12 h-12 mx-auto mb-4 ${labelClasses}`} />
-            <p className={textClasses}>No system health data available for the selected date</p>
-            <p className={`text-xs mt-2 ${labelClasses}`}>
+          <div className={cardStyles.card}>
+            <Cpu className="iconLarge" />
+            <p >No system health data available for the selected date</p>
+            <p className="mutedText tinyText">
               System health monitoring collects data every 5 seconds. Data will appear after the first collection cycle.
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="stack stackLarge">
             {/* CPU Metrics */}
             {systemHealth.cpu && (
-              <div className={`rounded-lg border p-4 ${cardClasses}`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Cpu className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <h4 className={`font-semibold ${textClasses}`}>CPU</h4>
+              <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                <div className="row">
+                  <Cpu className="iconMedium" />
+                  <h4 className={cardStyles.title}>CPU</h4>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="gridTwo">
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Current</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Current</div>
+                    <div >
                       {systemHealth.cpu.percent?.toFixed(1) || 0}%
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Peak</div>
-                    <div className={`text-xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                    <div >Peak</div>
+                    <div >
                       {systemHealth.cpu.peak_percent?.toFixed(1) || 0}%
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Average</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Average</div>
+                    <div >
                       {systemHealth.cpu.avg_percent?.toFixed(1) || 0}%
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Cores</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Cores</div>
+                    <div >
                       {systemHealth.cpu.count || 0}
                     </div>
                   </div>
@@ -370,49 +351,49 @@ const Health = ({ isDarkMode }) => {
 
             {/* Memory Metrics */}
             {systemHealth.memory && (
-              <div className={`rounded-lg border p-4 ${cardClasses}`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <MemoryStick className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                  <h4 className={`font-semibold ${textClasses}`}>Memory (RAM)</h4>
+              <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                <div className="row">
+                  <MemoryStick className="iconMedium" />
+                  <h4 className={cardStyles.title}>Memory (RAM)</h4>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="gridTwo">
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Current Usage</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Current Usage</div>
+                    <div >
                       {systemHealth.memory.percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.memory.used_bytes || 0)} / {formatBytes(systemHealth.memory.total_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Peak Usage</div>
-                    <div className={`text-xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                    <div >Peak Usage</div>
+                    <div >
                       {systemHealth.memory.peak_percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.memory.peak_used_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Average Usage</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Average Usage</div>
+                    <div >
                       {systemHealth.memory.avg_percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.memory.avg_used_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Available</div>
-                    <div className={`text-xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    <div >Available</div>
+                    <div >
                       {formatBytes(systemHealth.memory.available_bytes || 0)}
                     </div>
                   </div>
                 </div>
-                <div className={`w-full bg-gray-700 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                <div className={cardStyles.card}>
                   <div
-                    className={`h-2 rounded-full ${systemHealth.memory.percent > 80 ? 'bg-red-500' : systemHealth.memory.percent > 60 ? 'bg-orange-500' : 'bg-green-500'}`}
+                    className={`${noticeStyles.notice} ${noticeStyles.error}`}
                     style={{ width: `${Math.min(systemHealth.memory.percent || 0, 100)}%` }}
                   />
                 </div>
@@ -421,49 +402,49 @@ const Health = ({ isDarkMode }) => {
 
             {/* Disk Metrics */}
             {systemHealth.disk && (
-              <div className={`rounded-lg border p-4 ${cardClasses}`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <HardDrive className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                  <h4 className={`font-semibold ${textClasses}`}>Disk Storage</h4>
+              <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+                <div className="row">
+                  <HardDrive className="iconMedium" />
+                  <h4 className={cardStyles.title}>Disk Storage</h4>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="gridTwo">
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Current Usage</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Current Usage</div>
+                    <div >
                       {systemHealth.disk.percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.disk.used_bytes || 0)} / {formatBytes(systemHealth.disk.total_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Peak Usage</div>
-                    <div className={`text-xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                    <div >Peak Usage</div>
+                    <div >
                       {systemHealth.disk.peak_percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.disk.peak_used_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Average Usage</div>
-                    <div className={`text-xl font-bold ${textClasses}`}>
+                    <div >Average Usage</div>
+                    <div >
                       {systemHealth.disk.avg_percent?.toFixed(1) || 0}%
                     </div>
-                    <div className={`text-xs ${labelClasses}`}>
+                    <div >
                       {formatBytes(systemHealth.disk.avg_used_bytes || 0)}
                     </div>
                   </div>
                   <div>
-                    <div className={`text-sm ${labelClasses} mb-1`}>Free Space</div>
-                    <div className={`text-xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    <div >Free Space</div>
+                    <div >
                       {formatBytes(systemHealth.disk.free_bytes || 0)}
                     </div>
                   </div>
                 </div>
-                <div className={`w-full bg-gray-700 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                <div className={cardStyles.card}>
                   <div
-                    className={`h-2 rounded-full ${systemHealth.disk.percent > 90 ? 'bg-red-500' : systemHealth.disk.percent > 75 ? 'bg-orange-500' : 'bg-green-500'}`}
+                    className={`${noticeStyles.notice} ${noticeStyles.error}`}
                     style={{ width: `${Math.min(systemHealth.disk.percent || 0, 100)}%` }}
                   />
                 </div>
@@ -474,19 +455,19 @@ const Health = ({ isDarkMode }) => {
 
         {/* Additional Info */}
         {healthStats.length > 0 && (
-          <div className={`mt-6 p-4 rounded-lg border ${cardClasses}`}>
-            <div className="flex items-start gap-3">
-              <AlertCircle className={`w-5 h-5 mt-0.5 ${labelClasses}`} />
-              <div className="flex-1">
-                <p className={`text-sm ${textClasses}`}>
+          <div className={`${cardStyles.card} ${cardStyles.compact}`}>
+            <div className="row">
+              <AlertCircle className="iconMedium" />
+              <div className="grow">
+                <p className="mutedText smallText">
                   <strong>Note:</strong> Health data is updated every 5 minutes. Connection loss is detected when a device has no activity for 5 minutes or more.
                 </p>
                 {healthStats.some(d => d.device_created_at) && (
-                  <p className={`text-sm mt-2 ${labelClasses}`}>
+                  <p className="mutedText smallText">
                     Device creation times are tracked from the first connection or event.
                   </p>
                 )}
-                <p className={`text-sm mt-2 ${labelClasses}`}>
+                <p className="mutedText smallText">
                   System health metrics are collected every 5 seconds and persisted every 5 minutes. Peak values reset daily.
                 </p>
               </div>
@@ -499,4 +480,3 @@ const Health = ({ isDarkMode }) => {
 };
 
 export default Health;
-

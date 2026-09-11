@@ -1,0 +1,16 @@
+.scroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.row { border-bottom: 1px solid var(--ui-border); }
+.rowInteractive { border-bottom: 1px solid var(--ui-border); }
+.rowInteractive:hover { background: var(--ui-surface-hover); }
+
+.header,
+.cell,
+.cellMuted {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+}
+
+.header { color: var(--ui-muted); font-weight: 500; }
+.cell { color: var(--ui-text); }
+.cellMuted { color: var(--ui-muted); font-size: 0.875rem; }

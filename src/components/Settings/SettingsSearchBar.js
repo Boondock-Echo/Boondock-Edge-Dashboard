@@ -1,3 +1,6 @@
+import styles from '../ui/SettingsSearchBar.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 
 /**
@@ -138,7 +141,6 @@ function scoreMatch(query, entry) {
 }
 
 export default function SettingsSearchBar({
-  isDarkMode,
   allowedSectionIds,
   setSearchParams,
   setIsSidebarOpen,
@@ -197,48 +199,16 @@ export default function SettingsSearchBar({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const shellRing = focused || open;
-
-  const fieldWrap = isDarkMode
-    ? `border border-slate-500/95 bg-slate-900/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
-        shellRing
-          ? "border-slate-400/90 ring-2 ring-slate-400/35"
-          : "hover:border-slate-400/80"
-      }`
-    : `border border-slate-300/95 bg-white shadow-sm ${
-        shellRing
-          ? "border-slate-400 ring-2 ring-slate-400/30"
-          : "hover:border-slate-400/90"
-      }`;
-
-  const inputClass = `h-10 w-full min-w-0 rounded-full border-0 bg-transparent py-2 pl-10 pr-4 text-[13px] font-normal tracking-wide outline-none transition-colors placeholder:font-normal ${
-    isDarkMode
-      ? "text-slate-100 placeholder:text-slate-500"
-      : "text-slate-700 placeholder:text-slate-400"
-  }`;
-
-  const searchGlyph = isDarkMode ? "text-slate-500" : "text-slate-400";
-
-  const panelClass = `absolute right-0 top-[calc(100%+8px)] z-[60] max-h-[min(70vh,22rem)] w-[min(100vw-1.5rem,20rem)] overflow-hidden overflow-y-auto rounded-xl border py-1 shadow-[0_16px_48px_-12px_rgba(15,23,42,0.25)] ${
-    isDarkMode
-      ? "border-slate-700/90 bg-slate-950 text-slate-100"
-      : "border-slate-200/80 bg-white text-slate-900"
-  }`;
-
-  const rowClass = isDarkMode
-    ? "border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/80"
-    : "border-b border-slate-100 last:border-b-0 hover:bg-slate-50/90";
-
   return (
-    <div ref={rootRef} className="relative w-full min-w-[min(100%,260px)] max-w-[20rem]">
-      <div className={`relative rounded-full transition-[box-shadow,border-color] duration-200 ${fieldWrap}`}>
+    <div ref={rootRef} className={styles.root}>
+      <div className={styles.field}>
         <span
-          className={`pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 material-symbols-outlined text-[20px] leading-none ${searchGlyph}`}
+          className={`material-symbols-outlined ${styles.searchIcon}`}
           aria-hidden
         >
           search
         </span>
-        <label htmlFor="settings-jump-search" className="sr-only">
+        <label htmlFor="settings-jump-search" className={formStyles.label}>
           Search settings — find a page or tab
         </label>
         <input
@@ -265,7 +235,7 @@ export default function SettingsSearchBar({
             }
           }}
           placeholder="search settings"
-          className={inputClass}
+          className={`${formStyles.input} ${styles.input}`}
           aria-autocomplete="list"
           aria-controls="settings-jump-results"
           autoComplete="off"
@@ -273,51 +243,38 @@ export default function SettingsSearchBar({
       </div>
 
       {open && results.length > 0 ? (
-        <ul id="settings-jump-results" className={panelClass} role="listbox">
-          <li
-            className={`px-4 pb-2 pt-2 text-[11px] font-medium tracking-[0.12em] ${
-              isDarkMode ? "text-slate-500" : "text-slate-400"
-            }`}
-          >
+        <ul id="settings-jump-results" className={styles.results} role="listbox">
+          <li>
             {normalize(query) ? "Matching" : "Go to"}
           </li>
           {results.map((entry) => {
             const { group, title } = splitJumpLabel(entry.label);
             return (
-              <li
-                key={`${entry.section}-${entry.globalTab || ""}-${entry.systemTab || ""}-${entry.recorderTab || ""}-${entry.logsTab || ""}`}
-                className={rowClass}
-              >
+              <li key={`${entry.section}-${entry.globalTab || ""}-${entry.systemTab || ""}-${entry.recorderTab || ""}-${entry.logsTab || ""}`}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={false}
-                  className="w-full px-4 py-2.5 text-left transition-colors duration-150"
+                  className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium} ${styles.resultButton}`}
                   onMouseDown={(ev) => ev.preventDefault()}
                   onClick={() => go(entry)}
                 >
                   {group ? (
-                    <span className="block">
+                    <span >
                       <span
-                        className={`mb-0.5 block text-[11px] font-normal uppercase tracking-[0.14em] ${
-                          isDarkMode ? "text-slate-500" : "text-slate-400"
-                        }`}
+                        className="mutedText smallText"
                       >
                         {group}
                       </span>
                       <span
-                        className={`block text-[13px] font-normal leading-snug ${
-                          isDarkMode ? "text-slate-100" : "text-slate-800"
-                        }`}
+                        className="mutedText smallText"
                       >
                         {title}
                       </span>
                     </span>
                   ) : (
                     <span
-                      className={`block text-[13px] font-normal leading-snug ${
-                        isDarkMode ? "text-slate-100" : "text-slate-800"
-                      }`}
+                      className="mutedText smallText"
                     >
                       {title}
                     </span>
@@ -329,13 +286,7 @@ export default function SettingsSearchBar({
         </ul>
       ) : null}
       {open && query && results.length === 0 ? (
-        <div
-          className={`absolute right-0 top-[calc(100%+8px)] z-[60] w-[min(100vw-1.5rem,20rem)] rounded-xl border px-4 py-3 text-[13px] font-normal leading-relaxed shadow-lg ${
-            isDarkMode
-              ? "border-slate-700/90 bg-slate-950 text-slate-500"
-              : "border-slate-200/80 bg-white text-slate-500"
-          }`}
-        >
+        <div className={styles.empty}>
           No matches. Try a different word.
         </div>
       ) : null}

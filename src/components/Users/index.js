@@ -1,11 +1,13 @@
 import api from '../../utils/apiClient';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 import { Search, UserPlus, Shield, Activity, Edit, Trash2, Lock, Unlock, X, Save, Key, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Button from '../ui/Button';
-import { Spinner } from '../ui/Spinner';
-import styles from '../ui/Page.module.css';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import modalStyles from '../ui/Modal.module.css';
+import tableStyles from '../ui/Table.module.css';
 import SettingsSectionHeader from '../Settings/SettingsSectionHeader';
 
 
@@ -37,52 +39,54 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = 
     }
   };
 
-  return (
-    <div className={styles.modalBackdrop}>
-      <div className={styles.modalScrim} onClick={onClose}></div>
-      <div className={styles.modal}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitleText}>
-            {isEdit ? 'Edit User' : 'Create New User'}
-          </h2>
-          <button 
-            onClick={onClose}
-            className={styles.iconButton}
-          >
-            <X size={20} />
-          </button>
-        </div>
+  const dialogRef = useRef(null);
 
-        <form onSubmit={handleSubmit} className={styles.stack}>
-          <div>
-            <label className={styles.label}>
-              Email
-            </label>
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
+
+  return (
+    <dialog ref={dialogRef} className={modalStyles.dialog} onCancel={onClose}>
+      <div className={modalStyles.header}>
+        <h2 className={modalStyles.title}>
+          {isEdit ? 'Edit User' : 'Create New User'}
+        </h2>
+        <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close user editor">
+          <X size={20} />
+        </Button>
+      </div>
+
+      <div className={modalStyles.body}>
+        <form onSubmit={handleSubmit} className={formStyles.form}>
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
               disabled={isEdit}
               required
-              className={styles.input}
+              className={formStyles.input}
             />
           </div>
 
-          <div>
-            <label className={styles.label}>
-              Name
-            </label>
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
               required
-              className={styles.input}
+              className={formStyles.input}
             />
           </div>
 
-          <div>
-            <label className={styles.label}>
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>
               Password {isEdit && '(leave blank to keep current)'}
             </label>
             <input
@@ -90,32 +94,28 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = 
               value={formData.password}
               onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
               required={!isEdit}
-              className={styles.input}
+              className={formStyles.input}
             />
           </div>
 
-          <div>
-            <label className={styles.label}>
-              Role
-            </label>
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>Role</label>
             <select
               value={formData.role}
               onChange={(e) => setFormData(prev => ({...prev, role: e.target.value}))}
-              className={styles.input}
+              className={formStyles.select}
             >
               <option value="member">Member</option>
               <option value="admin">Administrator</option>
             </select>
           </div>
 
-          <div>
-            <label className={styles.label}>
-              Profile
-            </label>
+          <div className={formStyles.field}>
+            <label className={formStyles.label}>Profile</label>
             <select
               value={formData.profile || 'Default'}
               onChange={(e) => setFormData(prev => ({...prev, profile: e.target.value}))}
-              className={styles.input}
+              className={formStyles.select}
             >
               {Object.keys(profiles).map(profileName => (
                 <option key={profileName} value={profileName}>
@@ -125,25 +125,16 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = 
             </select>
           </div>
 
-          <div className={styles.actionsEnd}>
-            <button
-              type="button"
-              onClick={onClose}
-              className={styles.secondaryButton}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className={styles.primaryButton}
-            >
-              <Save size={18} className={styles.iconSmall} />
+          <div className={modalStyles.actions}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="submit" variant="primary">
+              <Save size={18} />
               {isEdit ? 'Update' : 'Create'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 };
 
@@ -256,11 +247,9 @@ const UserManagement = () => {
 
   if (loading) {
     return (
-      <div className={styles.centeredCompact}>
-        <div className={styles.rowMuted}>
-          <div className={styles.spin}>
-            <Shield size={24} />
-          </div>
+      <div className="centeredContent">
+        <div className="row">
+          <span className="spinner" role="status" aria-label="Loading users" />
           Loading Users...
         </div>
       </div>
@@ -268,7 +257,7 @@ const UserManagement = () => {
   }
 
   return (
-    <div className={styles.stackLarge}>
+    <div className="stack stackLarge">
       <SettingsSectionHeader
         icon={Users}
         title="Users"
@@ -276,46 +265,43 @@ const UserManagement = () => {
         iconColor="blue"
       />
       
-      <div className={styles.actionsEnd}>
-        <button 
-          onClick={() => setIsCreateModalOpen(true)}
-          className={styles.primaryButton}
-        >
+      <div className="actionsEnd">
+        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
           <UserPlus size={20} />
           Add New User
-        </button>
+        </Button>
       </div>
 
-      <div className={styles.statsGrid}>
+      <div className="gridThree">
         {[
           { 
             title: 'Total Users', 
             count: users.length,
-            icon: <Shield className={styles.iconAccent} size={24} />,
+            icon: <Shield  size={24} />,
           },
           { 
             title: 'Active Users', 
             count: users.filter(user => user.status === 'Active').length,
-            icon: <Activity className={styles.iconSuccess} size={24} />,
+            icon: <Activity  size={24} />,
           },
           { 
             title: 'Administrators', 
             count: users.filter(user => user.role === 'admin').length,
-            icon: <Key className={styles.iconAccent} size={24} />,
+            icon: <Key  size={24} />,
           }
         ].map((stat, index) => (
           <div 
             key={index} 
-            className={styles.card}
+            className={cardStyles.card}
           >
-            <div className={styles.rowBetween}>
+            <div className="rowBetween">
               <div>
-                <p className={styles.muted}>{stat.title}</p>
-                <h3 className={styles.statValue}>
+                <p className={cardStyles.description}>{stat.title}</p>
+                <h3 >
                   {stat.count}
                 </h3>
               </div>
-              <div className={styles.iconCircle}>
+              <div className="avatar">
                 {stat.icon}
               </div>
             </div>
@@ -323,126 +309,126 @@ const UserManagement = () => {
         ))}
       </div>
 
-      <div className={styles.section}>
-        <div className={styles.searchField}>
-          <Search className={styles.searchIcon} size={20} />
+      <div >
+        <div className={formStyles.inputFrame}>
+          <Search className={formStyles.inputIcon} size={20} />
           <input
             type="text"
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={styles.searchInput}
+            className={formStyles.iconInput}
           />
         </div>
       </div>
 
-      <div className={styles.cardFlush}>
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
+      <div className={`${cardStyles.card} ${cardStyles.flush}`}>
+        <div className={tableStyles.scroll}>
+          <table className={tableStyles.table}>
             <thead>
-              <tr className={styles.tableRow}>
-                <th className={styles.tableHeader}>User</th>
-                <th className={styles.tableHeader}>Email</th>
-                <th className={styles.tableHeader}>Role</th>
-                <th className={styles.tableHeader}>Profile</th>
-                <th className={styles.tableHeader}>Status</th>
-                <th className={styles.tableHeader}>MFA</th>
-                <th className={styles.tableHeader}>Actions</th>
+              <tr className={tableStyles.row}>
+                <th className={tableStyles.header}>User</th>
+                <th className={tableStyles.header}>Email</th>
+                <th className={tableStyles.header}>Role</th>
+                <th className={tableStyles.header}>Profile</th>
+                <th className={tableStyles.header}>Status</th>
+                <th className={tableStyles.header}>MFA</th>
+                <th className={tableStyles.header}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
                 <tr 
                   key={user.email} 
-                  className={styles.tableRowInteractive}
+                  className={tableStyles.rowInteractive}
                 >
-                  <td className={styles.tableCell}>
-                    <div className={styles.row}>
-                      <div className={styles.avatar}>
-                      <span className={styles.itemTitle}>
+                  <td className={tableStyles.cell}>
+                    <div className="row">
+                      <div className="avatar">
+                      <span >
                           {user.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span className={styles.itemTitle}>
+                      <span >
                         {user.name}
                       </span>
                     </div>
                   </td>
-                  <td className={styles.tableCell}>{user.email}</td>
-                  <td className={styles.tableCell}>
-                    <span className={`${styles.badge} ${user.role === 'admin' ? styles.badgeAccent : ''}`}>
+                  <td className={tableStyles.cell}>{user.email}</td>
+                  <td className={tableStyles.cell}>
+                    <span className={`pill ${user.role === 'admin' ? 'pillAccent' : ''}`}>
                       {user.role === 'admin' ? 'Administrator' : 'Member'}
                     </span>
                   </td>
-                  <td className={styles.tableCell}>
-                    <span className={styles.badge}>
+                  <td className={tableStyles.cell}>
+                    <span className="pill">
                       {user.profile || 'Default'}
                     </span>
                   </td>
-                  <td className={styles.tableCell}>
-                    <span className={`${styles.badge} ${user.status === 'Active' ? styles.badgeSuccess : ''}`}>
+                  <td className={tableStyles.cell}>
+                    <span className={`pill ${user.status === 'Active' ? 'pillSuccess' : ''}`}>
                       {user.status}
                     </span>
                   </td>
-                  <td className={styles.tableCell}>
-                    <div className={styles.stackCompact}>
-                      <span className={`${styles.badge} ${user.mfa_enabled ? styles.badgeSuccess : ''}`}>
+                  <td className={tableStyles.cell}>
+                    <div className="stack stackCompact">
+                      <span className={`pill ${user.mfa_enabled ? 'pillSuccess' : ''}`}>
                         {user.mfa_enabled ? 'Enabled' : 'Disabled'}
                       </span>
                       {user.mfa_enforced && (
-                        <span className={styles.badgeWarning}>
+                        <span className="pill pillWarning">
                           Required
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className={styles.tableCell}>
-                    <div className={styles.actions}>
-                      <button 
+                  <td className={tableStyles.cell}>
+                    <div className="rowWrap">
+                      <Button
                         onClick={() => {
                           setCurrentUser(user);
                           setIsEditModalOpen(true);
                         }}
-                        className={styles.iconButton}
+                        variant="ghost" size="icon"
                         title="Edit User"
                       >
                         <Edit size={18} />
-                      </button>
+                      </Button>
                       {isAdmin && (
                         <>
                           {user.mfa_enforced ? (
-                            <button 
+                            <Button
                               onClick={() => handleEnforceMfa(user.email, false)}
-                              className={styles.warningIconButton}
+                              variant="warning" size="icon"
                               title="Remove MFA Requirement"
                             >
                               <Unlock size={18} />
-                            </button>
+                            </Button>
                           ) : (
-                            <button 
+                            <Button
                               onClick={() => handleEnforceMfa(user.email, true)}
-                              className={styles.warningIconButton}
+                              variant="warning" size="icon"
                               title="Require MFA Setup"
                             >
                               <Lock size={18} />
-                            </button>
+                            </Button>
                           )}
-                          <button 
+                          <Button
                             onClick={() => handleResetMfa(user.email)}
-                            className={styles.warningIconButton}
+                            variant="warning" size="icon"
                             title="Reset/Clear MFA"
                           >
                             <Key size={18} />
-                          </button>
+                          </Button>
                         </>
                       )}
-                      <button 
+                      <Button
                         onClick={() => handleDelete(user.email)}
-                        className={styles.dangerIconButton}
+                        variant="danger" size="icon"
                         title="Delete User"
                       >
                         <Trash2 size={18} />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

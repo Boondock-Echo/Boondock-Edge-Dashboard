@@ -4,8 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { User, Shield, Smartphone, Clock, Trash2, Check, X, ArrowLeft, Key, Unlock } from 'lucide-react';
 import Button from './ui/Button';
-import { Spinner } from './ui/Spinner';
-import styles from './ui/Page.module.css';
+import pageStyles from './ui/Page.module.css';
+import cardStyles from './ui/Card.module.css';
+import formStyles from './ui/Form.module.css';
+import listStyles from './ui/List.module.css';
+import noticeStyles from './ui/Notice.module.css';
+import tableStyles from './ui/Table.module.css';
 
 const UserProfile = () => {
   const { user } = useAuth();
@@ -139,67 +143,67 @@ const UserProfile = () => {
 
   if (loading) {
     return (
-      <div className={styles.centered}>
-        <Spinner size="large" label="Loading profile" />
+      <div className={pageStyles.centered}>
+        <span className="spinner spinnerLarge" role="status" aria-label="Loading profile" />
       </div>
     );
   }
 
   return (
-    <main className={styles.page}>
-      <div className={styles.contentWide}>
+    <main className={pageStyles.page}>
+      <div className={`${pageStyles.contentWide} stack`}>
         {/* Header */}
-        <div className={styles.header}>
+        <div className={pageStyles.header}>
           <Button size="icon" onClick={() => navigate('/')} aria-label="Back to dashboard">
-            <ArrowLeft className={styles.icon} />
+            <ArrowLeft size={20} />
           </Button>
-          <div className={styles.row}>
-            <div className={styles.iconCircle}>
-              <User className={styles.iconLarge} />
+          <div className="row">
+            <div className={pageStyles.headerIcon}>
+              <User size={24} />
             </div>
             <div>
-              <h1 className={styles.title}>User Profile</h1>
-              <p className={styles.muted}>{user?.name || user?.username}</p>
+              <h1 className={pageStyles.title}>User Profile</h1>
+              <p className={cardStyles.description}>{user?.name || user?.username}</p>
             </div>
           </div>
         </div>
 
         {/* Messages */}
         {error && (
-          <div className={styles.noticeError}>
+          <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
             {typeof error === 'string' ? error : (error?.message || String(error))}
           </div>
         )}
         {success && (
-          <div className={styles.noticeSuccess}>
+          <div className={`${noticeStyles.notice} ${noticeStyles.success}`}>
             {success}
           </div>
         )}
 
-        <div className={styles.gridTwo}>
+        <div className="gridTwo">
           {/* MFA Section */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>
-              <Shield className={styles.icon} />
-              <h2 className={styles.cardTitleText}>Multi-Factor Authentication</h2>
-            </div>
+          <div className={`${cardStyles.card} stack`}>
+            <h2 className={cardStyles.title}>
+              <Shield size={20} />
+              Multi-Factor Authentication
+            </h2>
 
-            <div className={styles.section}>
-              <div className={styles.rowMuted}>
+            <div className="stack stackCompact">
+              <div className="row">
                 Status: 
                 {mfaStatus.mfa_enabled ? (
-                  <span className={styles.statusSuccess}>
-                    <Check className={styles.iconSmall} /> Enabled
+                  <span className="pill pillSuccess">
+                    <Check size={16} /> Enabled
                   </span>
                 ) : (
-                  <span className={styles.statusMuted}>
-                    <X className={styles.iconSmall} /> Disabled
+                  <span className="pill">
+                    <X size={16} /> Disabled
                   </span>
                 )}
               </div>
               {mfaStatus.mfa_enforced && (
-                <div className={styles.statusWarning}>
-                  <Shield className={styles.iconSmall} />
+                <div className="pill pillWarning">
+                  <Shield size={16} />
                   <span>MFA is required by administrator</span>
                 </div>
               )}
@@ -207,26 +211,26 @@ const UserProfile = () => {
 
             {!showMfaSetup && !mfaStatus.mfa_enabled && (
               <Button onClick={handleMfaSetup}>
-                <Key className={styles.iconSmall} />
+                <Key size={16} />
                 Enable MFA
               </Button>
             )}
 
             {showMfaSetup && mfaSetup && (
-              <div className={styles.stack}>
+              <div className="stack">
                 <div>
-                  <p className={styles.description}>
+                  <p className={cardStyles.description}>
                     Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, etc.):
                   </p>
-                  <div className={styles.qrFrame}>
-                    <img src={mfaSetup.qr_code} alt="MFA QR Code" className={styles.qrCode} />
+                  <div className="qrFrame">
+                    <img src={mfaSetup.qr_code} alt="MFA QR Code" className="qrCode" />
                   </div>
-                  <p className={styles.helpText}>
-                    Or enter this code manually: <code className={styles.code}>{mfaSetup.secret}</code>
+                  <p className={formStyles.helpText}>
+                    Or enter this code manually: <code>{mfaSetup.secret}</code>
                   </p>
                 </div>
                 <div>
-                  <label className={styles.label}>
+                  <label className={formStyles.label}>
                     Enter 6-digit code from your app:
                   </label>
                   <input
@@ -234,11 +238,11 @@ const UserProfile = () => {
                     maxLength="6"
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                    className={styles.input}
+                    className={formStyles.input}
                     placeholder="000000"
                   />
                 </div>
-                <div className={styles.actions}>
+                <div className="rowWrap">
                   <Button
                     onClick={handleVerifySetup}
                     disabled={verifying || totpCode.length !== 6}
@@ -260,21 +264,21 @@ const UserProfile = () => {
             )}
 
             {mfaStatus.mfa_enabled && !showMfaSetup && (
-              <div className={styles.stack}>
+              <div className="stack">
                 <div>
-                  <label className={styles.label}>
+                  <label className={formStyles.label}>
                     Password:
                   </label>
                   <input
                     type="password"
                     value={disablePassword}
                     onChange={(e) => setDisablePassword(e.target.value)}
-                    className={styles.input}
+                    className={formStyles.input}
                     placeholder="Enter your password"
                   />
                 </div>
                 <div>
-                  <label className={styles.label}>
+                  <label className={formStyles.label}>
                     TOTP Code:
                   </label>
                   <input
@@ -282,7 +286,7 @@ const UserProfile = () => {
                     maxLength="6"
                     value={disableTotp}
                     onChange={(e) => setDisableTotp(e.target.value.replace(/\D/g, ''))}
-                    className={styles.input}
+                    className={formStyles.input}
                     placeholder="000000"
                   />
                 </div>
@@ -291,7 +295,7 @@ const UserProfile = () => {
                   disabled={disabling || !disablePassword || !disableTotp}
                   variant="danger"
                 >
-                  <Unlock className={styles.iconSmall} />
+                  <Unlock size={16} />
                   {disabling ? 'Disabling...' : 'Disable MFA'}
                 </Button>
               </div>
@@ -299,27 +303,27 @@ const UserProfile = () => {
           </div>
 
           {/* Devices Section */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>
-              <Smartphone className={styles.icon} />
-              <h2 className={styles.cardTitleText}>Authorized Devices</h2>
-            </div>
+          <div className={`${cardStyles.card} stack`}>
+            <h2 className={cardStyles.title}>
+              <Smartphone size={20} />
+              Authorized Devices
+            </h2>
 
             {devices.length === 0 ? (
-              <p className={styles.muted}>No devices registered</p>
+              <p className={cardStyles.description}>No devices registered</p>
             ) : (
-              <div className={styles.list}>
+              <div className={listStyles.list}>
                 {devices.map((device, index) => (
-                  <div key={device.device_id || index} className={styles.listItem}>
-                    <div className={styles.listItemRow}>
-                      <div className={styles.grow}>
-                        <p className={styles.itemTitle}>
+                  <div key={device.device_id || index} className={listStyles.item}>
+                    <div className="rowBetweenStart">
+                      <div className="grow">
+                        <p className={listStyles.title}>
                           {device.name || `Device ${index + 1}`}
                         </p>
-                        <p className={styles.itemMeta}>
+                        <p className={listStyles.meta}>
                           {device.user_agent || 'Unknown device'}
                         </p>
-                        <p className={styles.itemMetaSmall}>
+                        <p className={listStyles.metaSmall}>
                           IP: {device.ip_address || 'Unknown'} | 
                           Last seen: {formatDate(device.last_seen)}
                         </p>
@@ -330,7 +334,7 @@ const UserProfile = () => {
                         size="icon"
                         title="Remove device"
                       >
-                        <Trash2 className={styles.iconSmall} />
+                        <Trash2 size={16} />
                       </Button>
                     </div>
                   </div>
@@ -341,30 +345,30 @@ const UserProfile = () => {
         </div>
 
         {/* Login History */}
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>
-            <Clock className={styles.icon} />
-            <h2 className={styles.cardTitleText}>Login History</h2>
-          </div>
+        <div className={`${cardStyles.card} stack`}>
+          <h2 className={cardStyles.title}>
+            <Clock size={20} />
+            Login History
+          </h2>
 
           {loginHistory.length === 0 ? (
-            <p className={styles.muted}>No login history available</p>
+            <p className={cardStyles.description}>No login history available</p>
           ) : (
-            <div className={styles.tableScroll}>
-              <table className={styles.table}>
+            <div className={tableStyles.scroll}>
+              <table className={tableStyles.table}>
                 <thead>
-                  <tr className={styles.tableRow}>
-                    <th className={styles.tableHeader}>Date & Time</th>
-                    <th className={styles.tableHeader}>IP Address</th>
-                    <th className={styles.tableHeader}>User Agent</th>
+                  <tr className={tableStyles.row}>
+                    <th className={tableStyles.header}>Date & Time</th>
+                    <th className={tableStyles.header}>IP Address</th>
+                    <th className={tableStyles.header}>User Agent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loginHistory.slice(0, 20).map((login, index) => (
-                    <tr key={index} className={styles.tableRow}>
-                      <td className={styles.tableCell}>{formatDate(login.timestamp)}</td>
-                      <td className={styles.tableCellMuted}>{login.ip_address || 'Unknown'}</td>
-                      <td className={styles.tableCellMuted}>
+                    <tr key={index} className={tableStyles.row}>
+                      <td className={tableStyles.cell}>{formatDate(login.timestamp)}</td>
+                      <td className={tableStyles.cellMuted}>{login.ip_address || 'Unknown'}</td>
+                      <td className={tableStyles.cellMuted}>
                         {login.user_agent || 'Unknown'}
                       </td>
                     </tr>

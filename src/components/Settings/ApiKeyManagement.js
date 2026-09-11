@@ -2,6 +2,11 @@ import { apiFetch } from '../../utils/apiClient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyRound, Plus, Trash2, Copy, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import SettingsSectionHeader from './SettingsSectionHeader';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import tableStyles from '../ui/Table.module.css';
 
 /**
  * Manage external REST API keys (admin only).
@@ -10,7 +15,7 @@ import SettingsSectionHeader from './SettingsSectionHeader';
  *   GET/POST /api/v1/api-keys
  *   DELETE   /api/v1/api-keys/:id
  */
-export default function ApiKeyManagement({ isDarkMode = false, showToast, user }) {
+export default function ApiKeyManagement({ showToast, user }) {
   const [keys, setKeys] = useState([]);
   const [scopeCatalog, setScopeCatalog] = useState([]);
   const [defaultScopes, setDefaultScopes] = useState(['transcriptions:read']);
@@ -197,142 +202,94 @@ export default function ApiKeyManagement({ isDarkMode = false, showToast, user }
     }
   };
 
-  const muted = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const inputCls = isDarkMode
-    ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
-  const rowBorder = isDarkMode ? 'border-gray-800' : 'border-gray-200';
-  const tableHead = isDarkMode ? 'bg-gray-800/80 text-gray-400' : 'bg-gray-50 text-gray-500';
-  const panelCls = isDarkMode
-    ? 'border-gray-800 bg-gray-900/40'
-    : 'border-gray-200 bg-gray-50';
-
   if (!isAdmin) {
     return (
-      <div className="space-y-6 mt-6">
+      <div className="stack stackLarge">
         <SettingsSectionHeader
           icon={KeyRound}
           title="API Keys"
           description="Issue keys for external API access with selectable scopes."
-          isDarkMode={isDarkMode}
           iconColor="purple"
         />
-        <div
-          className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${
-            isDarkMode ? 'border-amber-800/50 bg-amber-950/30 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-900'
-          }`}
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-          <p>Only administrators can create and revoke API keys. Sign in with an admin account to manage keys.</p>
+        <div className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
+          <AlertTriangle className={noticeStyles.icon} />
+          <div className={noticeStyles.body}>
+            <p>Only administrators can create and revoke API keys. Sign in with an admin account to manage keys.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 mt-6">
+    <div className="stack stackLarge">
       <SettingsSectionHeader
         icon={KeyRound}
         title="API Keys"
         description="Create and revoke keys for external integrators. Choose which scopes each key is allowed to use."
-        isDarkMode={isDarkMode}
         iconColor="purple"
       />
 
-      <div
-        className={`rounded-lg border p-4 text-sm ${
-          isDarkMode ? 'border-blue-900/50 bg-blue-950/20 text-blue-200' : 'border-blue-100 bg-blue-50 text-blue-900'
-        }`}
-      >
-        <p className="font-medium mb-1">How integrators use a key</p>
-        <code className={`block text-xs break-all whitespace-pre-wrap ${muted}`}>
-          {`GET /api/v1/transcriptions
+      <div className={`${noticeStyles.notice} ${noticeStyles.info}`}>
+        <div className={noticeStyles.body}>
+          <p><strong>How integrators use a key</strong></p>
+          <pre className="codeBlock">{`GET /api/v1/transcriptions
 Authorization: Bearer bk_live_…
-# Requires scope: transcriptions:read`}
-        </code>
+# Requires scope: transcriptions:read`}</pre>
+        </div>
       </div>
 
-      <form onSubmit={handleCreate} className="space-y-4">
-        <div>
-          <label className={`block text-xs font-medium mb-1.5 ${muted}`}>Key name / company</label>
+      <form onSubmit={handleCreate} className={formStyles.form}>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Key name / company</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Acme Corp integration"
-            className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 ${inputCls}`}
+            className={formStyles.input}
           />
         </div>
 
         {/* Scope picker */}
-        <div className={`rounded-lg border p-4 ${panelCls}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <section className={cardStyles.card}>
+          <div className="rowBetweenStart">
             <div>
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                Scopes
-              </h3>
-              <p className={`text-xs mt-0.5 ${muted}`}>
+              <h3 className={cardStyles.title}>Scopes</h3>
+              <p className={cardStyles.description}>
                 Select permissions for this key · {selectedScopes.length} selected
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={selectDefaultScopes} className={`text-xs underline ${muted}`}>
-                Defaults
-              </button>
-              <button type="button" onClick={selectAllScopes} className={`text-xs underline ${muted}`}>
-                Select all
-              </button>
-              <button type="button" onClick={clearScopes} className={`text-xs underline ${muted}`}>
-                Clear
-              </button>
+            <div className="rowWrap">
+              <Button type="button" size="small" variant="ghost" onClick={selectDefaultScopes}>Defaults</Button>
+              <Button type="button" size="small" variant="ghost" onClick={selectAllScopes}>Select all</Button>
+              <Button type="button" size="small" variant="ghost" onClick={clearScopes}>Clear</Button>
             </div>
           </div>
 
-          <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+          <div className="scrollPanel stack">
             {Object.entries(scopesByGroup).map(([group, scopes]) => (
               <div key={group}>
-                <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${muted}`}>{group}</p>
-                <div className="space-y-2">
+                <p className="eyebrow">{group}</p>
+                <div className="stackCompact">
                   {scopes.map((scope) => {
                     const checked = selectedScopes.includes(scope.id);
                     return (
-                      <label
-                        key={scope.id}
-                        className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                          checked
-                            ? isDarkMode
-                              ? 'border-blue-600/60 bg-blue-950/30'
-                              : 'border-blue-300 bg-blue-50'
-                            : isDarkMode
-                              ? 'border-gray-800 hover:border-gray-700'
-                              : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
+                      <label key={scope.id} className={`${formStyles.choiceCard} ${checked ? formStyles.choiceCardSelected : ''}`}>
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleScope(scope.id)}
-                          className="mt-1 rounded border-gray-500"
                         />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
-                              {scope.label}
+                        <span className="grow">
+                          <span className="rowWrap">
+                            <strong>{scope.label}</strong>
+                            <code>{scope.id}</code>
+                            <span className={`pill ${scope.enforced ? 'pillSuccess' : ''}`}>
+                              {scope.enforced ? 'Active' : 'Reserved'}
                             </span>
-                            <code className={`text-[11px] px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-600 border border-gray-200'}`}>
-                              {scope.id}
-                            </code>
-                            {scope.enforced ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-500">
-                                Active
-                              </span>
-                            ) : (
-                              <span className={`text-[10px] font-semibold uppercase tracking-wide ${muted}`}>
-                                Reserved
-                              </span>
-                            )}
                           </span>
-                          <span className={`block text-xs mt-1 ${muted}`}>{scope.description}</span>
+                          <span className="smallText mutedText">{scope.description}</span>
                         </span>
                       </label>
                     );
@@ -340,163 +297,106 @@ Authorization: Bearer bk_live_…
                 </div>
               </div>
             ))}
-            {!scopeCatalog.length && (
-              <p className={`text-sm ${muted}`}>Loading scopes…</p>
-            )}
+            {!scopeCatalog.length && <p className="smallText mutedText">Loading scopes…</p>}
           </div>
-        </div>
+        </section>
 
-        <label className={`inline-flex items-center gap-2 text-sm ${muted}`}>
+        <label className={formStyles.checkbox}>
           <input
             type="checkbox"
             checked={neverExpires}
             onChange={(e) => setNeverExpires(e.target.checked)}
-            className="rounded border-gray-500"
           />
           Never expires (otherwise defaults to 90 days)
         </label>
 
-        <button
-          type="submit"
-          disabled={creating || !selectedScopes.length}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" />
-          {creating ? 'Creating…' : 'Create key'}
-        </button>
+        <div>
+          <Button type="submit" variant="primary" disabled={creating || !selectedScopes.length}>
+            <Plus />
+            {creating ? 'Creating…' : 'Create key'}
+          </Button>
+        </div>
       </form>
 
       {createdKey && (
-        <div
-          className={`rounded-lg border p-4 ${
-            isDarkMode ? 'border-emerald-800/60 bg-emerald-950/30' : 'border-emerald-200 bg-emerald-50'
-          }`}
-        >
-          <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-800'}`}>
-            Store this key now — it will not be shown again
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <code
-              className={`flex-1 break-all rounded-lg border px-3 py-2 text-xs font-mono ${
-                isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-900'
-              }`}
-            >
-              {createdKey}
-            </code>
-            <button
-              type="button"
-              onClick={copyKey}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5"
-            >
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
+        <div className={`${noticeStyles.notice} ${noticeStyles.success}`}>
+          <div className={`${noticeStyles.body} grow`}>
+            <p><strong>Store this key now — it will not be shown again</strong></p>
+            <div className="rowWrap">
+              <code className="codeBlock grow">{createdKey}</code>
+              <Button type="button" onClick={copyKey}>
+                {copied ? <Check className="iconSmall" /> : <Copy className="iconSmall" />}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <Button type="button" size="small" variant="ghost" onClick={() => setCreatedKey(null)}>Dismiss</Button>
           </div>
-          <button
-            type="button"
-            onClick={() => setCreatedKey(null)}
-            className={`mt-3 text-xs underline ${muted}`}
-          >
-            Dismiss
-          </button>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-          Issued keys {loading ? '' : `(${keys.length})`}
-        </h3>
-        <button
-          type="button"
-          onClick={loadKeys}
-          disabled={loading}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
-            isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'
-          }`}
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+      <div className="rowBetween">
+        <h3 className={cardStyles.title}>Issued keys {loading ? '' : `(${keys.length})`}</h3>
+        <Button type="button" size="small" onClick={loadKeys} disabled={loading}>
+          <RefreshCw className={loading ? 'spin' : ''} />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <p className={`text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+          <div className={noticeStyles.body}><p>{error}</p></div>
+        </div>
       )}
 
-      <div className={`overflow-x-auto rounded-lg border ${rowBorder}`}>
-        <table className="w-full text-sm">
+      <div className={tableStyles.scroll}>
+        <table className={tableStyles.table}>
           <thead>
-            <tr className={tableHead}>
-              <th className="px-3 py-2 text-left font-medium">Name</th>
-              <th className="px-3 py-2 text-left font-medium">Prefix</th>
-              <th className="px-3 py-2 text-left font-medium">Scopes</th>
-              <th className="px-3 py-2 text-left font-medium">Expires</th>
-              <th className="px-3 py-2 text-left font-medium">Created</th>
-              <th className="px-3 py-2 text-right font-medium">Actions</th>
+            <tr>
+              <th className={tableStyles.header}>Name</th>
+              <th className={tableStyles.header}>Prefix</th>
+              <th className={tableStyles.header}>Scopes</th>
+              <th className={tableStyles.header}>Expires</th>
+              <th className={tableStyles.header}>Created</th>
+              <th className={tableStyles.header}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr>
-                <td colSpan={6} className={`px-3 py-8 text-center ${muted}`}>
-                  Loading…
-                </td>
+              <tr className={tableStyles.row}>
+                <td colSpan={6} className={tableStyles.cellMuted}>Loading…</td>
               </tr>
             )}
             {!loading && keys.length === 0 && (
-              <tr>
-                <td colSpan={6} className={`px-3 py-8 text-center ${muted}`}>
-                  No API keys yet. Create one above for an integrator.
-                </td>
+              <tr className={tableStyles.row}>
+                <td colSpan={6} className={tableStyles.cellMuted}>No API keys yet. Create one above for an integrator.</td>
               </tr>
             )}
-            {!loading &&
-              keys.map((k) => (
-                <tr key={k.id} className={`border-t ${rowBorder}`}>
-                  <td className={`px-3 py-2.5 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
-                    {k.name}
-                    {k.revoked ? (
-                      <span className="ml-2 text-xs text-red-500">revoked</span>
-                    ) : null}
-                  </td>
-                  <td className={`px-3 py-2.5 font-mono text-xs ${muted}`}>{k.key_prefix || '—'}</td>
-                  <td className={`px-3 py-2.5 text-xs ${muted}`}>
-                    <div className="flex flex-wrap gap-1 max-w-xs">
-                      {(k.scopes || []).length
-                        ? (k.scopes || []).map((s) => (
-                            <code
-                              key={s}
-                              className={`px-1.5 py-0.5 rounded ${
-                                isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {s}
-                            </code>
-                          ))
-                        : '—'}
-                    </div>
-                  </td>
-                  <td className={`px-3 py-2.5 text-xs ${muted}`}>
-                    {k.expires_at ? new Date(k.expires_at).toLocaleString() : 'Never'}
-                  </td>
-                  <td className={`px-3 py-2.5 text-xs ${muted}`}>
-                    {k.created_at ? new Date(k.created_at).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    {!k.revoked && (
-                      <button
-                        type="button"
-                        onClick={() => handleRevoke(k.id, k.name)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-500/10"
-                        title="Revoke key"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Revoke
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+            {!loading && keys.map((k) => (
+              <tr key={k.id} className={tableStyles.row}>
+                <td className={tableStyles.cell}>
+                  {k.name}
+                  {k.revoked ? <span className="pill pillDanger">revoked</span> : null}
+                </td>
+                <td className={tableStyles.cellMuted}><code>{k.key_prefix || '—'}</code></td>
+                <td className={tableStyles.cellMuted}>
+                  <div className="rowWrap">
+                    {(k.scopes || []).length
+                      ? (k.scopes || []).map((s) => <code key={s}>{s}</code>)
+                      : '—'}
+                  </div>
+                </td>
+                <td className={tableStyles.cellMuted}>{k.expires_at ? new Date(k.expires_at).toLocaleString() : 'Never'}</td>
+                <td className={tableStyles.cellMuted}>{k.created_at ? new Date(k.created_at).toLocaleString() : '—'}</td>
+                <td className={tableStyles.cell}>
+                  {!k.revoked && (
+                    <Button type="button" size="small" variant="danger" onClick={() => handleRevoke(k.id, k.name)} title="Revoke key">
+                      <Trash2 />
+                      Revoke
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

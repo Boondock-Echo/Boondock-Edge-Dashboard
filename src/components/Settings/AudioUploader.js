@@ -1,9 +1,12 @@
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import buttonStyles from '../ui/Button.module.css';
 import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect } from 'react';
 import { Upload, FileAudio, AlertCircle, CheckCircle, Loader2, X, Clock, Globe, Tag, Radio, Settings, Zap, Volume2, Calendar, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-const AudioUploader = ({ isDarkMode }) => {
+const AudioUploader = ({ }) => {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -468,74 +471,58 @@ const AudioUploader = ({ isDarkMode }) => {
     document.getElementById('audioFile').value = '';
   };
 
-  const themeClasses = {
-    container: isDarkMode 
-      ? 'bg-gray-800 border-gray-700' 
-      : 'bg-white border-gray-200',
-    input: isDarkMode
-      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500',
-    label: isDarkMode ? 'text-gray-300' : 'text-gray-700',
-    button: isDarkMode
-      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-      : 'bg-blue-600 hover:bg-blue-700 text-white',
-    buttonDisabled: isDarkMode
-      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-  };
-
   return (
-    <div className={`p-8 ${themeClasses.container} rounded-xl border shadow-lg`}>
+    <div >
       {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-            <Upload className={`w-8 h-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      <div >
+        <div className="row">
+          <div className={cardStyles.card}>
+            <Upload  />
           </div>
           <div>
-            <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>
+            <h2 className="pageTitle">
           Manual Audio Upload
         </h2>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className="mutedText smallText">
               Upload audio files directly to specific channels for processing and transcription
         </p>
           </div>
       </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center gap-2">
-              <Radio className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="gridThree">
+          <div className={cardStyles.card}>
+            <div className="row">
+              <Radio  />
+              <span className="mutedText smallText">
                 Available Channels
               </span>
             </div>
-            <p className={`text-2xl font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className="mutedText smallText">
               {channels.length}
             </p>
           </div>
           
-          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center gap-2">
-              <Tag className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={cardStyles.card}>
+            <div className="row">
+              <Tag  />
+              <span className="mutedText smallText">
                 Available Tags
               </span>
             </div>
-            <p className={`text-2xl font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className="mutedText smallText">
               {availableTags.length}
             </p>
           </div>
           
-          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center gap-2">
-              <FileAudio className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={cardStyles.card}>
+            <div className="row">
+              <FileAudio  />
+              <span className="mutedText smallText">
                 Selected File
               </span>
             </div>
-            <p className={`text-2xl font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className="mutedText smallText">
               {selectedFile ? '1' : '0'}
             </p>
           </div>
@@ -543,22 +530,22 @@ const AudioUploader = ({ isDarkMode }) => {
       </div>
 
       {/* Main Content Area - Side by Side Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="gridTwo">
         {/* Left Column */}
-      <div className="space-y-6">
+      <div className="stack">
         {/* Channel Selection */}
-        <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-4">
-            <Radio className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className={cardStyles.card}>
+          <div className="row">
+            <Radio  />
+            <h3 className="pageTitle">
             Target Channel
             </h3>
           </div>
-          <div className="relative">
+          <div >
           <select
             value={selectedChannel}
             onChange={(e) => setSelectedChannel(e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input} appearance-none cursor-pointer`}
+              className={formStyles.select}
           >
             <option value="">Select a channel...</option>
             {channels.map((channel) => (
@@ -567,15 +554,15 @@ const AudioUploader = ({ isDarkMode }) => {
               </option>
             ))}
           </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <Settings className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <div className="row">
+              <Settings  />
             </div>
           </div>
           {selectedChannel && (
-            <div className={`mt-3 p-3 rounded-lg ${isDarkMode ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-green-400' : 'bg-green-600'}`}></div>
-                <span className={`text-sm font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+            <div className={cardStyles.card}>
+              <div className="row">
+                <div ></div>
+                <span className="mutedText smallText">
                   Channel Selected
                 </span>
               </div>
@@ -584,41 +571,41 @@ const AudioUploader = ({ isDarkMode }) => {
         </div>
 
         {/* File Selection */}
-        <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-4">
-            <FileAudio className={`w-5 h-5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className={cardStyles.card}>
+          <div className="row">
+            <FileAudio  />
+            <h3 className="pageTitle">
             Audio File
             </h3>
           </div>
           
-          <div className="relative">
-            <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all hover:border-blue-400 ${isDarkMode ? 'border-gray-600 bg-gray-700/50' : 'border-gray-300 bg-gray-50'}`}>
+          <div >
+            <div >
             <input
               id="audioFile"
               type="file"
               accept=".wav,.mp3,.m4a"
               onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className={formStyles.input}
               />
-              <div className="flex flex-col items-center gap-3">
-                <div className={`p-4 rounded-full ${isDarkMode ? 'bg-orange-900/30' : 'bg-orange-100'}`}>
-                  <Volume2 className={`w-8 h-8 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
+              <div className="stack">
+                <div className={cardStyles.card}>
+                  <Volume2  />
                 </div>
                 <div>
-                  <p className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <p className="mutedText smallText">
                     {selectedFile ? selectedFile.name : 'Click to select audio file'}
                   </p>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="mutedText smallText">
                     Supports .wav, .mp3, .m4a files
                   </p>
                 </div>
             {selectedFile && (
               <button
                 onClick={clearFile}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDarkMode ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                    className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
               >
-                    <X className="w-4 h-4 inline mr-1" />
+                    <X  />
                     Remove File
               </button>
             )}
@@ -627,14 +614,14 @@ const AudioUploader = ({ isDarkMode }) => {
           </div>
           
           {selectedFile && (
-            <div className={`mt-4 p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <div className="flex items-center gap-3 mb-3">
-                <FileAudio className="w-5 h-5 text-blue-500" />
-                <div className="flex-1">
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={cardStyles.card}>
+              <div className="row">
+                <FileAudio  />
+                <div >
+                  <p className="mutedText smallText">
                   {selectedFile.name}
                   </p>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="mutedText smallText">
                     Size: {formatFileSize(selectedFile.size)}
                   </p>
                 </div>
@@ -642,14 +629,14 @@ const AudioUploader = ({ isDarkMode }) => {
               
               {/* Extracted Date/Time Display */}
               {extractedDateTime && (
-                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-green-900/20 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-4 h-4 text-green-500" />
-                    <span className={`text-sm font-medium ${isDarkMode ? 'text-green-300' : 'text-green-800'}`}>
+                <div className={cardStyles.card}>
+                  <div className="row">
+                    <Calendar  />
+                    <span className="mutedText smallText">
                       Extracted Date/Time
                 </span>
               </div>
-                  <div className={`text-sm ${isDarkMode ? 'text-green-200' : 'text-green-700'}`}>
+                  <div >
                     {extractedDateTime.formatted}
               </div>
                 </div>
@@ -660,28 +647,28 @@ const AudioUploader = ({ isDarkMode }) => {
 
 
         {/* Tag Selection */}
-        <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-4">
-            <Tag className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className={cardStyles.card}>
+          <div className="row">
+            <Tag  />
+            <h3 className="pageTitle">
               Tags (Optional)
             </h3>
             {selectedTags.length > 0 && (
-              <span className={`px-2 py-1 text-xs rounded-full ${isDarkMode ? 'bg-purple-700 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
+              <span className="mutedText smallText">
                 {selectedTags.length} selected
               </span>
             )}
         </div>
 
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={cardStyles.card}>
+            <div className="rowBetween">
+              <span className="mutedText smallText">
                 Select tags to apply to this recording:
               </span>
               {selectedTags.length > 0 && (
                 <button
                   onClick={clearSelectedTags}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${isDarkMode ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+                  className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
                 >
                   Clear All
                 </button>
@@ -689,54 +676,42 @@ const AudioUploader = ({ isDarkMode }) => {
             </div>
             
             {availableTags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="rowWrap">
                 {availableTags.map(tag => (
                   <button
                     key={tag}
                     onClick={() => handleTagToggle(tag)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 ${
-                      selectedTags.includes(tag)
-                        ? isDarkMode
-                          ? 'bg-purple-600 text-white border-purple-500 shadow-lg transform scale-105'
-                          : 'bg-purple-100 text-purple-800 border-purple-300 shadow-md transform scale-105'
-                        : isDarkMode
-                          ? 'bg-gray-600 text-gray-300 border-gray-500 hover:bg-gray-500 hover:scale-105'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:scale-105'
-                    }`}
+                    className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
                   >
                     {tag}
                   </button>
                 ))}
               </div>
             ) : (
-              <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                <Tag className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-                <p className="text-sm">No tags available</p>
-                <p className="text-xs mt-1">Create tags in the Tag Manager first</p>
+              <div >
+                <Tag  />
+                <p className="mutedText smallText">No tags available</p>
+                <p className="mutedText smallText">Create tags in the Tag Manager first</p>
               </div>
             )}
             
             {selectedTags.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600">
-                <div className={`text-sm font-medium mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div >
+                <div >
                   Selected Tags:
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="rowWrap">
                   {selectedTags.map(tag => (
                     <span
                       key={tag}
-                      className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${
-                        isDarkMode ? 'bg-purple-700 text-purple-200' : 'bg-purple-100 text-purple-800'
-                      }`}
+                      className="mutedText smallText"
                     >
                       {tag}
                       <button
                         onClick={() => handleTagToggle(tag)}
-                        className={`ml-1 p-0.5 rounded-full transition-colors ${
-                          isDarkMode ? 'text-purple-300 hover:text-red-400 hover:bg-red-900/30' : 'text-purple-600 hover:text-red-600 hover:bg-red-100'
-                        }`}
+                        className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.icon}`}
                       >
-                        <X className="w-3 h-3" />
+                        <X  />
                       </button>
                     </span>
                   ))}
@@ -748,29 +723,29 @@ const AudioUploader = ({ isDarkMode }) => {
           </div>
 
           {/* Right Column */}
-          <div className="space-y-6">
+          <div className="stack">
         {/* Timezone and DateTime Selection */}
-        <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-6">
-            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-              <Globe className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+        <div className={cardStyles.card}>
+          <div className="row">
+            <div >
+              <Globe  />
             </div>
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className="pageTitle">
               Timezone & Timestamp Settings
             </h3>
           </div>
 
           {/* Timezone Selection */}
-          <div className="mb-6">
-            <label className={`block text-sm font-medium ${themeClasses.label} mb-3`}>
-              <MapPin className="w-4 h-4 inline mr-2" />
+          <div >
+            <label className={formStyles.label}>
+              <MapPin  />
               Timezone
             </label>
-            <div className="relative">
+            <div >
             <select
               value={timezoneData.selectedTimezone}
               onChange={(e) => handleTimezoneChange('selectedTimezone', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input} appearance-none cursor-pointer`}
+                className={formStyles.select}
             >
               {timezones.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -778,46 +753,46 @@ const AudioUploader = ({ isDarkMode }) => {
                 </option>
               ))}
             </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Globe className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <div className="row">
+                <Globe  />
               </div>
             </div>
           </div>
 
           {/* Custom DateTime Toggle */}
-          <div className={`flex items-center p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} mb-6`}>
+          <div className="row">
             <input
               type="checkbox"
               id="useCustomDateTime"
               checked={timezoneData.useCustomDateTime}
               onChange={(e) => handleTimezoneChange('useCustomDateTime', e.target.checked)}
-              className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+              className={formStyles.input}
             />
-            <label htmlFor="useCustomDateTime" className={`ml-3 text-sm font-medium ${themeClasses.label} cursor-pointer`}>
-              <Clock className="w-4 h-4 inline mr-2" />
+            <label htmlFor="useCustomDateTime" className={formStyles.label}>
+              <Clock  />
               Use custom date and time
             </label>
           </div>
 
            {/* Custom DateTime Inputs */}
            {timezoneData.useCustomDateTime && (
-             <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} mb-6`}>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className={cardStyles.card}>
+               <div className="gridTwo">
                <div>
-                 <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                     <Calendar className="w-4 h-4 inline mr-2" />
+                 <label className={formStyles.label}>
+                     <Calendar  />
                    Date
                  </label>
                  <input
                    type="date"
                    value={timezoneData.customDate || getCurrentDateTime().date}
                    onChange={(e) => handleTimezoneChange('customDate', e.target.value)}
-                     className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                     className={formStyles.input}
                  />
                </div>
                <div>
-                 <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                     <Clock className="w-4 h-4 inline mr-2" />
+                 <label className={formStyles.label}>
+                     <Clock  />
                    Time
                  </label>
                  <input
@@ -825,13 +800,13 @@ const AudioUploader = ({ isDarkMode }) => {
                    step="1"
                    value={timezoneData.customTime || getCurrentDateTime().time}
                    onChange={(e) => handleTimezoneChange('customTime', e.target.value)}
-                     className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                     className={formStyles.input}
                  />
                  </div>
                </div>
                
                {/* Refresh Current Time Button */}
-               <div className="mt-4 flex justify-center">
+               <div >
                  <button
                    type="button"
                    onClick={() => {
@@ -839,13 +814,9 @@ const AudioUploader = ({ isDarkMode }) => {
                      handleTimezoneChange('customDate', currentDateTime.date);
                      handleTimezoneChange('customTime', currentDateTime.time);
                    }}
-                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                     isDarkMode
-                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                       : 'bg-blue-100 hover:bg-blue-200 text-blue-800'
-                   }`}
+                   className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                  >
-                   <Clock className="w-4 h-4" />
+                   <Clock  />
                    Use Current Time
                  </button>
                </div>
@@ -854,15 +825,15 @@ const AudioUploader = ({ isDarkMode }) => {
 
            {/* Timezone Conversion Example */}
            {timezoneData.useCustomDateTime && timezoneData.customDate && timezoneData.customTime && (
-             <div className={`p-3 rounded-md mb-4 ${isDarkMode ? 'bg-gray-600' : 'bg-yellow-50'}`}>
-               <div className="flex items-center gap-2 mb-2">
-                 <Globe className="w-4 h-4 text-yellow-500" />
-                 <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+             <div className={cardStyles.card}>
+               <div className="row">
+                 <Globe  />
+                 <span className="mutedText smallText">
                    Timezone Conversion:
                  </span>
                </div>
-               <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                 <div className="mb-1">
+               <div >
+                 <div >
                    <strong>Local Time:</strong> {timezoneData.customDate} {timezoneData.customTime} ({timezones.find(tz => tz.value === timezoneData.selectedTimezone)?.label})
                  </div>
                  <div>
@@ -873,14 +844,14 @@ const AudioUploader = ({ isDarkMode }) => {
            )}
 
            {/* Current Time Display */}
-           <div className={`p-3 rounded-md mb-4 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-100'}`}>
-             <div className="flex items-center gap-2 mb-2">
-               <Clock className="w-4 h-4 text-blue-500" />
-               <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+           <div className={cardStyles.card}>
+             <div className="row">
+               <Clock  />
+               <span className="mutedText smallText">
                  Current time in {timezones.find(tz => tz.value === timezoneData.selectedTimezone)?.label}:
                </span>
              </div>
-             <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+             <div >
                {new Date().toLocaleString("en-US", { 
                  timeZone: timezoneData.selectedTimezone,
                  year: 'numeric',
@@ -895,37 +866,37 @@ const AudioUploader = ({ isDarkMode }) => {
            </div>
 
            {/* UTC Preview */}
-           <div className={`p-3 rounded-md ${isDarkMode ? 'bg-gray-600' : 'bg-blue-50'}`}>
-             <div className="flex items-center gap-2 mb-2">
-               <Clock className="w-4 h-4 text-blue-500" />
-               <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+           <div className={cardStyles.card}>
+             <div className="row">
+               <Clock  />
+               <span className="mutedText smallText">
                  Generated UTC Filename:
                </span>
              </div>
-             <code className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'} font-mono`}>
+             <code className="codeBlock">
                {generateFilename()}
              </code>
-             <div className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+             <div >
                This filename will be used when uploading the file
              </div>
            </div>
         </div>
 
         {/* Additional Parameters */}
-        <div className={`p-6 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-          <div className="flex items-center gap-2 mb-6">
-            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <Settings className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+        <div className={cardStyles.card}>
+          <div className="row">
+            <div >
+              <Settings  />
             </div>
-            <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className="pageTitle">
               Additional Parameters
             </h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="gridTwo">
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                <Zap className="w-4 h-4 inline mr-2" />
+            <label className={formStyles.label}>
+                <Zap  />
               Trigger
             </label>
             <input
@@ -933,12 +904,12 @@ const AudioUploader = ({ isDarkMode }) => {
               value={formData.trigger}
               onChange={(e) => handleInputChange('trigger', e.target.value)}
               placeholder="1"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                className={formStyles.input}
             />
           </div>
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                <Volume2 className="w-4 h-4 inline mr-2" />
+            <label className={formStyles.label}>
+                <Volume2  />
               Audio End
             </label>
             <input
@@ -946,12 +917,12 @@ const AudioUploader = ({ isDarkMode }) => {
               value={formData.audioEnd}
               onChange={(e) => handleInputChange('audioEnd', e.target.value)}
               placeholder="0"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                className={formStyles.input}
             />
           </div>
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                <Clock className="w-4 h-4 inline mr-2" />
+            <label className={formStyles.label}>
+                <Clock  />
               Duration
             </label>
             <input
@@ -959,12 +930,12 @@ const AudioUploader = ({ isDarkMode }) => {
               value={formData.duration}
               onChange={(e) => handleInputChange('duration', e.target.value)}
               placeholder="30"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                className={formStyles.input}
             />
           </div>
           <div>
-            <label className={`block text-sm font-medium ${themeClasses.label} mb-2`}>
-                <Volume2 className="w-4 h-4 inline mr-2" />
+            <label className={formStyles.label}>
+                <Volume2  />
               Audio Level
             </label>
             <input
@@ -972,63 +943,55 @@ const AudioUploader = ({ isDarkMode }) => {
               value={formData.audioLevel}
               onChange={(e) => handleInputChange('audioLevel', e.target.value)}
               placeholder="75"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${themeClasses.input}`}
+                className={formStyles.input}
             />
           </div>
         </div>
 
         {/* Checkbox */}
-          <div className={`flex items-center p-4 rounded-lg border mt-6 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+          <div className="row">
           <input
             type="checkbox"
             id="initResponse"
             checked={formData.initResponse}
             onChange={(e) => handleInputChange('initResponse', e.target.checked)}
-              className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+              className={formStyles.input}
           />
-            <label htmlFor="initResponse" className={`ml-3 text-sm font-medium ${themeClasses.label} cursor-pointer`}>
-              <Settings className="w-4 h-4 inline mr-2" />
+            <label htmlFor="initResponse" className={formStyles.label}>
+              <Settings  />
             Get device settings response
           </label>
           </div>
         </div>
 
         {/* Upload Button */}
-        <div className="mt-8">
+        <div >
         <button
           onClick={handleUpload}
             disabled={!selectedFile || !selectedChannel || isUploading || isAddingTags}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-lg ${
-              !selectedFile || !selectedChannel || isUploading || isAddingTags
-                ? themeClasses.buttonDisabled
-                : `${
-                    isDarkMode
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
-                  } transform hover:scale-105 active:scale-95`
-            }`}
+            className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
         >
           {isUploading ? (
             <>
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2  />
               Uploading... ({uploadProgress}%)
             </>
             ) : isAddingTags ? (
               <>
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2  />
                 Adding tags...
             </>
           ) : (
             <>
-                <Upload className="w-6 h-6" />
+                <Upload  />
               Upload Audio File
             </>
           )}
         </button>
           
           {/* Upload Requirements */}
-          <div className="mt-4 text-center">
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div >
+            <p className="mutedText smallText">
               {!selectedFile && !selectedChannel ? 'Please select a channel and audio file to upload' :
                !selectedFile ? 'Please select an audio file to upload' :
                !selectedChannel ? 'Please select a target channel' :
@@ -1039,18 +1002,18 @@ const AudioUploader = ({ isDarkMode }) => {
 
         {/* Progress Bar */}
         {isUploading && (
-          <div className={`mt-6 p-4 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={cardStyles.card}>
+            <div className="rowBetween">
+              <span className="mutedText smallText">
                 Upload Progress
               </span>
-              <span className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+              <span className="mutedText smallText">
                 {uploadProgress}%
               </span>
             </div>
-            <div className={`w-full rounded-full h-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+            <div >
               <div
-                className="bg-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
+                
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
@@ -1059,35 +1022,21 @@ const AudioUploader = ({ isDarkMode }) => {
 
         {/* Status Message */}
         {uploadStatus && (
-          <div className={`mt-6 p-6 rounded-xl border shadow-lg flex items-start gap-4 ${
-            uploadStatus.type === 'success'
-              ? isDarkMode ? 'bg-green-900/20 border-green-700' : 'bg-green-50 border-green-200'
-              : isDarkMode ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-200'
-          }`}>
-            <div className={`p-2 rounded-full ${
-              uploadStatus.type === 'success'
-                ? isDarkMode ? 'bg-green-800/30' : 'bg-green-100'
-                : isDarkMode ? 'bg-red-800/30' : 'bg-red-100'
-          }`}>
+          <div className={cardStyles.card}>
+            <div >
             {uploadStatus.type === 'success' ? (
-                <CheckCircle className="w-6 h-6 text-green-500" />
+                <CheckCircle  />
             ) : (
-                <AlertCircle className="w-6 h-6 text-red-500" />
+                <AlertCircle  />
             )}
             </div>
-            <div className="flex-1">
-              <p className={`text-lg font-semibold ${
-                uploadStatus.type === 'success'
-                  ? isDarkMode ? 'text-green-400' : 'text-green-800'
-                  : isDarkMode ? 'text-red-400' : 'text-red-800'
-              }`}>
+            <div >
+              <p >
                 {uploadStatus.message}
               </p>
               {uploadStatus.details && (
-                <div className={`mt-3 p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                  <pre className={`text-xs overflow-auto ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
+                <div className={cardStyles.card}>
+                  <pre className="codeBlock">
                   {JSON.stringify(uploadStatus.details, null, 2)}
                 </pre>
                 </div>
@@ -1098,25 +1047,19 @@ const AudioUploader = ({ isDarkMode }) => {
 
         {/* Tag Addition Status */}
         {isAddingTags && (
-          <div className={`mt-6 p-6 rounded-xl border shadow-lg flex items-start gap-4 ${
-            isDarkMode ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'
-          }`}>
-            <div className={`p-2 rounded-full ${isDarkMode ? 'bg-blue-800/30' : 'bg-blue-100'}`}>
-              <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+          <div className={cardStyles.card}>
+            <div >
+              <Loader2  />
             </div>
-            <div className="flex-1">
-              <p className={`text-lg font-semibold ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-800'
-              }`}>
+            <div >
+              <p >
                 Adding {selectedTags.length} tag(s) to recording...
               </p>
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="rowWrap">
                 {selectedTags.map(tag => (
                   <span
                     key={tag}
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${
-                      isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-800'
-                    }`}
+                    className="mutedText smallText"
                   >
                     {tag}
                   </span>

@@ -8,7 +8,6 @@ import React, {
 import { ArrowUp, MessageSquare } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import "react-toastify/dist/ReactToastify.css";
 import logger from "../../utils/logger";
 import IncidentReportModal from "./IncidentReportModal";
 import { useAuth } from "../AuthContext";
@@ -17,6 +16,9 @@ import { useAudioPlayback } from "../AudioPlaybackContext";
 import SharedInlineAudioPlayer from "../InlineAudioPlayer";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import buttonStyles from "../ui/Button.module.css";
+import formStyles from "../ui/Form.module.css";
+import styles from "../ui/FullscreenMessages.module.css";
 
 /** Longer transcripts collapse to one line until the user clicks More. */
 const MESSAGE_BODY_PREVIEW_CHAR_THRESHOLD = 110;
@@ -38,7 +40,6 @@ const FullscreenMessages = ({
   setActiveAudioUrl,
   isFullscreen,
   onToggleFullscreen,
-  isDarkMode,
   setMessages: setMessagesProp,
   isMobile,
   isMultiSelectMode,
@@ -77,12 +78,10 @@ const FullscreenMessages = ({
   const canCreateReports = user?.role === 'admin' || hasPermission('create_reports');
 
   /** Message row toolbar: aligned hit targets + readable Material Symbols */
-  const msgActionBtnBase =
-    "inline-flex shrink-0 items-center justify-center rounded-lg transition active:scale-[0.97]";
-  const msgActionIcon =
-    "material-symbols-outlined pointer-events-none select-none leading-none [font-variation-settings:'FILL'0,'wght'500,'GRAD'0,'opsz'24]";
-  const msgActionDim = isMobile ? "h-8 w-8" : "h-9 w-9";
-  const msgActionFont = isMobile ? "text-[18px]" : "text-[20px]";
+  const msgActionBtnBase = buttonStyles.button;
+  const msgActionIcon = "material-symbols-outlined";
+  const msgActionDim = buttonStyles.icon;
+  const msgActionFont = "";
 
   // State declarations - moved before useEffect that depends on them
   const [expandedPlayer, setExpandedPlayer] = useState(null); // Track which message has expanded player
@@ -192,25 +191,16 @@ const FullscreenMessages = ({
     closeOnClick: false,
     pauseOnHover: true,
     draggable: true,
-    theme: isDarkMode ? "dark" : "light",
-    style: {
-      borderRadius: "8px",
-      boxShadow: "0 4px 6px rgb(var(--ui-text-rgb) / 0.1)",
-      minWidth: "300px",
-    },
-    progressStyle: {
-      background: "var(--ui-muted)",
-    },
   };
   const showToast = useCallback(
     (message, type = "info", customOptions = {}) =>
       toast(
-        <div className="flex items-center justify-between w-full">
-          <span className="text-sm font-medium">{message}</span>
+        <div className="rowBetween">
+          <span>{message}</span>
           {customOptions.undo && (
             <button
               onClick={customOptions.undo.action}
-              className="ml-4 px-2 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.primary}`}
             >
               Undo
             </button>
@@ -218,7 +208,7 @@ const FullscreenMessages = ({
         </div>,
         { ...TOAST_CONFIG, type, ...customOptions }
       ),
-    [isDarkMode, isMobile]
+    [isMobile]
   );
 
   // Function to replace hallucination words with "....." in the text
@@ -1020,70 +1010,6 @@ const FullscreenMessages = ({
       },
     });
 
-// const AudioIcon = ({ url, messageId, isDarkMode = false, isMobile = false }) => {
-//   const [isPlaying, setIsPlaying] = useState(false);
-//   const [audio] = useState(new Audio(url)); // Create Audio instance
-
-//   // Toggle play/pause for the audio
-//   const handlePlayClick = (e) => {
-//     e.stopPropagation();
-
-//     if (isPlaying) {
-//       audio.pause();
-//       setIsPlaying(false);
-//     } else {
-//       audio.play().catch((err) => console.error("Audio playback error:", err));
-//       setIsPlaying(true);
-//     }
-//   };
-
-//   // Navigate to advanced player (keeping your original logic)
-//   const navigateToAdvancedPlayer = (url, messageId) => {
-//     // console.log("Navigating to advanced player:", { url, messageId });
-//    navigate(
-//       `/advanced-player?audioUrl=${encodeURIComponent(url)}&messageId=${messageId}`
-//     );
-
-//   };
-
-//   // Ensure audio stops when component unmounts
-//   useEffect(() => {
-//     return () => {
-//       audio.pause();
-//       audio.currentTime = 0;
-//     };
-//   }, [audio]);
-
-//   return (
-//     <div className="inline-flex items-center">
-//       <span
-//         onClick={handlePlayClick}
-//         className="cursor-pointer"
-//         title={isPlaying ? "Pause" : "Play mini"}
-//       >
-//         <Volume1
-//           className={`inline ${
-//             isDarkMode ? "text-gray-400 hover:text-blue-400" : "text-gray-500 hover:text-blue-600"
-//           } ${isPlaying ? "text-blue-600" : ""}`}
-//           size={isMobile ? 16 : 18}
-//         />
-//       </span>
-//       <span
-//         onClick={(e) => {
-//           e.stopPropagation();
-//           navigateToAdvancedPlayer(url, messageId);
-//         }}
-//         className={`ml-2 ${isMobile ? "text-[10px]" : "text-xs"} ${
-//           isDarkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"
-//         } hover:underline cursor-pointer`}
-//         title="Open advanced"
-//       >
-//         <ExternalLink size={isMobile ? 12 : 14} className="inline mr-1" />
-//         Adv
-//       </span>
-//    </div>
-//   );
-// };
   const AudioIcon = ({ url, messageId }) => {
     const isCurrentlyPlaying = activeTrack?.ownerId === `inbox:${messageId}` && audioStatus === 'playing';
     const isExpanded = expandedPlayer === messageId;
@@ -1092,16 +1018,10 @@ const FullscreenMessages = ({
         type="button"
         className={`${msgActionBtnBase} ${msgActionDim} ${
           isExpanded
-            ? isDarkMode
-              ? "text-sky-400 bg-sky-500/15 ring-1 ring-sky-500/30"
-              : "text-primary bg-primary/10 ring-1 ring-primary/25"
+            ? buttonStyles.primary
             : isCurrentlyPlaying
-              ? isDarkMode
-                ? "text-sky-400 hover:bg-slate-800"
-                : "text-primary hover:bg-slate-100"
-              : isDarkMode
-                ? "text-slate-400 hover:bg-slate-800 hover:text-sky-400"
-                : "text-slate-600 hover:bg-slate-100 hover:text-primary"
+              ? buttonStyles.accent
+              : buttonStyles.ghost
         }`}
         onClick={(e) => {
           e.stopPropagation();
@@ -1163,34 +1083,20 @@ const FullscreenMessages = ({
   // Render
   return (
     <div
-      className={`relative flex min-h-0 flex-col ${
-        isDarkMode ? "bg-slate-950" : "bg-white"
-      } ${isFullscreen ? "fixed inset-0 z-50 h-screen" : "min-h-0 flex-1"}`}
+      className={`${styles.root} ${isFullscreen ? styles.fullscreen : styles.embedded}`}
     >
       {/* Multi-select toolbar */}
       {isMultiSelectMode && (
-        <div
-          className={`sticky top-0 z-10 border-b px-3 py-3 md:px-4 ${
-            isDarkMode ? "border-slate-700 bg-slate-900/95" : "border-slate-200/90 bg-surface-container-low/90"
-          } backdrop-blur-sm`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span
-                className={`text-sm ${
-                  isDarkMode ? "text-gray-300" : "text-gray-600"
-                }`}
-              >
+        <div className={styles.multiSelectToolbar}>
+          <div className="rowBetween">
+            <div className="row">
+              <span className="pill pillAccent">
                 {selectedMessages.size} selected
               </span>
               {selectedMessages.size > 0 && (
                 <button
                   onClick={clearSelection}
-                  className={`text-sm ${
-                    isDarkMode
-                      ? "text-gray-400 hover:text-gray-200"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.ghost}`}
                 >
                   Clear
                 </button>
@@ -1198,27 +1104,19 @@ const FullscreenMessages = ({
               {messages.filter((m) => !hiddenMessages.has(m.id)).length > 0 && (
                 <button
                   onClick={selectAllMessages}
-                  className={`text-sm ${
-                    isDarkMode
-                      ? "text-blue-400 hover:text-blue-300"
-                      : "text-blue-600 hover:text-blue-800"
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.accent}`}
                 >
                   Select All
                 </button>
               )}
             </div>
-          <div className="flex items-center space-x-2">
+          <div className={styles.toolbarActions}>
   {/* Tag dropdown */}
-  <div className="flex items-center">
+  <div className="row">
     <select
       value={selectedTag}
       onChange={(e) => setSelectedTag(e.target.value)}
-      className={`px-2 py-1 rounded-md text-sm border ${
-        isDarkMode
-          ? "bg-gray-700 border-gray-600 text-white"
-          : "bg-white border-gray-300"
-      }`}
+      className={`${formStyles.select} ${formStyles.selectInline}`}
     >
       <option value="">Select a tag</option>
       {allTags.map((t) => (
@@ -1230,18 +1128,14 @@ const FullscreenMessages = ({
     <button
       onClick={addTagToSelectedMessages}
       disabled={isProcessing || !selectedTag}
-      className={`ml-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-        isProcessing || !selectedTag
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-          : "bg-purple-600 hover:bg-purple-700 text-white"
-      }`}
+      className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.accent}`}
     >
       {isProcessing ? (
-        <span className="material-symbols-outlined mr-2 inline-block animate-spin text-[18px] leading-none">
+        <span className={`material-symbols-outlined spin`}>
           progress_activity
         </span>
       ) : (
-        <span className="material-symbols-outlined mr-2 inline-block text-[18px] leading-none">label</span>
+        <span className={`material-symbols-outlined`}>label</span>
       )}
       Add Tag
     </button>
@@ -1314,18 +1208,14 @@ const FullscreenMessages = ({
     }
   }}
   disabled={isProcessing || selectedMessages.size === 0}
-  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-    isProcessing || selectedMessages.size === 0
-      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-      : "bg-blue-600 hover:bg-blue-700 text-white"
-  }`}
+  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.primary}`}
 >
   {isProcessing ? (
-    <span className="material-symbols-outlined mr-2 inline-block animate-spin text-[18px] leading-none">
+    <span className={`material-symbols-outlined spin`}>
       progress_activity
     </span>
   ) : (
-    <span className="material-symbols-outlined mr-2 inline-block text-[18px] leading-none">download</span>
+    <span className={`material-symbols-outlined`}>download</span>
   )}
   Download Audio as ZIP
 </button>
@@ -1335,18 +1225,14 @@ const FullscreenMessages = ({
     <button
       onClick={createIncidentReport}
       disabled={isProcessing}
-      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-        isProcessing
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-          : "bg-orange-600 hover:bg-orange-700 text-white"
-      }`}
+      className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.warning}`}
     >
       {isProcessing ? (
-        <span className="material-symbols-outlined mr-2 inline-block animate-spin text-[18px] leading-none">
+        <span className={`material-symbols-outlined spin`}>
           progress_activity
         </span>
       ) : (
-        <span className="material-symbols-outlined mr-2 inline-block text-[18px] leading-none">assignment</span>
+        <span className={`material-symbols-outlined`}>assignment</span>
       )}
       Create Incident
     </button>
@@ -1356,18 +1242,14 @@ const FullscreenMessages = ({
     <button
       onClick={deleteSelectedMessages}
       disabled={isProcessing}
-      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-        isProcessing
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-          : "bg-red-600 hover:bg-red-700 text-white"
-      }`}
+      className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.danger}`}
     >
       {isProcessing ? (
-        <span className="material-symbols-outlined mr-2 inline-block animate-spin text-[18px] leading-none">
+        <span className={`material-symbols-outlined spin`}>
           progress_activity
         </span>
       ) : (
-        <span className="material-symbols-outlined mr-2 inline-block text-[18px] leading-none">delete</span>
+        <span className={`material-symbols-outlined`}>delete</span>
       )}
       Delete ({selectedMessages.size})
     </button>
@@ -1380,16 +1262,10 @@ const FullscreenMessages = ({
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className={`overflow-y-auto ${
-          isDarkMode ? "dark-mode-scrollbar" : ""
-        } ${
-          isFullscreen
-            ? "h-screen p-4 sm:p-6"
-            : "min-h-0 flex-1 space-y-1 px-4 py-3 pb-24 md:px-8"
-        }`}
+        className={`${styles.scroller} ${isFullscreen ? styles.scrollerFullscreen : styles.scrollerEmbedded}`}
       >
-        <div className="w-full space-y-1">
-          <div ref={messagesTopRef} className="h-px" />
+        <div className="stack stackCompact">
+          <div ref={messagesTopRef} className={styles.scrollAnchor} />
           {messages.map((item) => {
   if (hiddenMessages.has(item.id)) return null;
 
@@ -1418,14 +1294,12 @@ const FullscreenMessages = ({
 
   const processingIndicator = showProcessingSpinner ? (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${
-        isDarkMode ? "bg-blue-900/40 text-blue-200" : "bg-blue-50 text-blue-700"
-      }`}
+      className="pill pillAccent"
       aria-live="polite"
       aria-busy="true"
     >
       <span
-        className={`${msgActionIcon} shrink-0 animate-spin ${msgActionFont} !text-[14px] text-primary`}
+        className={`${msgActionIcon} spin`}
         aria-hidden
       >
         progress_activity
@@ -1459,32 +1333,26 @@ const FullscreenMessages = ({
 
   const channelBadge = (
     <span
-      className={`inline-flex max-w-[13.5rem] shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-tight tracking-tight ${
-        isDarkMode
-          ? "border-slate-600/85 bg-slate-800/90 text-slate-100"
-          : "border-slate-200/95 bg-slate-100/95 text-slate-800"
-      }`}
+      className={`pill ${styles.channelBadge}`}
       title={channelLabel}
     >
-      <span className="truncate">{channelLabel}</span>
+      <span className={styles.truncate}>{channelLabel}</span>
     </span>
   );
 
   const durationBadge =
     item.duration > 0 ? (
-      <span className="shrink-0 self-center text-sm font-medium tabular-nums tracking-tight text-blue-500 dark:text-blue-400">
+      <span className={styles.duration}>
         {formatDuration(item.duration)}
       </span>
     ) : null;
 
   const feedLeftColumn = (
-    <div className="flex max-w-[13.5rem] shrink-0 flex-col gap-0.5">
+    <div className={styles.feedLeft}>
       {channelBadge}
       {feedSubline ? (
         <span
-          className={`text-[11px] leading-tight tabular-nums ${
-            isDarkMode ? "text-slate-500" : "text-slate-500"
-          }`}
+          className={styles.feedSubline}
           title={feedSubline}
         >
           {feedSubline}
@@ -1496,51 +1364,29 @@ const FullscreenMessages = ({
   return (
     <div
       key={item.id}
-      className={`group relative min-w-0 rounded-lg border transition-colors duration-200 ${
-        isMobile ? "flex flex-col px-2.5 py-1.5" : "flex items-start gap-2.5 px-2.5 py-1.5 md:gap-2.5"
-      } ${
-        isDarkMode
-          ? "border-slate-700/70 bg-slate-900/25 hover:border-slate-600 hover:bg-slate-800/40"
-          : "border-slate-200/90 bg-surface-container-low/80 hover:border-slate-300/90 hover:bg-surface-container-high/90"
-      } ${
-        isMultiSelectMode ? "cursor-pointer" : ""
-      } ${
-        selectedMessages.has(item.id)
-          ? isDarkMode
-            ? "!border-blue-500/50 bg-blue-950/35 ring-2 ring-blue-500/90"
-            : "!border-blue-300/80 bg-blue-50/95 ring-2 ring-blue-500/70"
-          : ""
-      }`}
+      className={`${styles.item} ${isMobile ? styles.itemMobile : styles.itemDesktop} ${
+        isMultiSelectMode ? styles.selectable : ""
+      } ${selectedMessages.has(item.id) ? styles.selected : ""}`}
       onClick={isMultiSelectMode ? () => toggleMessageSelection(item.id) : undefined}
     >
       {isMobile ? (
         <>
-          <div className="flex min-w-0 items-start gap-2">
+          <div className={styles.headerRow}>
             {isMultiSelectMode && (
               <div
-                className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 ${
-                  selectedMessages.has(item.id)
-                    ? "border-blue-600 bg-blue-600"
-                    : isDarkMode
-                      ? "border-gray-600"
-                      : "border-gray-300"
-                }`}
+                className={`${styles.selectionBox} ${selectedMessages.has(item.id) ? styles.selectionBoxSelected : ""}`}
               >
                 {selectedMessages.has(item.id) && (
-                  <span className="material-symbols-outlined !text-[14px] leading-none text-white">check</span>
+                  <span className={`material-symbols-outlined ${styles.selectionCheck}`}>check</span>
                 )}
               </div>
             )}
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <div className="flex min-w-0 items-start gap-2">
+            <div className={styles.contentStack}>
+              <div className={styles.headerRow}>
                 {feedLeftColumn}
-                <div className="flex min-w-0 flex-1 items-start gap-2">
+                <div className={styles.bodyRow}>
                   <div
-                    className={`min-w-0 flex-1 text-[15px] font-normal leading-[1.45] antialiased ${
-                      bodyExpanded || !transcriptLong ? "" : "line-clamp-2"
-                    } ${
-                      canPlayAudio && item.url ? "cursor-pointer" : isMultiSelectMode ? "" : "cursor-pointer"
-                    } ${isDarkMode ? "text-slate-100" : "text-on-surface"}`}
+                    className={`${styles.transcript} ${bodyExpanded || !transcriptLong ? "" : styles.clampTwo} ${styles.clickable}`}
                     onClick={(e) => {
                       if (!isMultiSelectMode) {
                         e.stopPropagation();
@@ -1558,9 +1404,7 @@ const FullscreenMessages = ({
                       highlightText(filteredMessage, searchQuery)
                     ) : item.status === "queued" ? (
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          isDarkMode ? "bg-yellow-900/50 text-yellow-200" : "bg-yellow-100 text-yellow-800"
-                        }`}
+                        className="pill pillWarning"
                       >
                         queued
                       </span>
@@ -1568,18 +1412,14 @@ const FullscreenMessages = ({
                       processingIndicator
                     ) : (
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          isDarkMode ? "bg-yellow-900/50 text-yellow-200" : "bg-yellow-100 text-yellow-800"
-                        }`}
+                        className="pill pillWarning"
                       >
                         .....
                       </span>
                     )}
                     {regex && (
                       <span
-                        className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
-                          isDarkMode ? "bg-blue-700 text-blue-200" : "bg-blue-100 text-blue-800"
-                        }`}
+                        className={`pill pillAccent ${styles.inlineBadge}`}
                       >
                         Hallucination
                       </span>
@@ -1588,11 +1428,7 @@ const FullscreenMessages = ({
                   {transcriptLong ? (
                     <button
                       type="button"
-                      className={`mt-0.5 shrink-0 self-start rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${
-                        isDarkMode
-                          ? "text-blue-300 hover:bg-blue-500/15"
-                          : "text-primary hover:bg-primary/10"
-                      }`}
+                      className={styles.transcriptToggle}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleMessageBodyExpanded(item.id);
@@ -1601,6 +1437,47 @@ const FullscreenMessages = ({
                       {bodyExpanded ? "Less" : "More"}
                     </button>
                   ) : null}
+                  {/* TO-DO FiX this -- Show re-transcribe button only for failed jobs (.....) as the left-most action */}
+                  {item.message === 'No transcription available' && item.status !== 'queued' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!item.id) return;
+                        setRetranscribeLoading((prev) => ({ ...prev, [item.id]: true }));
+                        showToast('Transcribing...', 'info');
+                        try {
+                          const response = await api.post(`/transcribe/${item.id}`);
+                          if (response.data && response.data.transcription) {
+                            setMessages((prev) => prev.map((m) => m.id === item.id ? { ...m, message: response.data.transcription } : m));
+                            showToast('Transcription updated!', 'success');
+                          } else {
+                            showToast('No transcription returned', 'warning');
+                          }
+                        } catch (err) {
+                          showToast('Transcription failed', 'error');
+                        } finally {
+                          setRetranscribeLoading((prev) => ({ ...prev, [item.id]: false }));
+                        }
+                      }}
+                      className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.success}`}
+                      title="Re-transcribe"
+                      disabled={!!retranscribeLoading[item.id]}
+                    >
+                      {retranscribeLoading[item.id] ? (
+                        <>
+                          <span className={`${msgActionIcon} spin`}>
+                            progress_activity
+                          </span>
+                          {isMobile ? "Trans..." : "Transcribing..."}
+                        </>
+                      ) : (
+                        <>
+                          <span className={`${msgActionIcon}`}>transcribe</span>
+                          {isMobile ? "Re-trans" : "Re-transcribe"}
+                        </>
+                      )}
+                    </button>
+                  )}
                   {durationBadge}
                 </div>
               </div>
@@ -1611,15 +1488,9 @@ const FullscreenMessages = ({
                   e.stopPropagation();
                   togglePlayerExpand(item.id, item.url);
                 }}
-                className={`${msgActionBtnBase} mt-0.5 h-9 w-9 shrink-0 ring-1 transition-colors ${
-                  expandedPlayer === item.id
-                    ? "bg-primary text-white ring-primary/40"
-                    : isDarkMode
-                      ? "bg-slate-800 text-slate-200 ring-slate-600 hover:bg-slate-700/90"
-                      : "bg-white text-slate-700 ring-slate-200/90 shadow-sm hover:bg-slate-50"
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.icon} ${expandedPlayer === item.id ? buttonStyles.primary : buttonStyles.secondary}`}
               >
-                <span className={`${msgActionIcon} text-[20px]`}>
+                <span className={`${msgActionIcon}`}>
                   {activeTrack?.ownerId === `inbox:${item.id}` && audioStatus === 'playing' ? "pause_circle" : "play_circle"}
                 </span>
               </button>
@@ -1628,18 +1499,16 @@ const FullscreenMessages = ({
           
           {/* Expanded mobile actions */}
           {expandedMobileActions === item.id && !isMultiSelectMode && (
-            <div className={`mt-2 flex flex-wrap items-center gap-2 pt-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`rowWrap ${styles.mobileActions}`}>
               {canPlayAudio && item.url && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     downloadAudio(item.url, `audio_${item.id}.mp3`, item.id);
                   }}
-                  className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium ${
-                    isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.secondary}`}
                 >
-                  <span className={`${msgActionIcon} text-[18px]`}>download_2</span>
+                  <span className={`${msgActionIcon}`}>download_2</span>
                   Download
                 </button>
               )}
@@ -1649,11 +1518,9 @@ const FullscreenMessages = ({
                   setShowTagDropdown(showTagDropdown === item.id ? null : item.id);
                   setSelectedTag('');
                 }}
-                className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium ${
-                  isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'
-                }`}
+                className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.secondary}`}
               >
-                <span className={`${msgActionIcon} text-[18px]`}>new_label</span>
+                <span className={`${msgActionIcon}`}>new_label</span>
                 Tag
               </button>
               {canAccessAdvancedPlayer && item.url && (
@@ -1662,11 +1529,9 @@ const FullscreenMessages = ({
                     e.stopPropagation();
                     navigateToAdvancedPlayer(item);
                   }}
-                  className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium ${
-                    isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.secondary}`}
                 >
-                  <span className={`${msgActionIcon} text-[18px]`}>tune</span>
+                  <span className={`${msgActionIcon}`}>tune</span>
                   Advanced
                 </button>
               )}
@@ -1677,14 +1542,12 @@ const FullscreenMessages = ({
                     deleteMessage(item.id);
                   }}
                   disabled={deletingIds.has(item.id)}
-                  className={`flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium ${
-                    isDarkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-700'
-                  }`}
+                  className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.danger}`}
                 >
                   {deletingIds.has(item.id) ? (
-                    <span className={`${msgActionIcon} animate-spin text-[18px]`}>progress_activity</span>
+                    <span className={`${msgActionIcon} spin`}>progress_activity</span>
                   ) : (
-                    <span className={`${msgActionIcon} text-[18px]`}>delete_forever</span>
+                    <span className={`${msgActionIcon}`}>delete_forever</span>
                   )}
                   Delete
                 </button>
@@ -1694,8 +1557,8 @@ const FullscreenMessages = ({
           
           {/* Tag dropdown for mobile */}
           {showTagDropdown === item.id && expandedMobileActions === item.id && (
-            <div className={`mt-2 p-2 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-              <div className="flex flex-wrap gap-1">
+            <div className={styles.tagPanel}>
+              <div className="rowWrap">
                 {allTags.map((tag) => (
                   <button
                     key={tag}
@@ -1704,9 +1567,7 @@ const FullscreenMessages = ({
                       addTagToMessage(item.id, tag);
                       setShowTagDropdown(null);
                     }}
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      isDarkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+                    className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.secondary}`}
                   >
                     {tag}
                   </button>
@@ -1717,7 +1578,7 @@ const FullscreenMessages = ({
           
           {/* Audio Player for mobile - full width */}
           {expandedPlayer === item.id && item.url && canPlayAudio && (
-            <div className="mt-2">
+            <div className={styles.inlinePlayer}>
               <SharedInlineAudioPlayer
                 ownerId={`inbox:${item.id}`}
                 src={item.url}
@@ -1725,7 +1586,6 @@ const FullscreenMessages = ({
                 stopOnUnmount
                 showWaveform
                 showTransport
-                isDarkMode={isDarkMode}
                 timestamp={item.time}
                 formatTimestamp={formatTimestampWithMillis}
                 onClose={() => togglePlayerExpand(item.id)}
@@ -1736,33 +1596,23 @@ const FullscreenMessages = ({
       ) : (
         <>
           {isMultiSelectMode && (
-            <div className="flex flex-shrink-0 items-center justify-center self-start pt-0.5">
+            <div className={styles.desktopSelection}>
               <div
-                className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
-                  selectedMessages.has(item.id)
-                    ? "border-blue-600 bg-blue-600"
-                    : isDarkMode
-                      ? "border-gray-600"
-                      : "border-gray-300"
-                }`}
+                className={`${styles.selectionBox} ${selectedMessages.has(item.id) ? styles.selectionBoxSelected : ""}`}
               >
                 {selectedMessages.has(item.id) && (
-                  <span className="material-symbols-outlined !text-[14px] leading-none text-white">check</span>
+                  <span className={`material-symbols-outlined ${styles.selectionCheck}`}>check</span>
                 )}
               </div>
             </div>
           )}
 
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex min-w-0 items-start gap-2">
+          <div className={styles.desktopContent}>
+            <div className={styles.headerRow}>
               {feedLeftColumn}
-              <div className="flex min-w-0 flex-1 items-start gap-2">
+              <div className={styles.bodyRow}>
                 <div
-                  className={`min-w-0 flex-1 break-words text-[15px] font-normal leading-[1.45] antialiased ${
-                    bodyExpanded || !transcriptLong ? "" : "line-clamp-1"
-                  } ${canPlayAudio && item.url ? "cursor-pointer" : ""} ${
-                    isDarkMode ? "text-slate-100" : "text-on-surface"
-                  }`}
+                  className={`${styles.transcript} ${styles.transcriptDesktop} ${bodyExpanded || !transcriptLong ? "" : styles.clampOne} ${canPlayAudio && item.url ? styles.clickable : ""}`}
                   onClick={(e) => {
                     if (canPlayAudio && item.url && !isMultiSelectMode) {
                       e.stopPropagation();
@@ -1776,17 +1626,13 @@ const FullscreenMessages = ({
                     highlightText(filteredMessage, searchQuery)
                   ) : item.message === "...." ? (
                     <span
-                      className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                        isDarkMode ? "bg-red-900/50 text-red-200" : "bg-red-100 text-red-800"
-                      }`}
+                      className="pill pillDanger"
                     >
                       ....
                     </span>
                   ) : item.status === "queued" ? (
                     <span
-                      className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                        isDarkMode ? "bg-yellow-900/50 text-yellow-200" : "bg-yellow-100 text-yellow-800"
-                      }`}
+                      className="pill pillWarning"
                     >
                       queued
                     </span>
@@ -1794,9 +1640,7 @@ const FullscreenMessages = ({
                     processingIndicator
                   ) : (
                     <span
-                      className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                        isDarkMode ? "bg-yellow-900/50 text-yellow-200" : "bg-yellow-100 text-yellow-800"
-                      }`}
+                      className="pill pillWarning"
                     >
                       No transcription available
                     </span>
@@ -1804,9 +1648,7 @@ const FullscreenMessages = ({
 
                   {regex && (
                     <span
-                      className={`ml-1.5 inline-flex px-2 py-0.5 align-middle text-xs font-medium rounded-full ${
-                        isDarkMode ? "bg-blue-700 text-blue-200" : "bg-blue-100 text-blue-800"
-                      }`}
+                      className={`pill pillAccent ${styles.inlineBadge}`}
                     >
                       Hallucination
                     </span>
@@ -1815,11 +1657,7 @@ const FullscreenMessages = ({
                 {transcriptLong ? (
                   <button
                     type="button"
-                    className={`mt-0.5 shrink-0 self-start rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${
-                      isDarkMode
-                        ? "text-blue-300 hover:bg-blue-500/15"
-                        : "text-primary hover:bg-primary/10"
-                    }`}
+                    className={styles.transcriptToggle}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleMessageBodyExpanded(item.id);
@@ -1834,7 +1672,7 @@ const FullscreenMessages = ({
 
         {/* Audio Player - shows below transcription when expanded */}
         {expandedPlayer === item.id && item.url && canPlayAudio && (
-          <div className="mt-2">
+          <div className={styles.inlinePlayer}>
             <SharedInlineAudioPlayer
               ownerId={`inbox:${item.id}`}
               src={item.url}
@@ -1842,7 +1680,6 @@ const FullscreenMessages = ({
               stopOnUnmount
               showWaveform
               showTransport
-              isDarkMode={isDarkMode}
               timestamp={item.time}
               formatTimestamp={formatTimestampWithMillis}
               onClose={() => togglePlayerExpand(item.id)}
@@ -1852,16 +1689,12 @@ const FullscreenMessages = ({
 
         {/* Existing tags — only when expanded or short message keeps the bar one line */}
         {showTagsRow ? (
-        <div className="mt-1 flex items-center gap-2">
-          <div className="flex flex-wrap gap-1">
+        <div className={`rowWrap ${styles.tagsRow}`}>
+          <div className="rowWrap">
               {(tagsByMessage[item.id] || []).map((t) => (
                 <span
                   key={t}
-                  className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ${
-                    isDarkMode
-                      ? "bg-slate-800/80 text-slate-200 ring-slate-600/80"
-                      : "bg-surface-variant/80 text-slate-800 ring-slate-200/90"
-                  }`}
+                  className="pill"
                 >
                   {t}
                   {!isMultiSelectMode && (
@@ -1870,51 +1703,20 @@ const FullscreenMessages = ({
                         e.stopPropagation();
                         removeTagFromMessage(item.id, t);
                       }}
-                      className="ml-1 text-red-500 hover:text-red-700"
+                      className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.ghost}`}
                     >
-                      <span className={`${msgActionIcon} !text-[14px]`}>close</span>
+                      <span className="material-symbols-outlined">close</span>
                     </button>
                   )}
                 </span>
               ))}
           </div>
-          
-          {/* Tag refresh button */}
-          {/* {!isMultiSelectMode && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                refreshTagsForMessage(item.id);
-              }}
-              className={`p-1 rounded-full transition-colors ${
-                isDarkMode 
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
-              title="Refresh tags"
-              disabled={refreshingTags.has(item.id)}
-            >
-              {refreshingTags.has(item.id) ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <TagIcon size={14} />
-              )}
-            </button>
-          )} */}
-          
-          {/* Loading indicator for tags */}
-          {/* {(!checkedMessageIds.has(item.id) || refreshingTags.has(item.id)) && (
-            <div className="flex items-center text-xs text-gray-500">
-              <Loader2 className="w-3 h-3 animate-spin mr-1" />
-              {refreshingTags.has(item.id) ? 'Refreshing tags...' : 'Loading tags...'}
-            </div>
-          )} */}
         </div>
         ) : null}
 
         {/* Per-message tag dropdown */}
         {!isMultiSelectMode && showTagDropdown === item.id && (
-          <div className="mt-1 flex items-center">
+          <div className={`rowWrap ${styles.tagDropdown}`}>
             <select
               value={selectedTag}
               onChange={(e) => {
@@ -1922,9 +1724,7 @@ const FullscreenMessages = ({
                 setSelectedTag(t);
                 if (t) addTagToMessage(item.id, t);
               }}
-              className={`px-2 py-1 rounded-md text-sm border ${
-                isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-              }`}
+              className={`${formStyles.select} ${formStyles.selectInline}`}
             >
               <option value="">Select a tag</option>
               {allTags.map((t) => (
@@ -1935,9 +1735,7 @@ const FullscreenMessages = ({
             </select>
             <button
               onClick={() => setShowTagDropdown(null)}
-              className={`ml-2 text-sm ${
-                isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`${buttonStyles.button} ${buttonStyles.small} ${buttonStyles.ghost}`}
             >
               Cancel
             </button>
@@ -1948,50 +1746,8 @@ const FullscreenMessages = ({
       {/* Per-message actions */}
       {!isMultiSelectMode && (
         <div
-          className={`flex flex-wrap items-center ${isMobile ? "gap-0.5" : "gap-0.5 self-start pt-0.5 opacity-0 transition-opacity group-hover:opacity-100"}`}
+          className={`rowWrap ${isMobile ? "" : styles.desktopActions}`}
         >
-          {/* Show re-transcribe button only for failed jobs (.....) as the left-most action */}
-          {item.message === 'No transcription available' && item.status !== 'queued' && (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (!item.id) return;
-                setRetranscribeLoading((prev) => ({ ...prev, [item.id]: true }));
-                showToast('Transcribing...', 'info');
-                try {
-                  const response = await api.post(`/transcribe/${item.id}`);
-                  if (response.data && response.data.transcription) {
-                    setMessages((prev) => prev.map((m) => m.id === item.id ? { ...m, message: response.data.transcription } : m));
-                    showToast('Transcription updated!', 'success');
-                  } else {
-                    showToast('No transcription returned', 'warning');
-                  }
-                } catch (err) {
-                  showToast('Transcription failed', 'error');
-                } finally {
-                  setRetranscribeLoading((prev) => ({ ...prev, [item.id]: false }));
-                }
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-lg font-semibold transition-colors ${isMobile ? "min-h-8 px-2 py-1 text-xs" : "min-h-9 px-3 py-1.5 text-xs"} ${isDarkMode ? 'bg-green-700 text-white hover:bg-green-800' : 'bg-green-100 text-green-800 hover:bg-green-200'} ${isMobile ? 'mr-0.5' : 'mr-1'}`}
-              title="Re-transcribe"
-              disabled={!!retranscribeLoading[item.id]}
-            >
-              {retranscribeLoading[item.id] ? (
-                <>
-                  <span className={`${msgActionIcon} ${isMobile ? "text-[16px]" : "text-[18px]"} animate-spin`}>
-                    progress_activity
-                  </span>
-                  {isMobile ? "Trans..." : "Transcribing..."}
-                </>
-              ) : (
-                <>
-                  <span className={`${msgActionIcon} ${isMobile ? "text-[16px]" : "text-[18px]"}`}>transcribe</span>
-                  {isMobile ? "Re-trans" : "Re-transcribe"}
-                </>
-              )}
-            </button>
-          )}
-
           {canPlayAudio && item.url && (
             <AudioIcon url={item.url} messageId={item.id} />
           )}
@@ -2007,11 +1763,7 @@ const FullscreenMessages = ({
                   showToast("No audio available for download", "warning");
                 }
               }}
-              className={`${msgActionBtnBase} ${msgActionDim} ${
-                isDarkMode
-                  ? "text-slate-400 hover:bg-slate-800 hover:text-sky-400"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-primary"
-              }`}
+              className={`${msgActionBtnBase} ${msgActionDim} ${buttonStyles.ghost}`}
               title="Download Audio"
               disabled={!item.url}
             >
@@ -2023,11 +1775,7 @@ const FullscreenMessages = ({
             <button
               type="button"
               onClick={() => navigateToAdvancedPlayer(item)}
-              className={`${msgActionBtnBase} ${msgActionDim} ${
-                isDarkMode
-                  ? "text-sky-400 hover:bg-slate-800 hover:text-sky-300"
-                  : "text-primary hover:bg-primary/10"
-              }`}
+              className={`${msgActionBtnBase} ${msgActionDim} ${buttonStyles.accent}`}
               title="Open in Advanced Player"
             >
               <span className={`${msgActionIcon} ${msgActionFont}`}>tune</span>
@@ -2040,11 +1788,7 @@ const FullscreenMessages = ({
               setShowTagDropdown(showTagDropdown === item.id ? null : item.id);
               setSelectedTag('');
             }}
-            className={`${msgActionBtnBase} ${msgActionDim} ${
-              isDarkMode
-                ? "text-slate-400 hover:bg-slate-800 hover:text-violet-400"
-                : "text-slate-600 hover:bg-violet-100 hover:text-violet-700"
-            }`}
+            className={`${msgActionBtnBase} ${msgActionDim} ${buttonStyles.accent}`}
             title="Add Tag"
           >
             <span className={`${msgActionIcon} ${msgActionFont}`}>new_label</span>
@@ -2057,13 +1801,11 @@ const FullscreenMessages = ({
                 e.stopPropagation();
                 deleteMessage(item.id);
               }}
-              className={`${msgActionBtnBase} ${msgActionDim} ${
-                isDarkMode ? "text-slate-400 hover:bg-red-950/50 hover:text-red-400" : "text-red-600 hover:bg-red-50"
-              }`}
+              className={`${msgActionBtnBase} ${msgActionDim} ${buttonStyles.danger}`}
               disabled={deletingIds.has(item.id)}
             >
               {deletingIds.has(item.id) ? (
-                <span className={`${msgActionIcon} ${msgActionFont} animate-spin`}>progress_activity</span>
+                <span className={`${msgActionIcon} ${msgActionFont} spin`}>progress_activity</span>
               ) : (
                 <span className={`${msgActionIcon} ${msgActionFont}`}>delete_forever</span>
               )}
@@ -2079,17 +1821,13 @@ const FullscreenMessages = ({
 })}
 {/* Message count indicator - only show in continuous scrolling mode */}
           {inboxViewMode === 'continuous' && messages.length > 0 && (
-            <div className={`sticky bottom-0 left-0 right-0 z-10 py-2 px-4 text-center text-xs font-medium ${
-              isDarkMode 
-                ? 'bg-gray-900/95 backdrop-blur-sm text-gray-300 border-t border-gray-700' 
-                : 'bg-white/95 backdrop-blur-sm text-gray-600 border-t border-gray-200'
-            }`}>
-              <div className="flex items-center justify-center gap-2">
+            <div className={styles.countBar}>
+              <div className="row">
                 <span>
                   Showing {messages.length} of {totalMessages} messages
                 </span>
                 {hasMoreMessages && (
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-blue-900/50 text-blue-300">
+                  <span className="pill pillAccent">
                     {totalMessages - messages.length} more available
                   </span>
                 )}
@@ -2099,18 +1837,18 @@ const FullscreenMessages = ({
           
           {/* Loading indicator for infinite scroll - only show in continuous mode */}
           {inboxViewMode === 'continuous' && isLoadingMore && (
-            <div className="flex justify-center py-4">
-              <span className="material-symbols-outlined animate-spin text-3xl leading-none text-blue-500">
+            <div className="centeredContent">
+              <span className="material-symbols-outlined spin">
                 progress_activity
               </span>
             </div>
           )}
           {inboxViewMode === 'continuous' && !hasMoreMessages && messages.length > 0 && (
-            <div className={`text-center py-4 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <div className={styles.allLoaded}>
               All messages loaded
             </div>
           )}
-          <div ref={messagesEndRef} className="h-px" />
+          <div ref={messagesEndRef} className={styles.scrollAnchor} />
         </div>
       </div>
 
@@ -2125,7 +1863,6 @@ const FullscreenMessages = ({
           timeFormat={timeFormat}
           onClose={() => setShowIncidentModal(false)}
           onSubmit={handleIncidentSubmit}
-          isDarkMode={isDarkMode}
           tagsByMessage={tagsByMessage}
         />
       )}
@@ -2134,22 +1871,17 @@ const FullscreenMessages = ({
       {showScrollToTop && (
         <button
           onClick={scrollToTop}
-          className={`fixed bottom-6 right-4 z-50 flex items-center justify-center bg-primary text-on-primary shadow-lg transition-all duration-300 hover:brightness-110 ${
-            newMessageCount > 0 
-              ? 'rounded-full px-4 py-3' 
-              : 'rounded-full w-12 h-12'
-          }`}
-          style={{ boxShadow: '0 4px 14px rgb(var(--ui-accent-rgb) / 0.35)' }}
+          className={`${buttonStyles.button} ${buttonStyles.primary} ${newMessageCount > 0 ? buttonStyles.medium : buttonStyles.icon} ${styles.scrollNewest} ${!reverseSort ? styles.scrollNewestDown : ""}`}
           title={reverseSort ? "Scroll to newest messages (top)" : "Scroll to newest messages (bottom)"}
         >
           {newMessageCount > 0 ? (
-            <div className="flex items-center gap-2">
+            <div className="row">
               <MessageSquare size={18} />
-              <span className="text-sm font-semibold">{newMessageCount}</span>
-              {reverseSort ? <ArrowUp size={18} /> : <ArrowUp size={18} className="rotate-180" />}
+              <span>{newMessageCount}</span>
+              {reverseSort ? <ArrowUp size={18} /> : <ArrowUp size={18} />}
             </div>
           ) : (
-            reverseSort ? <ArrowUp size={22} /> : <ArrowUp size={22} className="rotate-180" />
+            reverseSort ? <ArrowUp size={22} /> : <ArrowUp size={22} className={styles.arrowDown} />
           )}
         </button>
       )}
