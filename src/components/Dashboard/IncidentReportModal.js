@@ -55,6 +55,17 @@ const IncidentReportModal = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
 
   // Memoized sorted messages to avoid redundant sorting
   // Sorted by time ascending (oldest first, latest last)

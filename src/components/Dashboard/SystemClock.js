@@ -150,6 +150,13 @@ const SystemClock = ({ userRole, timeFormat: timeFormatProp = '24h' }) => {
     if (!isModalOpen && dialog.open) dialog.close();
   }, [isModalOpen]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isModalOpen && !dialog.open) dialog.showModal();
+    if (!isModalOpen && dialog.open) dialog.close();
+  }, [isModalOpen]);
+
   const handleSubmit = (event) => {
     // System-time API support is currently disabled.
     event.preventDefault();
