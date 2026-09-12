@@ -19,6 +19,7 @@ import { saveAs } from "file-saver";
 import buttonStyles from "../ui/Button.module.css";
 import formStyles from "../ui/Form.module.css";
 import styles from "../ui/FullscreenMessages.module.css";
+import { parseUtcTimestamp } from "../../utils/dateTime";
 
 /** Longer transcripts collapse to one line until the user clicks More. */
 const MESSAGE_BODY_PREVIEW_CHAR_THRESHOLD = 110;
@@ -33,7 +34,6 @@ const FullscreenMessages = ({
   showPerson,
   formatTime,
   formatFeedRowSublineDate,
-  timezone,
   timeFormat = "24h",
   highlightText,
   searchQuery,
@@ -337,32 +337,14 @@ const FullscreenMessages = ({
     }
   };
 
-  // Parse timestamp from YYYYMMDD_HHMMSS format
-  const parseTimestamp = (timestamp) => {
-    if (!timestamp) return null;
-    
-    // Handle YYYYMMDD_HHMMSS format
-    if (/^\d{8}_\d{6}$/.test(timestamp)) {
-      const year = parseInt(timestamp.substring(0, 4));
-      const month = parseInt(timestamp.substring(4, 6)) - 1; // Month is 0-indexed
-      const day = parseInt(timestamp.substring(6, 8));
-      const hours = parseInt(timestamp.substring(9, 11));
-      const minutes = parseInt(timestamp.substring(11, 13));
-      const seconds = parseInt(timestamp.substring(13, 15));
-      return new Date(Date.UTC(year, month, day, hours, minutes, seconds));
-    }
-    
-    // Try to parse as ISO string or other formats
-    const date = new Date(timestamp);
-    return isNaN(date.getTime()) ? null : date;
-  };
+
 
   // Format timestamp with milliseconds: HH:MM:SS:Millis (respects 12h/24h format)
   const formatTimestampWithMillis = (timestamp, playbackOffset = 0) => {
     if (!timestamp) return timeFormat === '12h' ? '00:00:00:000 AM' : '00:00:00:000';
     
     try {
-      const startDate = parseTimestamp(timestamp);
+      const startDate = parseUtcTimestamp(timestamp);
       if (!startDate) return timeFormat === '12h' ? '00:00:00:000 AM' : '00:00:00:000';
       
       // Add playback offset in milliseconds
@@ -1006,7 +988,6 @@ const FullscreenMessages = ({
           ...message,
           channelName: channels?.[message.channel]?.name || message.team,
         },
-        userTimezone: timezone,
       },
     });
 
@@ -1327,8 +1308,8 @@ const FullscreenMessages = ({
 
   const feedSubline = showTime
     ? formatFeedRowSublineDate
-      ? formatFeedRowSublineDate(item.time, timezone)
-      : formatTime(item.time, timezone)
+      ? formatFeedRowSublineDate(item.time)
+      : formatTime(item.time)
     : null;
 
   const channelBadge = (
@@ -1859,7 +1840,6 @@ const FullscreenMessages = ({
           selectedMessages={selectedMessages}
           messages={messages}
           formatTime={formatTime}
-          timezone={timezone}
           timeFormat={timeFormat}
           onClose={() => setShowIncidentModal(false)}
           onSubmit={handleIncidentSubmit}

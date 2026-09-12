@@ -11,6 +11,7 @@ import audioStyles from "../ui/AudioPlayer.module.css";
 import modalStyles from "../ui/Modal.module.css";
 import cardStyles from "../ui/Card.module.css";
 import listStyles from "../ui/List.module.css";
+import { formatLocalDate, formatLocalDateTime, formatLocalTime, getBrowserTimeZone, parseUtcTimestamp } from "../../utils/dateTime";
 
 
 // Debounce utility to prevent rapid transcription requests
@@ -22,26 +23,15 @@ function debounce(func, wait) {
   };
 }
 
-const formatUtcRecordingTime = (value) => {
-  const compact = String(value || '').match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/);
-  const date = compact
-    ? new Date(Date.UTC(...compact.slice(1).map(Number).map((part, index) => index === 1 ? part - 1 : part)))
-    : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-};
-
 const getRecordingTimes = (startTime, duration) => {
-  const formattedStart = formatUtcRecordingTime(startTime);
+  const start = parseUtcTimestamp(startTime);
   const durationSeconds = Number(duration);
-  if (!formattedStart || !Number.isFinite(durationSeconds)) {
-    return { recordingStartTime: 'Unknown', recordingEndTime: 'Unknown' };
+  if (Number.isNaN(start.getTime()) || !Number.isFinite(durationSeconds)) {
+    return { recordingStartTime: null, recordingEndTime: null };
   }
-
-  const startMs = new Date(formattedStart.replace(' UTC', 'Z').replace(' ', 'T')).getTime();
   return {
-    recordingStartTime: formattedStart,
-    recordingEndTime: formatUtcRecordingTime(startMs + durationSeconds * 1000),
+    recordingStartTime: start.toISOString(),
+    recordingEndTime: new Date(start.getTime() + durationSeconds * 1000).toISOString(),
   };
 };
 
@@ -99,19 +89,14 @@ const ProfessionalAudioEditor = ({
   const [initialAudioUrl, setInitialAudioUrl] = useState(navigationMessage?.url || "");
 
   const [loading, setLoading] = useState(true);
-  
-const [recordingTimes] = useState(() => getRecordingTimes(
-  navigationMessage?.time,
-  navigationMessage?.duration,
-));
-const userTimezone = location.state?.userTimezone || 'UTC';
 
-// later in your component
-const { recordingStartTime, recordingEndTime } = recordingTimes;
-
-// console.log("audioUrl:", audioUrl);
-
-const [channelName, setChannelName] = useState(navigationMessage?.channelName || "");
+  const [recordingTimes] = useState(() => getRecordingTimes(
+    navigationMessage?.time,
+    navigationMessage?.duration,
+  ));
+  const browserTimezone = getBrowserTimeZone();
+  const { recordingStartTime, recordingEndTime } = recordingTimes;
+  const [channelName, setChannelName] = useState(navigationMessage?.channelName || "");
 
   // Fetch audio URL based on messageId
 
@@ -212,151 +197,22 @@ const datefillter = useCallback((url) => {
 
 // Prefer recording date from backend start_time, fall back to filename parsing
 const formatRecordingDate = useCallback(() => {
-  // recordingStartTime format example: "2026-01-21 12:54:27 IST"
-  if (typeof recordingStartTime === "string" && recordingStartTime.includes(" ")) {
-    try {
-      const [datePart] = recordingStartTime.split(" "); // "2026-01-21"
-      const date = new Date(datePart);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      }
-    } catch (e) {
-      console.error("Failed to format recording date from start_time:", e);
-    }
+  if (recordingStartTime) {
+    return formatLocalDate(recordingStartTime, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   }
 
   // Fallback to parsing from filename if start_time not available
   return datefillter(audioUrl);
 }, [recordingStartTime, audioUrl, datefillter]);
 
-
-
-
-
-// getting start timing & end timing of audio
-// Utility function to format time safely with timezone conversion
-const format_Time = (time) => {
-  console.log("format_Time called with:", time);
-  
-  if (!time) {
-    console.log("No time provided");
-    return "N/A";
-  }
-  
-  try {
-    // The backend provides timestamps in format like "2025-08-07 17:19:42 IST"
-    // We need to remove the timezone suffix before parsing
-    let cleanTime = time;
-    if (typeof time === 'string' && time.includes(' ')) {
-      // Try multiple approaches to clean the timestamp
-      // First, try to remove common timezone abbreviations including CEST
-      // cleanTime = time.replace(/\s+(IST|UTC|GMT|EST|PST|CST|MST|EDT|PDT|CDT|MDT|CET|CEST|JST|BST|WET|WEST|EET|EEST)\s*$/i, '');
-      
-      // If that didn't work, try a more general approach for any timezone abbreviation
-      if (cleanTime === time) {
-        cleanTime = time.replace(/\s+[A-Z]{2,6}\s*$/i, '');
-      }
-      
-      console.log("Cleaned time:", cleanTime);
-    }
-    
-    // Try to parse the date more explicitly
-    let date;
-    if (cleanTime.includes('-') && cleanTime.includes(':')) {
-      // Format: "2025-08-07 16:05:30"
-      const [datePart, timePart] = cleanTime.split(' ');
-      const [year, month, day] = datePart.split('-');
-      const [hour, minute, second] = timePart.split(':');
-      
-      // Create date in ISO format for better parsing
-      const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}.000Z`;
-      date = new Date(isoString);
-      console.log("Created ISO string:", isoString);
-    } else {
-      date = new Date(cleanTime);
-    }
-    
-    console.log("Parsed date:", date.toISOString());
-    
-    // Validate the parsed date
-    if (isNaN(date.getTime())) {
-      console.log("Invalid date after parsing:", date);
-      return "N/A";
-    }
-    
-    // Format only the time in a user-friendly format using the user's timezone
-    const formattedTime = date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: timeFormat === "12h", // Use time format preference
-      timeZone: userTimezone // Use the fetched timezone
-    });
-    
-    console.log("Formatted time:", formattedTime);
-    return formattedTime;
-  } catch (error) {
-    console.error("Error formatting time:", error);
-    return "N/A";
-  }
-};
-
-// Function to format recording times to match waveform timing format (HH:MM:SS.000)
-const formatRecordingTime = (time) => {
-  if (!time) return "N/A";
-  
-  try {
-    // The backend provides timestamps in format like "2025-08-07 17:19:42 IST"
-    // We need to extract just the time part and format it
-    if (typeof time === 'string' && time.includes(' ')) {
-      // Split by space to separate date and time
-      const parts = time.split(' ');
-      if (parts.length >= 2) {
-        const timePart = parts[1]; // Get the time part (HH:MM:SS)
-        
-        // Parse the time components
-        const timeComponents = timePart.split(':');
-        if (timeComponents.length >= 3) {
-          const [hours, minutes, seconds] = timeComponents;
-          
-          // Convert to Date object for proper time formatting
-          const date = new Date();
-          date.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds));
-          
-          // Format according to user's time format preference
-          const formattedTime = date.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: timeFormat === "12h"
-          });
-          
-          // For 12-hour format, we need to move AM/PM to the end after milliseconds
-          if (timeFormat === "12h") {
-            // Split the formatted time to separate time and AM/PM
-            const timeParts = formattedTime.split(' ');
-            const timeOnly = timeParts[0]; // "05:18:24"
-            const ampm = timeParts[1]; // "AM" or "PM"
-            return `${timeOnly}.000 ${ampm}`;
-          } else {
-            return `${formattedTime}.000`;
-          }
-        }
-      }
-    }
-    
-    return "N/A";
-  } catch (error) {
-    console.error("Error formatting recording time:", error);
-    return "N/A";
-  }
-};
-
-
+// Recording timestamps are UTC from the API and formatted only when displayed.
+const formatRecordingTime = (time) => formatLocalTime(time, timeFormat, {
+  fractionalSecondDigits: 3,
+});
 
 useEffect(() => {
   const effectiveMessageId = messageId || urlMessageId;
@@ -390,78 +246,16 @@ const formatTime = useCallback((time) => {
   return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(3, "0")}`;
 }, []);
 
-// Format actual recording time (recording start time + current position)
+// Format actual browser-local recording time (recording start time + current position)
 const formatActualTime = useCallback((timeOffset) => {
-  if (!recordingStartTime || isNaN(timeOffset)) return "00:00:00.000";
-  
-  try {
-    // The backend already provides the time in the correct timezone
-    // We just need to extract the time part and add the offset
-    if (typeof recordingStartTime === 'string' && recordingStartTime.includes(' ')) {
-      // Format: "2025-08-07 17:19:42 IST" or "2025-08-07 17:19:42"
-      const parts = recordingStartTime.split(' ');
-      const timePart = parts[1]; // "17:19:42"
-      
-      // Parse the time components
-      const timeComponents = timePart.split(':');
-      if (timeComponents.length >= 3) {
-        const [hours, minutes, seconds] = timeComponents;
-        
-        // Convert to total seconds
-        const totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseFloat(seconds);
-        
-        // Add the time offset
-        const newTotalSeconds = totalSeconds + timeOffset;
-        
-        // Convert back to Date object for proper time formatting
-        const newHours = Math.floor(newTotalSeconds / 3600);
-        const newMinutes = Math.floor((newTotalSeconds % 3600) / 60);
-        const newSeconds = newTotalSeconds % 60;
-        
-        // Create a date object with the calculated time
-        const date = new Date();
-        date.setHours(newHours, newMinutes, Math.floor(newSeconds));
-        
-        // Format according to user's time format preference
-        const formattedTime = date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: timeFormat === "12h"
-        });
-        
-        // Add milliseconds
-        const milliseconds = Math.floor((newSeconds % 1) * 1000);
-        const formattedMilliseconds = milliseconds.toString().padStart(3, '0');
-        
-        // For 12-hour format, we need to move AM/PM to the end after milliseconds
-        if (timeFormat === "12h") {
-          // Split the formatted time to separate time and AM/PM
-          const timeParts = formattedTime.split(' ');
-          const timeOnly = timeParts[0]; // "05:18:24"
-          const ampm = timeParts[1]; // "AM" or "PM"
-          const result = `${timeOnly}.${formattedMilliseconds} ${ampm}`;
-          console.log(`formatActualTime: ${recordingStartTime} + ${timeOffset}s = ${result}`);
-          return result;
-        } else {
-          const result = `${formattedTime}.${formattedMilliseconds}`;
-          console.log(`formatActualTime: ${recordingStartTime} + ${timeOffset}s = ${result}`);
-          return result;
-        }
-      }
-    }
-    
-    // Fallback: if the above parsing fails, use a simpler approach
-    // Just add the offset to the current time display
-    const currentTimeDisplay = formatTime(timeOffset);
-    console.log(`formatActualTime fallback: ${timeOffset}s = ${currentTimeDisplay}`);
-    return currentTimeDisplay;
-  } catch (error) {
-    console.error("Error formatting recording time:", error);
-    return "00:00:00.000";
-  }
-}, [recordingStartTime, formatTime, timeFormat]);
-
+  const start = parseUtcTimestamp(recordingStartTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(timeOffset)) return "00:00:00.000";
+  return formatLocalTime(
+    new Date(start.getTime() + timeOffset * 1000),
+    timeFormat,
+    { fractionalSecondDigits: 3 },
+  );
+}, [recordingStartTime, timeFormat]);
 
   // Fetch default transcription from API
   useEffect(() => {
@@ -945,11 +739,6 @@ const handledownloadaudio = async () => {
       const response = await api.get(`/recording/${effectiveMessageId}/history`);
       setHistoryVersions(response.data.history || []);
       
-      // Store timezone info if available
-      if (response.data.timezone) {
-        console.log('History timezone:', response.data.timezone);
-        setHistoryTimezone(response.data.timezone);
-      }
     } catch (error) {
       console.error('Failed to fetch history:', error);
     } finally {
@@ -1105,10 +894,6 @@ const handledownloadaudio = async () => {
       if (response.ok) {
         toast.success('Transcription saved successfully!');
         
-        // Log timezone info if available
-        if (result.timezone) {
-          console.log('Save timezone:', result.timezone);
-        }
         
         // Refresh history after successful save
         await fetchHistory();
@@ -1218,7 +1003,6 @@ useEffect(() => {
 const [historyLoaded, setHistoryLoaded] = useState(false);
 const [selectedVersion, setSelectedVersion] = useState(null);
 const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-const [historyTimezone, setHistoryTimezone] = useState('IST');
 
 // edit transcription text
 const contentEditableRef = useRef(null);
@@ -1413,8 +1197,8 @@ const handleWaveformClick = useCallback(
           </div>
           <dl className={audioStyles.metadata}>
             <div><dt>Recording date:</dt><dd>{formatRecordingDate()}</dd></div>
-            <div><dt>Recording start time:</dt><dd>{formatRecordingTime(recordingStartTime)} {userTimezone && <small>({userTimezone})</small>}</dd></div>
-            <div><dt>Recording end time:</dt><dd>{formatRecordingTime(recordingEndTime)} {userTimezone && <small>({userTimezone})</small>}</dd></div>
+            <div><dt>Recording start time:</dt><dd>{formatRecordingTime(recordingStartTime)} {browserTimezone && <small>({browserTimezone})</small>}</dd></div>
+            <div><dt>Recording end time:</dt><dd>{formatRecordingTime(recordingEndTime)} {browserTimezone && <small>({browserTimezone})</small>}</dd></div>
           </dl>
         </section>
 
@@ -1466,7 +1250,7 @@ const handleWaveformClick = useCallback(
             <header className={modalStyles.header}>
               <div>
                 <h2 id="version-history-title" className={modalStyles.title}>Version History</h2>
-                <p className={modalStyles.subtitle}>All timestamps shown in {userTimezone}</p>
+                <p className={modalStyles.subtitle}>All timestamps shown in {browserTimezone}</p>
               </div>
               <Button
                 aria-label="Close version history"
@@ -1503,9 +1287,9 @@ const handleWaveformClick = useCallback(
                           <span>
                             {typeof version.created_at === 'string' && version.created_at.includes(' ')
                               ? version.created_at
-                              : new Date(version.created_at).toLocaleString("en-US")}
+                              : formatLocalDateTime(version.created_at)}
                             {typeof version.created_at === 'string' && version.created_at.includes(' ') &&
-                              <small> ({historyTimezone})</small>
+                              <small> ({browserTimezone})</small>
                             }
                           </span>
                         </div>

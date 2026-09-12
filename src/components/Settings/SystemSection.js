@@ -31,7 +31,6 @@ const SystemSection = ({
   showToast,
   globalSettings,
   handleGlobalChange,
-  timezone,
   timeFormat,
   setTimeFormat,
   reverseSort,
@@ -70,7 +69,6 @@ const SystemSection = ({
     <GlobalSettings
       globalSettings={globalSettings}
       handleGlobalChange={handleGlobalChange}
-      timezone={timezone}
       timeFormat={timeFormat}
       setTimeFormat={setTimeFormat}
       reverseSort={reverseSort}
@@ -89,7 +87,6 @@ const SystemSection = ({
           <GlobalSettings
             globalSettings={globalSettings}
             handleGlobalChange={handleGlobalChange}
-            timezone={timezone}
             timeFormat={timeFormat}
             setTimeFormat={setTimeFormat}
             reverseSort={reverseSort}

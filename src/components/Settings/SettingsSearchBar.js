@@ -20,7 +20,7 @@ const SETTINGS_DESTINATIONS = [
     section: "system",
     systemTab: "display-language",
     label: "System · Display & Language",
-    match: "display language timezone time format sort",
+    match: "display language local time browser time format sort",
   },
   {
     section: "transcription-engine",

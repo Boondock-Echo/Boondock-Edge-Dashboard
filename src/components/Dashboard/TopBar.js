@@ -25,8 +25,6 @@ const TopBar = ({
   showPerson,
   setShowPerson,
   branding,
-  timezone,
-  setTimezone,
   isMobile,
    isMultiSelectMode,
   setIsMultiSelectMode,
@@ -194,8 +192,6 @@ const TopBar = ({
             <SystemClock
               userRole={userRole}
               timeFormat={timeFormat}
-              timezone={timezone}
-              setTimezone={setTimezone}
             />
           </div>
         </div>

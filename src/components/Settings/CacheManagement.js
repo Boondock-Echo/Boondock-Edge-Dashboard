@@ -9,7 +9,6 @@ const CACHE_KEYS = {
   CHANNELS: 'cached_channels',
   MESSAGES: 'cached_messages',
   KEYWORDS: 'cached_keywords',
-  TIMEZONE: 'cached_timezone',
   LAST_FETCH: 'last_fetch_time'
 };
 

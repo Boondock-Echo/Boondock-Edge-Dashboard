@@ -9,7 +9,6 @@
     "password": "ExampleWifiPassword123!"
   },
   "preferences": {
-    "timezone": "Etc/UTC",
     "inbox_view": "continuous",
     "message_sorting": "newest"
   }

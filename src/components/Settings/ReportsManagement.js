@@ -6,6 +6,13 @@ import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search,
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { buildIncidentReportPdfBlob, incidentReportPdfFilename, fetchBrandingForPdf } from '../../utils/incidentReportPdf';
+import {
+  formatLocalDateTime,
+  getLocalTimeZoneAbbreviation,
+  localDateTimeInputToUtc,
+  parseUtcTimestamp,
+  toLocalDateTimeInputValue,
+} from '../../utils/dateTime';
 import InlineAudioPlayer from '../InlineAudioPlayer';
 import Button from '../ui/Button';
 import cardStyles from '../ui/Card.module.css';
@@ -185,89 +192,22 @@ const UpdateIncidentModal = ({
       setFormData({
         name: incident.name || incident.title || '',
         description: incident.description || '',
-        startTime: incident.startTime ? formatDateTimeForInput(incident.startTime) : '',
-        endTime: incident.endTime ? formatDateTimeForInput(incident.endTime) : '',
+        startTime: incident.startTime ? toLocalDateTimeInputValue(incident.startTime) : '',
+        endTime: incident.endTime ? toLocalDateTimeInputValue(incident.endTime) : '',
         severity: incident.severity ? incident.severity.toLowerCase() : 'low'
       });
     }
-  }, [isOpen, incident]); // Added isOpen to dependencies
-
-  // Format date for datetime-local input (YYYY-MM-DDTHH:MM:SS) with timezone conversion
-  const formatDateTimeForInput = (dateString) => {
-    if (!dateString) return '';
-    
-    // Try parsing the date string
-    let date = new Date(dateString);
-    
-    // If parsing fails, try removing milliseconds
-    if (isNaN(date.getTime())) {
-      const withoutMilliseconds = dateString.replace(/\.\d+/, '');
-      date = new Date(withoutMilliseconds);
-    }
-    
-    // If still invalid, return empty string
-    if (isNaN(date.getTime())) return '';
-    
-    // Get the timezone from localStorage or use UTC as fallback
-    let timezone = localStorage.getItem('cached_timezone') || 'Etc/UTC';
-    
-    // Validate timezone before using it
-    const validateAndFixTimezone = (tz) => {
-      try {
-        new Intl.DateTimeFormat('en-US', { timeZone: tz });
-        return tz;
-      } catch (error) {
-        console.warn(`Invalid timezone "${tz}", falling back to Etc/UTC`);
-        return 'Etc/UTC';
-      }
-    };
-    
-    timezone = validateAndFixTimezone(timezone);
-    
-    // Use Intl.DateTimeFormat to get parts in the target timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-    
-    const parts = formatter.formatToParts(date);
-    const year = parts.find(p => p.type === 'year')?.value || '';
-    const month = parts.find(p => p.type === 'month')?.value || '';
-    const day = parts.find(p => p.type === 'day')?.value || '';
-    const hour = parts.find(p => p.type === 'hour')?.value || '';
-    const minute = parts.find(p => p.type === 'minute')?.value || '';
-    const second = parts.find(p => p.type === 'second')?.value || '';
-    
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-  };
-
+  }, [isOpen, incident]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Convert local datetime inputs back to UTC for server storage
-      const convertLocalToUTC = (localDateTime) => {
-        if (!localDateTime) return "";
-        
-        // Create a date object from the local datetime input
-        const localDate = new Date(localDateTime);
-        
-        // Convert to UTC ISO string
-        return localDate.toISOString();
-      };
-
       await onUpdate({
         ...incident,
         ...formData,
         
-        startTime: formData.startTime ? convertLocalToUTC(formData.startTime) : incident.startTime,
-        endTime: formData.endTime ? convertLocalToUTC(formData.endTime) : incident.endTime,
+        startTime: formData.startTime ? localDateTimeInputToUtc(formData.startTime) : incident.startTime,
+        endTime: formData.endTime ? localDateTimeInputToUtc(formData.endTime) : incident.endTime,
         severity: formData.severity.charAt(0).toUpperCase() + formData.severity.slice(1),
       });
       onClose();
@@ -422,58 +362,23 @@ const IncidentReportsUI = ({
 
   const [operationError, setOperationError] = useState(null);
   const { user } = useAuth();
-  const [settingsTimezone, setSettingsTimezone] = useState(null);
   const [channelsById, setChannelsById] = useState({});
   const isCompact = densityMode === 'compact';
 
   // PARSE / FORMAT DATES
-  const parseCustomDate = (dateString) => {
-    if (!dateString) return null;
-    if (/^\d{8}_\d{6}$/.test(dateString)) {
-      const year = dateString.slice(0, 4);
-      const month = dateString.slice(4, 6);
-      const day = dateString.slice(6, 8);
-      const hour = dateString.slice(9, 11);
-      const minute = dateString.slice(11, 13);
-      const second = dateString.slice(13, 15);
-      return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`);
-    }
-    return new Date(dateString);
-  };
- const formatDate = (dateString) => {
-  const date = parseCustomDate(dateString);
-  if (!date || isNaN(date.getTime())) return 'Invalid Date';
-  
-  // Get the timezone from settings if available, else from cache, else UTC
-  let timezone = settingsTimezone || localStorage.getItem('cached_timezone') || 'Etc/UTC';
-  
-  // Validate timezone before using it
-  const validateAndFixTimezone = (tz) => {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: tz });
-      return tz;
-    } catch (error) {
-      console.warn(`Invalid timezone "${tz}", falling back to Etc/UTC`);
-      return 'Etc/UTC';
-    }
-  };
-  
-  timezone = validateAndFixTimezone(timezone);
-  
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: timezone
-  }).format(date);
-};
+
+ const formatDate = (dateString) => formatLocalDateTime(dateString, {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
 
   const getRelativeTime = (dateString) => {
-    const date = parseCustomDate(dateString);
+    const date = parseUtcTimestamp(dateString);
     if (!date || isNaN(date.getTime())) return 'Unknown';
     const diffMs = Date.now() - date.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
@@ -519,26 +424,6 @@ const IncidentReportsUI = ({
     const fetchReports = async () => {
       setLoading(true);
       try {
-        // fetch timezone settings first (best-effort)
-        try {
-          const settingsResp = await apiFetch(`/settings`).catch(() => null);
-          let settingsData = null;
-          if (settingsResp && settingsResp.ok) {
-            settingsData = await settingsResp.json();
-          } else {
-            const fallbackResp = await apiFetch(`/settings`).catch(() => null);
-            if (fallbackResp && fallbackResp.ok) settingsData = await fallbackResp.json();
-          }
-          const tz = settingsData?.global_timezone;
-          if (tz) {
-            try {
-              new Intl.DateTimeFormat('en-US', { timeZone: tz });
-              setSettingsTimezone(tz);
-              localStorage.setItem('cached_timezone', tz);
-            } catch {}
-          }
-        } catch {}
-
         // fetch channels for id->name mapping (best-effort)
         try {
           const chResp = await apiFetch(`/channels`).catch(() => null);
@@ -610,52 +495,16 @@ const IncidentReportsUI = ({
 
   // Build TXT content (shared by TXT and ZIP)
   const buildReportTxtContent = (report) => {
-    // timezone resolution
-    const tz = (() => {
-      const cached = settingsTimezone || localStorage.getItem('cached_timezone') || 'Etc/UTC';
-      try {
-        new Intl.DateTimeFormat('en-US', { timeZone: cached });
-        return cached;
-      } catch {
-        return 'Etc/UTC';
-      }
-    })();
-
-    const getTzAbbrev = (date) => {
-      try {
-        const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(date);
-        const part = parts.find(p => p.type === 'timeZoneName');
-        return part?.value?.replace('GMT', 'UTC') || 'UTC';
-      } catch {
-        return 'UTC';
-      }
-    };
-
-    const parseDate = (dateString) => {
-      if (!dateString) return null;
-      if (/^\d{8}_\d{6}$/.test(dateString)) {
-        const y = Number(dateString.slice(0, 4));
-        const m = Number(dateString.slice(4, 6)) - 1;
-        const d = Number(dateString.slice(6, 8));
-        const hh = Number(dateString.slice(9, 11));
-        const mm = Number(dateString.slice(11, 13));
-        const ss = Number(dateString.slice(13, 15));
-        return new Date(Date.UTC(y, m, d, hh, mm, ss));
-      }
-      return new Date(dateString);
-    };
-
     const formatForReport = (dateString) => {
-      const date = parseDate(dateString);
+      const date = parseUtcTimestamp(dateString);
       if (!date || isNaN(date.getTime())) return 'Invalid Date';
       const use12h = timeFormat !== '24h';
-      const fmt = new Intl.DateTimeFormat('en-US', {
+      const formatted = formatLocalDateTime(date, {
         year: 'numeric', month: 'short', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: use12h, timeZone: tz,
+        hour12: use12h,
       });
-      const abbr = getTzAbbrev(date);
-      return `${fmt.format(date)} (${abbr})`;
+      return `${formatted} (${getLocalTimeZoneAbbreviation(date)})`;
     };
 
     const createdAt = report.date;
@@ -763,7 +612,6 @@ const IncidentReportsUI = ({
       const blob = await buildIncidentReportPdfBlob(report, {
         user,
         timeFormat,
-        settingsTimezone,
         channelsById,
         organizationName: branding.organizationName,
         logoDataUrl: branding.logoDataUrl,

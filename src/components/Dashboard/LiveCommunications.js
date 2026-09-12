@@ -14,6 +14,7 @@ import MFAReminderModal from "../MFAReminderModal";
 import logger from "../../utils/logger";
 import { useAudioPlayback } from "../AudioPlaybackContext";
 import InlineAudioPlayer from "../InlineAudioPlayer";
+import { parseUtcTimestamp } from '../../utils/dateTime';
 import {
   TIME_FILTERS,
   DEFAULT_INBOX_TIME_FILTER,
@@ -63,7 +64,6 @@ function isCursorGreater(a, b) {
 const LiveCommunications = ({
   channels,
   setChannels,
-  timezone,
   timeFormat,
   setMessages,
   messages,
@@ -585,7 +585,7 @@ const LiveCommunications = ({
           end.setMilliseconds(999);
         }
         filtered = filtered.filter((msg) => {
-          const msgTime = parseTimestamp(msg.time);
+          const msgTime = parseUtcTimestamp(msg.time);
           return msgTime >= start && msgTime <= end;
         });
       }
@@ -593,7 +593,7 @@ const LiveCommunications = ({
       const cutoffMs = getPresetCutoffMs(timeFilter);
       if (cutoffMs != null) {
         const cutoff = new Date(cutoffMs);
-        filtered = filtered.filter((msg) => parseTimestamp(msg.time) >= cutoff);
+        filtered = filtered.filter((msg) => parseUtcTimestamp(msg.time) >= cutoff);
       }
     }
     
@@ -911,7 +911,7 @@ const LiveCommunications = ({
         end.setMilliseconds(999);
       }
       return messages.filter((message) => {
-        const messageTime = parseTimestamp(message.time);
+        const messageTime = parseUtcTimestamp(message.time);
         return messageTime >= start && messageTime <= end;
       });
     }
@@ -919,7 +919,7 @@ const LiveCommunications = ({
     const cutoffMs = getPresetCutoffMs(timeFilter);
     if (cutoffMs == null) return messages;
     const cutoffTime = new Date(cutoffMs);
-    return messages.filter((message) => parseTimestamp(message.time) >= cutoffTime);
+    return messages.filter((message) => parseUtcTimestamp(message.time) >= cutoffTime);
   };
 
   useEffect(() => {
@@ -1015,55 +1015,40 @@ const LiveCommunications = ({
     });
   };
 
-  const parseTimestamp = (timestamp) => {
-    const year = parseInt(timestamp.substring(0, 4));
-    const month = parseInt(timestamp.substring(4, 6)) - 1;
-    const day = parseInt(timestamp.substring(6, 8));
-    const hours = parseInt(timestamp.substring(9, 11));
-    const minutes = parseInt(timestamp.substring(11, 13));
-    const seconds = parseInt(timestamp.substring(13, 15));
-    const utcDate = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
-    return utcDate;
-  };
 
-  const formatTime = useCallback((timestamp, timezone = "America/Chicago") => {
-    const date = parseTimestamp(timestamp);
+
+  const formatTime = useCallback((timestamp) => {
+    const date = parseUtcTimestamp(timestamp);
     
     // If showFullTimestamps is enabled, return full timestamp respecting time format
     if (showFullTimestamps) {
-      const options = { timeZone: timezone };
-      const dateInTimezone = new Date(date.toLocaleString("en-US", options));
-      
-      const year = dateInTimezone.getFullYear();
-      const month = String(dateInTimezone.getMonth() + 1).padStart(2, '0');
-      const day = String(dateInTimezone.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       
       if (timeFormat === "12h") {
         // 12-hour format with AM/PM
-        const hours = dateInTimezone.getHours();
+        const hours = date.getHours();
         const hour12 = hours % 12 || 12;
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        const minutes = String(dateInTimezone.getMinutes()).padStart(2, '0');
-        const seconds = String(dateInTimezone.getSeconds()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${year}-${month}-${day} ${String(hour12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
       } else {
         // 24-hour format
-        const hours = String(dateInTimezone.getHours()).padStart(2, '0');
-        const minutes = String(dateInTimezone.getMinutes()).padStart(2, '0');
-        const seconds = String(dateInTimezone.getSeconds()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
       }
     }
     
     // Original format logic
-    const options = { timeZone: timezone };
     const now = new Date();
-    const todayInTimezone = new Date(now.toLocaleString("en-US", options));
-    const yesterdayInTimezone = new Date(todayInTimezone);
-    yesterdayInTimezone.setDate(yesterdayInTimezone.getDate() - 1);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
 
     const timeFormatOptions = { 
-      timeZone: timezone,
       hour: "2-digit", 
       minute: "2-digit", 
       second: "2-digit",
@@ -1071,27 +1056,25 @@ const LiveCommunications = ({
     };
     
     const dateTimeFormatOptions = {
-      timeZone: timezone,
       month: "short",
       day: "numeric",
-      year: date.getFullYear() !== todayInTimezone.getFullYear() ? "numeric" : undefined,
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: timeFormat === "12h"
     };
 
-    const dateInTimezone = new Date(date.toLocaleString("en-US", options));
     if (
-      dateInTimezone.getDate() === todayInTimezone.getDate() &&
-      dateInTimezone.getMonth() === todayInTimezone.getMonth() &&
-      dateInTimezone.getFullYear() === todayInTimezone.getFullYear()
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
     ) {
       return date.toLocaleString("en-US", timeFormatOptions);
     } else if (
-      dateInTimezone.getDate() === yesterdayInTimezone.getDate() &&
-      dateInTimezone.getMonth() === yesterdayInTimezone.getMonth() &&
-      dateInTimezone.getFullYear() === yesterdayInTimezone.getFullYear()
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear()
     ) {
       return `Yesterday ${date.toLocaleString("en-US", timeFormatOptions)}`;
     } else {
@@ -1101,18 +1084,14 @@ const LiveCommunications = ({
 
   /** Shown under channel badge: e.g. "Mar 10, 12:39:08" (respects full-timestamp mode). */
   const formatFeedRowSublineDate = useCallback(
-    (timestamp, tz = "America/Chicago") => {
+    (timestamp) => {
       if (!timestamp || String(timestamp).length < 15) return "—";
       if (showFullTimestamps) {
-        return formatTime(timestamp, tz);
+        return formatTime(timestamp);
       }
-      const date = parseTimestamp(timestamp);
-      const options = { timeZone: tz };
-      const dateInTz = new Date(date.toLocaleString("en-US", options));
-      const todayInTz = new Date(new Date().toLocaleString("en-US", options));
-      const includeYear = dateInTz.getFullYear() !== todayInTz.getFullYear();
+      const date = parseUtcTimestamp(timestamp);
+      const includeYear = date.getFullYear() !== new Date().getFullYear();
       return date.toLocaleString("en-US", {
-        timeZone: tz,
         month: "short",
         day: "numeric",
         ...(includeYear ? { year: "numeric" } : {}),
@@ -1251,7 +1230,7 @@ const LiveCommunications = ({
         id: message.id,
         message: message.message,
         channel: channels[message.channel]?.name || `Channel ${message.channel}`,
-        time: formatTime(message.time, timezone),
+        time: formatTime(message.time),
         url: message.url,
       }));
 
@@ -1287,7 +1266,6 @@ const LiveCommunications = ({
     previousMessages,
     isVolumeOn,
     channels,
-    timezone,
     lastPlayedMessageId,
     formatTime,
   ]);
@@ -1377,7 +1355,6 @@ const LiveCommunications = ({
         className={`${styles.sidebarRail}${isSidebarOpen ? ` ${styles.sidebarRailOpen}` : ''}${isFullscreen ? ` ${styles.sidebarHidden}` : ''}`}
       >
         <TeamsSidebar
-          timezone={timezone}
           channels={channels}
           setChannels={setChannels}
           channelColors={channelColors}
@@ -1416,7 +1393,6 @@ const LiveCommunications = ({
             isMultiSelectMode={isMultiSelectMode}
             setIsMultiSelectMode={setIsMultiSelectMode}
             branding={branding}
-            timezone={timezone}
             timeFilter={timeFilter}
             setTimeFilter={setTimeFilter}
             showTime={showTime}
@@ -1467,7 +1443,6 @@ const LiveCommunications = ({
           showPerson={showPerson}
           formatTime={formatTime}
           formatFeedRowSublineDate={formatFeedRowSublineDate}
-          timezone={timezone}
           timeFormat={timeFormat}
           activeAudioUrl={activeAudioUrl}
           setActiveAudioUrl={setActiveAudioUrl}

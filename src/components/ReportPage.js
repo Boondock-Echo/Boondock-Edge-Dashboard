@@ -8,15 +8,11 @@ import pageStyles from './ui/Page.module.css';
 import cardStyles from './ui/Card.module.css';
 import formStyles from './ui/Form.module.css';
 import modalStyles from './ui/Modal.module.css';
+import { formatLocalDate, getBrowserTimeZone, localDateTimeInputToUtc, toLocalDateTimeInputValue } from '../utils/dateTime';
 
 const ReportPage = ({ timeFormat = "24h" }) => {
   const navigate = useNavigate();
   const [densityMode, setDensityMode] = useState(() => localStorage.getItem('reports_density_mode') || 'comfortable');
-  const [timezone, setTimezone] = useState(() => {
-    const cachedTimezone = localStorage.getItem('cached_timezone');
-    return cachedTimezone || 'Etc/UTC';
-  });
-  const [settingsTimezone, setSettingsTimezone] = useState(null);
   
   // Dynamic data state
   const [reportsData, setReportsData] = useState({
@@ -48,32 +44,6 @@ const ReportPage = ({ timeFormat = "24h" }) => {
     severity: 'low'
   });
 
-
-  // Fetch timezone from settings
-  useEffect(() => {
-    const fetchTimezone = async () => {
-      try {
-        const settingsResp = await apiFetch(`/settings`).catch(() => null);
-        if (settingsResp && settingsResp.ok) {
-          const settingsData = await settingsResp.json();
-          const tz = settingsData?.global_timezone;
-          if (tz) {
-            try {
-              new Intl.DateTimeFormat('en-US', { timeZone: tz });
-              setSettingsTimezone(tz);
-              setTimezone(tz);
-              localStorage.setItem('cached_timezone', tz);
-            } catch (err) {
-              console.warn('Invalid timezone from settings:', tz);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching timezone settings:', error);
-      }
-    };
-    fetchTimezone();
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('reports_density_mode', densityMode);
@@ -112,61 +82,6 @@ const ReportPage = ({ timeFormat = "24h" }) => {
     fetchReportsData();
   }, []);
 
-  // Format date for datetime-local input (YYYY-MM-DDTHH:MM:SS) with timezone conversion
-  const formatDateTimeForInput = (dateString) => {
-    if (!dateString) return '';
-    
-    // Try parsing the date string
-    let date = new Date(dateString);
-    
-    // If parsing fails, try removing milliseconds
-    if (isNaN(date.getTime())) {
-      const withoutMilliseconds = dateString.replace(/\.\d+/, '');
-      date = new Date(withoutMilliseconds);
-    }
-    
-    // If still invalid, return empty string
-    if (isNaN(date.getTime())) return '';
-    
-    // Use settingsTimezone if available, otherwise try localStorage, fallback to UTC
-    let timezone = settingsTimezone || localStorage.getItem('cached_timezone') || 'Etc/UTC';
-    
-    // Validate timezone before using it
-    const validateAndFixTimezone = (tz) => {
-      try {
-        new Intl.DateTimeFormat('en-US', { timeZone: tz });
-        return tz;
-      } catch (error) {
-        console.warn(`Invalid timezone "${tz}", falling back to Etc/UTC`);
-        return 'Etc/UTC';
-      }
-    };
-    
-    timezone = validateAndFixTimezone(timezone);
-    
-    // Use Intl.DateTimeFormat to get parts in the target timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-    
-    const parts = formatter.formatToParts(date);
-    const year = parts.find(p => p.type === 'year')?.value || '';
-    const month = parts.find(p => p.type === 'month')?.value || '';
-    const day = parts.find(p => p.type === 'day')?.value || '';
-    const hour = parts.find(p => p.type === 'hour')?.value || '';
-    const minute = parts.find(p => p.type === 'minute')?.value || '';
-    const second = parts.find(p => p.type === 'second')?.value || '';
-    
-    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-  };
-
   // Handle form submission
   const handleUpdateIncident = async (e) => {
     e.preventDefault();
@@ -174,79 +89,7 @@ const ReportPage = ({ timeFormat = "24h" }) => {
     
     try {
       // Convert datetime-local input value back to UTC for server storage
-      // The user entered a time that was displayed in the configured timezone
-      // but the browser interprets datetime-local as browser local time
-      // We need to find what UTC time corresponds to the entered time in the configured timezone
-      const convertLocalToUTC = (localDateTime) => {
-        if (!localDateTime) return "";
-        
-        // Get the configured timezone
-        const tz = settingsTimezone || localStorage.getItem('cached_timezone') || 'Etc/UTC';
-        
-        // Parse the datetime-local string (YYYY-MM-DDTHH:MM:SS)
-        const [datePart, timePart] = localDateTime.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hours, minutes, seconds = 0] = (timePart || '00:00:00').split(':').map(Number);
-        
-        // Find the UTC time that, when formatted in the target timezone, equals the input
-        // We'll use binary search to find the correct UTC time
-        const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-        const endOfDay = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0));
-        let low = startOfDay.getTime();
-        let high = endOfDay.getTime();
-        let bestMatch = new Date((low + high) / 2);
-        
-        for (let i = 0; i < 50; i++) {
-          const mid = new Date((low + high) / 2);
-          
-          // Format this UTC time in the target timezone
-          const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: tz,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          });
-          
-          const parts = formatter.formatToParts(mid);
-          const tzYear = parseInt(parts.find(p => p.type === 'year')?.value || '0');
-          const tzMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          const tzDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
-          const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-          const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-          const tzSecond = parseInt(parts.find(p => p.type === 'second')?.value || '0');
-          
-          // Check if this matches what we want
-          if (tzYear === year && tzMonth === month && tzDay === day &&
-              tzHour === hours && tzMinute === minutes && tzSecond === seconds) {
-            return mid.toISOString();
-          }
-          
-          // Compare lexicographically to adjust search range
-          const needIncrease = 
-            tzYear < year ||
-            (tzYear === year && tzMonth < month) ||
-            (tzYear === year && tzMonth === month && tzDay < day) ||
-            (tzYear === year && tzMonth === month && tzDay === day && tzHour < hours) ||
-            (tzYear === year && tzMonth === month && tzDay === day && tzHour === hours && tzMinute < minutes) ||
-            (tzYear === year && tzMonth === month && tzDay === day && tzHour === hours && tzMinute === minutes && tzSecond < seconds);
-          
-          if (needIncrease) {
-            low = mid.getTime() + 1;
-          } else {
-            high = mid.getTime() - 1;
-          }
-          
-          bestMatch = mid;
-        }
-        
-        // Return the best match we found (should be very close)
-        return bestMatch.toISOString();
-      };
-      
+      // datetime-local values represent the browser’s local wall clock.
       const response = await apiFetch(`/incident-reports/${selectedIncident.id}`, {
         method: 'POST',
         headers: {
@@ -255,8 +98,8 @@ const ReportPage = ({ timeFormat = "24h" }) => {
         body: JSON.stringify({
           name: formData.name,
           description: formData.description,
-          startTime: formData.startTime ? convertLocalToUTC(formData.startTime) : selectedIncident.startTime,
-          endTime: formData.endTime ? convertLocalToUTC(formData.endTime) : selectedIncident.endTime,
+          startTime: formData.startTime ? localDateTimeInputToUtc(formData.startTime) : selectedIncident.startTime,
+          endTime: formData.endTime ? localDateTimeInputToUtc(formData.endTime) : selectedIncident.endTime,
           severity: formData.severity.charAt(0).toUpperCase() + formData.severity.slice(1),
           channels_involved: selectedIncident.location.split(', '),
           messages: selectedIncident.audios.map(audio => ({
@@ -299,8 +142,8 @@ const ReportPage = ({ timeFormat = "24h" }) => {
       setFormData({
         name: selectedIncident.name || selectedIncident.title || '',
         description: selectedIncident.description || '',
-        startTime: selectedIncident.startTime ? formatDateTimeForInput(selectedIncident.startTime) : '',
-        endTime: selectedIncident.endTime ? formatDateTimeForInput(selectedIncident.endTime) : '',
+        startTime: selectedIncident.startTime ? toLocalDateTimeInputValue(selectedIncident.startTime) : '',
+        endTime: selectedIncident.endTime ? toLocalDateTimeInputValue(selectedIncident.endTime) : '',
         severity: selectedIncident.severity ? selectedIncident.severity.toLowerCase() : 'low'
       });
     }
@@ -393,7 +236,7 @@ const ReportPage = ({ timeFormat = "24h" }) => {
             </div>
             <span className="pill pillAccent">
               <Clock size={16} />
-              {timezone}
+              {getBrowserTimeZone()}
             </span>
           </div>
         </div>
@@ -544,7 +387,7 @@ const ReportPage = ({ timeFormat = "24h" }) => {
           <div className={modalStyles.body}>
             <div className={cardStyles.card}>
               <p><strong>Incident:</strong> {incidentToDelete.title || incidentToDelete.name}</p>
-              <p><strong>Created:</strong> {new Date(incidentToDelete.date || incidentToDelete.created_at).toLocaleDateString()}</p>
+              <p><strong>Created:</strong> {formatLocalDate(incidentToDelete.date || incidentToDelete.created_at)}</p>
               <p><strong>Audio Files:</strong> {incidentToDelete.audios?.length || 0}</p>
             </div>
 

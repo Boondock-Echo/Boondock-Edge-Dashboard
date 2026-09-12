@@ -225,7 +225,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
           />
           <FieldDescription
             field="System Clock"
-            description="Displays current system time in configured timezone and format. Updates in real-time. Shows timezone abbreviation."
+            description="Displays current system time in browser timezone and configured time format. Updates in real-time. Shows timezone abbreviation."
           />
           <FieldDescription
             field="Selected Messages Count"
@@ -726,7 +726,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
               />
               <FieldDescription
                 field="Error Timestamp"
-                description="When each error or warning occurred, shown in your configured timezone and format."
+                description="When each error or warning occurred, shown in your browser timezone and configured time format."
               />
               <FieldDescription
                 field="Error Source"
@@ -1519,19 +1519,19 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
           <div>
             <SectionCard title="Global Configurations Tab Overview" icon={Server}>
               <p className={styles.bodyText}>
-                Configure system-wide settings including transcription services, language, timezone, backup options, and network interfaces. Changes affect all channels and recordings.
+                Configure system-wide settings including transcription services, language, backup options, and network interfaces. Changes affect all channels and recordings.
               </p>
               <ScreenshotDisplay 
                 src="/screenshots/settings-global.png" 
                 alt="Settings Global Tab Screenshot"
-                caption="Global settings tab showing transcription configuration, language settings, timezone, and backup options"
+                caption="Global settings tab showing transcription configuration, language settings, and backup options"
               />
             </SectionCard>
 
             <SectionCard title="Sub-Tabs" icon={Info}>
               <FieldDescription
                 field="Display & Language"
-                description="Set system timezone, date/time format, and display language preferences."
+                description="Set the time format and display language preferences. Timestamps automatically use the browser timezone."
               />
               <FieldDescription
                 field="Audio Post-Processing"
@@ -1560,11 +1560,6 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
             </SectionCard>
 
             <SectionCard title="Key Settings" icon={Settings}>
-              <FieldDescription
-                field="Global Timezone"
-                description="Default timezone for all recordings and timestamps. Can be overridden per user."
-                defaultValue="Etc/UTC"
-              />
               <FieldDescription
                 field="Transcription Model"
                 description="AI model used for speech-to-text. Options: tiny, base, small, medium, large (larger = more accurate but slower)."
@@ -1646,10 +1641,6 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
               <FieldDescription
                 field="DNS Servers"
                 description="Primary and secondary DNS server IP addresses. Used for domain name resolution. Common: 8.8.8.8 (Google), 1.1.1.1 (Cloudflare)."
-              />
-              <FieldDescription
-                field="Relay Controls"
-                description="Configure network relay devices for controlling external equipment. Supports GPIO and network-controlled relays."
               />
               
               <ActionDescription
@@ -2084,7 +2075,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
             <SectionCard title="Log Entry Details" icon={FileText}>
               <FieldDescription
                 field="Timestamp"
-                description="Exact time when log entry was created. Format matches system timezone settings. Helps correlate events and understand timing of system activities."
+                description="Exact time when log entry was created. Displayed in the browser timezone. Helps correlate events and understand timing of system activities."
               />
               <FieldDescription
                 field="Log Level Label"
@@ -2302,7 +2293,7 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
           />
           <FieldDescription
             field="Preferences"
-            description="Personal display preferences, timezone, and interface settings."
+            description="Personal display and interface preferences."
           />
         </SectionCard>
       </div>

@@ -12,6 +12,7 @@ import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
 import noticeStyles from '../ui/Notice.module.css';
 import styles from '../ui/TerminalLogs.module.css';
+import { formatLocalDateTime } from '../../utils/dateTime';
 
 /** Log sub-tabs (must match `logTypes` keys below). Synced to `?tab=Logs&logsTab=` when embedded in Settings. */
 const LOG_TAB_IDS = ['error', 'warning', 'transcription', 'database', 'event', 'device'];
@@ -26,7 +27,7 @@ const LogEntry = ({ log, logTypes }) => {
         <div className="row">
           {Icon && <Icon />}
           <span className={styles.logMeta}>
-            {log.timestamp}
+            {log.timestamp ? formatLocalDateTime(log.timestamp) : '--'}
           </span>
         </div>
         <span className="pill">
@@ -60,8 +61,6 @@ const ErrorDisplay = ({ error, onRetry }) => (
 );
 
 const F1TerminalLogs = ({
-  timezone,
-  timeFormat,
   syncLogsTabToUrl = false,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -520,7 +519,7 @@ const F1TerminalLogs = ({
                     {getFilteredDeviceLogs()[selectedDevicePort].map((entry, idx) => (
                       <div key={`${selectedDevicePort}-${idx}`} className={styles.deviceLine}>
                         <span className={styles.timestamp}>
-                          {entry.timestamp || '--'}
+                          {entry.timestamp ? formatLocalDateTime(entry.timestamp) : '--'}
                         </span>
                         <span className={getDeviceLogClass(entry)}>
                           {entry.message}
