@@ -792,15 +792,6 @@ const LiveCommunications = ({
     onFetchOlderInbox,
   ]);
 
-  const [branding, setBranding] = useState({
-    organizationName: 'Boondock Edge',
-    tagline: 'Justice in Motion',
-    brandColors: { accent: 'var(--ui-accent)', primary: 'var(--ui-accent)', secondary: 'var(--ui-muted)' },
-    font: 'Poppins',
-    assets: { logo: null, favicon: null, loader: null }
-  });
-  const [brandingLoaded, setBrandingLoaded] = useState(false);
-
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user?.username) {
@@ -847,47 +838,6 @@ const LiveCommunications = ({
     setIsMultiSelectMode(!isMultiSelectMode);
     setSelectedMessages(new Set());
   };
-  
-
-  useEffect(() => {
-    const fetchBrandingData = async () => {
-      try {
-        const response = await apiFetch(`/branding`);
-        if (!response.ok) throw new Error('Failed to fetch branding data');
-        const data = await response.json();
-        setBranding({
-          organizationName: data.organization_name || 'Boondock Edge',
-          tagline: data.tagline || 'Justice in Motion',
-          brandColors: {
-            accent: data.brand_colors?.accent || 'var(--ui-accent)',
-            primary: data.brand_colors?.primary || 'var(--ui-accent)',
-            secondary: data.brand_colors?.secondary || 'var(--ui-muted)'
-          },
-          font: data.font || 'Poppins',
-          assets: {
-            logo: data.assets?.logo ? `data:image/jpeg;base64,${data.assets.logo}` : null,
-            favicon: data.assets?.favicon ? `data:image/x-icon;base64,${data.assets.favicon}` : null,
-            loader: data.assets?.loader ? `data:image/gif;base64,${data.assets.loader}` : null
-          }
-        });
-      } catch (error) {
-        logger.error('Error fetching branding data:', error);
-      } finally {
-        setBrandingLoaded(true);
-      }
-    };
-    fetchBrandingData();
-  }, []);
-
-  useEffect(() => {
-    if (brandingLoaded && branding.assets.favicon) {
-      const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-      link.type = 'image/x-icon';
-      link.rel = 'shortcut icon';
-      link.href = branding.assets.favicon;
-      document.getElementsByTagName('head')[0].appendChild(link);
-    }
-  }, [brandingLoaded, branding.assets.favicon]);
 
   const filterMessagesByTime = (messages) => {
     if (timeFilter === TIME_FILTERS.CUSTOM) {
@@ -1345,7 +1295,6 @@ const LiveCommunications = ({
               {isSidebarOpen ? 'close' : 'menu'}
             </span>
           </Button>
-          <h1 className={styles.mobileTitle}>{branding.organizationName}</h1>
           <div className={styles.headerSpacer} /> {/* Spacer */}
         </div>
       )}
@@ -1392,7 +1341,6 @@ const LiveCommunications = ({
             setSelectedMessages={setSelectedMessages}
             isMultiSelectMode={isMultiSelectMode}
             setIsMultiSelectMode={setIsMultiSelectMode}
-            branding={branding}
             timeFilter={timeFilter}
             setTimeFilter={setTimeFilter}
             showTime={showTime}

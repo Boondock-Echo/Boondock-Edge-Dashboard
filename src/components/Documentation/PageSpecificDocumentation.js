@@ -1550,10 +1550,6 @@ const PageSpecificDocumentation = ({ page, tab, globalTab, highlightText, matche
                 description="WiFi hotspot settings for device connectivity without existing network."
               />
               <FieldDescription
-                field="Branding"
-                description="Customize organization name, logo, and appearance settings."
-              />
-              <FieldDescription
                 field="Danger Zone"
                 description="Critical operations like system reset, cache clearing, and data deletion."
               />

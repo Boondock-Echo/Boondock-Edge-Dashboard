@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 import ChannelSettings from './ChannelSettings';
 import FrequencyManagement from './FrequencyManagement';
 import RecorderDevices from './RecorderDevices';
-import USBRecorders from './USBRecorders';
 import Health from './Health';
 import { Activity, Radio, RadioTower, SmartphoneNfc, Usb } from 'lucide-react';
 import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
@@ -21,11 +20,9 @@ const ChannelsAndStationsSection = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const edgeRecordersEnabled = globalSettings?.global_enable_edge_devices || false;
-  const usbRecordersEnabled = globalSettings?.global_enable_usb_audio_devices || false;
 
   const getInitialTab = () => {
     if (edgeRecordersEnabled) return 'recorders';
-    if (usbRecordersEnabled) return 'usb-recorders';
     return 'channels';
   };
 
@@ -45,19 +42,9 @@ const ChannelsAndStationsSection = ({
 
   useEffect(() => {
     if (activeTab === 'recorders' && !edgeRecordersEnabled) {
-      if (usbRecordersEnabled) {
-        setActiveTab('usb-recorders');
-      } else {
-        setActiveTab('channels');
-      }
-    } else if (activeTab === 'usb-recorders' && !usbRecordersEnabled) {
-      if (edgeRecordersEnabled) {
-        setActiveTab('recorders');
-      } else {
-        setActiveTab('channels');
-      }
-    }
-  }, [activeTab, edgeRecordersEnabled, usbRecordersEnabled]);
+      setActiveTab('channels');
+    } 
+  }, [activeTab, edgeRecordersEnabled]);
 
   const tabClassName = 'flex max-w-max shrink-0 items-center gap-1 whitespace-nowrap md:gap-2';
 
@@ -79,16 +66,6 @@ const ChannelsAndStationsSection = ({
             >
               <SmartphoneNfc className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
               Edge Recorders
-            </SettingsSubnavTab>
-          )}
-          {usbRecordersEnabled && (
-            <SettingsSubnavTab
-              active={activeTab === 'usb-recorders'}
-              onClick={() => handleTabChange('usb-recorders')}
-              className={tabClassName}
-            >
-              <Usb className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
-              USB Recorders
             </SettingsSubnavTab>
           )}
           <SettingsSubnavTab
@@ -121,9 +98,6 @@ const ChannelsAndStationsSection = ({
           <RecorderDevices
             enabled={recordersEnabled}
           />
-        )}
-        {activeTab === 'usb-recorders' && (
-          <USBRecorders globalSettings={globalSettings} />
         )}
         {activeTab === 'channels' && (
           <ChannelSettings />

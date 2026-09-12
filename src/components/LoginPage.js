@@ -13,7 +13,6 @@ const BUILD_DATE = process.env.REACT_APP_BUILD_DATE || 'MAR 16, 2026';
 const REMEMBER_KEY = 'boondock_login_remember';
 const USERNAME_KEY = 'boondock_login_username';
 
-/** Default Edge logo when `/branding` returns no custom logo (`public/boondock-edge-logo.png`) */
 const DEFAULT_EDGE_LOGO = `${process.env.PUBLIC_URL || ''}/boondock-edge-logo.png`;
 
 /** Hero art — left column (`public/login-hero-art.png`), intrinsic 753×1024 px */
@@ -26,7 +25,6 @@ const EDGE_BRAND = {
   subtitle: 'Secure access to your on-site console and authorized recordings.',
 };
 
-/** Defaults aligned with docs/branding — API `/branding` overrides when present */
 const BRAND = {
   action: 'var(--ui-accent)',
   secondary: 'var(--ui-accent)',
@@ -44,20 +42,6 @@ const LoginPage = () => {
   const [rememberDevice, setRememberDevice] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  const [branding, setBranding] = useState({
-    organizationName: '',
-    tagline: '',
-    brandColors: {
-      accent: BRAND.action,
-      primary: BRAND.secondary,
-      secondary: BRAND.structureGray,
-    },
-    font: 'Inter',
-    assets: { logo: null, favicon: null, loader: null }
-  });
-  const [brandingLoaded, setBrandingLoaded] = useState(false);
-  const brandingFetchedRef = useRef(false);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return JSON.parse(localStorage.getItem("isDarkMode")) || false;
@@ -80,67 +64,6 @@ const LoginPage = () => {
       /* ignore */
     }
   }, []);
-
-  useEffect(() => {
-    if (brandingFetchedRef.current) return;
-    let isMounted = true;
-    const fetchBrandingData = async () => {
-      try {
-        const { data } = await api.get('/branding');
-        if (isMounted) {
-          setBranding({
-            organizationName: data.organization_name ?? '',
-            tagline: data.tagline ?? '',
-            brandColors: {
-              accent: data.brand_colors?.accent || BRAND.action,
-              primary: data.brand_colors?.primary || BRAND.secondary,
-              secondary: data.brand_colors?.secondary || BRAND.structureGray,
-            },
-            font: data.font || 'Inter',
-            assets: {
-              logo: data.assets?.logo ? `data:image/jpeg;base64,${data.assets.logo}` : null,
-              favicon: data.assets?.favicon ? `data:image/x-icon;base64,${data.assets.favicon}` : null,
-              loader: data.assets?.loader ? `data:image/gif;base64,${data.assets.loader}` : null
-            }
-          });
-          setBrandingLoaded(true);
-          brandingFetchedRef.current = true;
-        }
-      } catch (e) {
-        console.error('Error fetching branding data:', e);
-        if (isMounted) {
-          setBrandingLoaded(true);
-          brandingFetchedRef.current = true;
-        }
-      }
-    };
-    fetchBrandingData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!brandingLoaded) return;
-    const name = branding.organizationName?.trim();
-    document.title = name ? `${name} — Sign in` : 'Sign in';
-  }, [brandingLoaded, branding.organizationName]);
-
-  const faviconSetRef = useRef(false);
-  const faviconUrlRef = useRef(null);
-  useEffect(() => {
-    const currentFavicon = branding.assets.favicon;
-    if (brandingLoaded && currentFavicon &&
-        (!faviconSetRef.current || faviconUrlRef.current !== currentFavicon)) {
-      const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-      link.type = 'image/x-icon';
-      link.rel = 'shortcut icon';
-      link.href = currentFavicon;
-      document.getElementsByTagName('head')[0].appendChild(link);
-      faviconSetRef.current = true;
-      faviconUrlRef.current = currentFavicon;
-    }
-  }, [brandingLoaded, branding.assets.favicon]);
 
   const persistRemember = useCallback(() => {
     try {
@@ -198,30 +121,13 @@ const LoginPage = () => {
     }
   };
 
-  // Authentication chrome always follows the device palette. Organization
-  // branding remains available for logos and names, but cannot reduce the
-  // contrast of controls or text.
   const actionColor = 'var(--ui-accent)';
-
-  if (!brandingLoaded) {
-    return (
-      <div
-        className={pageStyles.centered}
-        style={{ fontFamily: `${branding.font}, Inter, system-ui, sans-serif` }}
-      >
-        <div className="stack centeredContent">
-          <span className="spinner spinnerLarge" aria-hidden="true" />
-          <p className={pageStyles.subtitle}>Loading</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <main
       className={pageStyles.splitScreen}
       style={{
-        fontFamily: `${branding.font}, Inter, system-ui, sans-serif`,
+        fontFamily: `Inter, system-ui, sans-serif`,
       }}
     >
       {/* Hero art — the same region scales or stacks with the responsive grid. */}
@@ -250,17 +156,8 @@ const LoginPage = () => {
                 boxShadow: '0 0 0 2px rgb(var(--ui-border-rgb) / 0.7), inset 0 -3px 0 0 var(--ui-accent)',
               }}
             >
-              {branding.assets.logo ? (
-                <img src={branding.assets.logo} alt="" className={pageStyles.brandImage} />
-              ) : (
-                <img src={DEFAULT_EDGE_LOGO} alt="" className={pageStyles.brandImage} />
-              )}
+              <img src={DEFAULT_EDGE_LOGO} alt="" className={pageStyles.brandImage} />
             </div>
-            {branding.organizationName?.trim() ? (
-              <div className="grow">
-                <p className={pageStyles.brandName}>{branding.organizationName}</p>
-              </div>
-            ) : null}
           </div>
           <button
             type="button"
@@ -362,11 +259,7 @@ const LoginPage = () => {
                   className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium} ${buttonStyles.fullWidth}`}
                 >
                   {isLoading ? (
-                    branding.assets.loader ? (
-                      <img src={branding.assets.loader} alt="" width="20" height="20" />
-                    ) : (
-                      <span className="spinner" aria-hidden="true" />
-                    )
+                    <span className="spinner" aria-hidden="true" />
                   ) : (
                     <>
                       Enter Console

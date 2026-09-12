@@ -63,20 +63,6 @@ function safeFilename(title) {
   return `${String(title || 'incident').replace(/[^a-z0-9]/gi, '_')}_report.pdf`;
 }
 
-/** Normalize API branding logo (raw base64 or data URL) for use in <img> / jsPDF. */
-export function brandingLogoToDataUrl(logo) {
-  if (logo == null || logo === '') return null;
-  const s = String(logo).trim();
-  if (s.startsWith('data:image')) return s;
-  const b64 = s.replace(/\s/g, '');
-  if (!b64) return null;
-  if (b64.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${b64}`;
-  if (b64.startsWith('/9j/')) return `data:image/jpeg;base64,${b64}`;
-  if (b64.startsWith('UklGR')) return `data:image/webp;base64,${b64}`;
-  if (b64.startsWith('R0lGOD')) return `data:image/gif;base64,${b64}`;
-  return `data:image/jpeg;base64,${b64}`;
-}
-
 function imageFormatForJsPdf(dataUrl) {
   const m = /^data:image\/(png|jpeg|jpg|webp|gif)/i.exec(dataUrl);
   if (!m) return 'JPEG';
@@ -108,23 +94,6 @@ function fitLogoToMmBox(nw, nh, maxWmm, maxHmm) {
     w = h * aspect;
   }
   return { w, h };
-}
-
-/**
- * Loads organization name and logo from GET /branding (same source as Global → Branding).
- * @returns {Promise<{ organizationName: string | null, logoDataUrl: string | null }>}
- */
-export async function fetchBrandingForPdf() {
-  try {
-    const resp = await apiFetch(`/branding`);
-    if (!resp.ok) return { organizationName: null, logoDataUrl: null };
-    const data = await resp.json();
-    const organizationName = (data.organization_name && String(data.organization_name).trim()) || null;
-    const logoDataUrl = brandingLogoToDataUrl(data.assets?.logo);
-    return { organizationName, logoDataUrl };
-  } catch {
-    return { organizationName: null, logoDataUrl: null };
-  }
 }
 
 /**

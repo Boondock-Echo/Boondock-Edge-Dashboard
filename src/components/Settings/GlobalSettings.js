@@ -453,46 +453,43 @@ const GlobalSettings = ({
                 </label>
               </div>
               <div className="stack">
-                <div
-                  onClick={() => setTimeFormat("24h")}
-                  className={`${cardStyles.card} ${cardStyles.compact}`}
-                >
-                  <div className="row">
-                    <div className="row">
-                      {timeFormat === "24h" && (
-                        <div className={cardStyles.card} />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className={cardStyles.title}>
-                        24-Hour Format
-                      </h4>
-                      <p className="mutedText smallText">
-                        Display time as 14:30:45
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  onClick={() => setTimeFormat("12h")}
-                  className={`${cardStyles.card} ${cardStyles.compact}`}
-                >
-                  <div className="row">
-                    <div className="row">
-                      {timeFormat === "12h" && (
-                        <div className={cardStyles.card} />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className={cardStyles.title}>
-                        12-Hour Format
-                      </h4>
-                      <p className="mutedText smallText">
-                        Display time as 2:30:45 PM
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                {[
+                  {
+                    value: '24h',
+                    label: '24-Hour Format',
+                    description: 'Display time as 14:30:45',
+                    selected: timeFormat === '24h',
+                  },
+                  {
+                    value: '12h',
+                    label: '12-Hour Format',
+                    description: 'Display time as 2:30:45 PM',
+                    selected: timeFormat === '12h',
+                  },
+                ].map(({ value, label, description, selected }) => (
+                  <label
+                    key={value}
+                    className={`${formStyles.choiceCard} ${
+                      selected ? formStyles.choiceCardSelected : ''
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="time-format"
+                      value={value}
+                      checked={Boolean(selected)}
+                      onChange={() => {
+                        setTimeFormat(value);
+                      }}
+                    />
+                    <span className="stackCompact grow">
+                      <strong>{label}</strong>
+                      <div className="mutedText smallText">
+                        {description}
+                      </div>
+                    </span>
+                  </label>
+                ))}
               </div>
               <p className="mutedText tinyText">
                 Choose how time is displayed throughout the application (24-hour or 12-hour with AM/PM).
@@ -508,46 +505,43 @@ const GlobalSettings = ({
                   </label>
                 </div>
                 <div className="stack">
-                  <div
-                    onClick={() => handleGlobalChange("global_inbox_view_mode", "pagination")}
-                    className={`${cardStyles.card} ${cardStyles.compact}`}
-                  >
-                    <div className="row">
-                      <div className="row">
-                        {inboxViewMode === "pagination" && (
-                          <div className={cardStyles.card} />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={cardStyles.title}>
-                          Pagination (Recommended)
-                        </h4>
-                        <p className="mutedText smallText">
-                          Show a fixed number of messages per page with classic pagination controls.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    onClick={() => handleGlobalChange("global_inbox_view_mode", "continuous")}
-                    className={`${cardStyles.card} ${cardStyles.compact}`}
-                  >
-                    <div className="row">
-                      <div className="row">
-                        {inboxViewMode === "continuous" && (
-                          <div className={cardStyles.card} />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={cardStyles.title}>
-                          Continuous Scrolling
-                        </h4>
-                        <p className="mutedText smallText">
-                          Load more messages automatically as you scroll, ideal for monitoring in real time.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  {[
+                    {
+                      value: 'pagination',
+                      label: 'Pagination (Recommended)',
+                      description: 'Show a fixed number of messages per page with classic pagination controls.',
+                      selected: inboxViewMode === 'pagination',
+                    },
+                    {
+                      value: 'continuous',
+                      label: 'Continuous Scrolling',
+                      description: 'Load more messages automatically as you scroll, ideal for monitoring in real time.',
+                      selected: inboxViewMode === 'continuous',
+                    },
+                  ].map(({ value, label, description, selected }) => (
+                    <label
+                      key={value}
+                      className={`${formStyles.choiceCard} ${
+                        selected ? formStyles.choiceCardSelected : ''
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="time-format"
+                        value={value}
+                        checked={Boolean(selected)}
+                        onChange={() => {
+                          handleGlobalChange("global_inbox_view_mode", value);
+                        }}
+                      />
+                      <span className="stackCompact grow">
+                        <strong>{label}</strong>
+                        <div className="mutedText smallText">
+                          {description}
+                        </div>
+                      </span>
+                    </label>
+                  ))}
                 </div>
                 {/* Default records per page (pagination mode) */}
                 <div >

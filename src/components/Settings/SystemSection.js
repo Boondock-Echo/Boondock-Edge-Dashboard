@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import GlobalSettings from './GlobalSettings';
-import Interfaces from './Interfaces';
 import BackupRestore from './BackupRestore';
 import DangerZone from './DangerZone';
 import Maintenance from './Maintenance';
@@ -21,7 +20,6 @@ const TABS = [
   { id: 'display-language', label: 'Display & Language' },
   { id: 'audio-post-processing', label: 'Audio Post processing' },
   { id: 'api-keys', label: 'API Keys' },
-  { id: 'interfaces', label: 'Interfaces' },
   { id: 'hotspot-configuration', label: 'WiFi' },
   { id: 'maintenance', label: 'Maintenance' },
   { id: 'danger-zone', label: 'Danger Zone', danger: true },
@@ -50,7 +48,7 @@ const SystemSection = ({
     const systemTab = searchParams.get('systemTab');
     if (
       systemTab &&
-      ['display-language', 'audio-post-processing', 'api-keys', 'interfaces', 'hotspot-configuration', 'maintenance', 'danger-zone'].includes(
+      ['display-language', 'audio-post-processing', 'api-keys', 'hotspot-configuration', 'maintenance', 'danger-zone'].includes(
         systemTab,
       )
     ) {
@@ -109,8 +107,6 @@ const SystemSection = ({
         );
       case 'api-keys':
         return <ApiKeyManagement showToast={showToast} user={user} />;
-      case 'interfaces':
-        return <Interfaces />;
       case 'hotspot-configuration':
         return renderHotspotSettings();
       case 'maintenance':

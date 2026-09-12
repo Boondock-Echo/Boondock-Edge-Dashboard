@@ -5,7 +5,7 @@ import { Clock, Calendar, File, AlertTriangle, Mic, Tag, FileText, List, Search,
   ChevronDown, ChevronUp, Radio, MapPin, Download, Edit, Trash2, Copy, FileDown } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { buildIncidentReportPdfBlob, incidentReportPdfFilename, fetchBrandingForPdf } from '../../utils/incidentReportPdf';
+import { buildIncidentReportPdfBlob, incidentReportPdfFilename } from '../../utils/incidentReportPdf';
 import {
   formatLocalDateTime,
   getLocalTimeZoneAbbreviation,
@@ -608,13 +608,10 @@ const IncidentReportsUI = ({
     if (!report) return;
     setExportingPdf(true);
     try {
-      const branding = await fetchBrandingForPdf();
       const blob = await buildIncidentReportPdfBlob(report, {
         user,
         timeFormat,
         channelsById,
-        organizationName: branding.organizationName,
-        logoDataUrl: branding.logoDataUrl,
       });
       saveAs(blob, incidentReportPdfFilename(report.title));
     } catch (err) {

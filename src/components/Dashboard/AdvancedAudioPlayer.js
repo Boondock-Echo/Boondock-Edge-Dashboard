@@ -80,7 +80,6 @@ const ProfessionalAudioEditor = ({
   }, [stopSharedAudio]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [transcriptionText, setTranscriptionText] = useState(navigationMessage?.message || "");
   const [waveformKey, setWaveformKey] = useState(0); // Force re-render of waveform
   const navigate = useNavigate();
@@ -312,14 +311,13 @@ const formatActualTime = useCallback((timeOffset) => {
       normalize: true,
       interact: true,
       dragToSeek: true,
+      fillParent: true,
+      scrollParent: false,
     });
 
     wavesurferRef.current.on("ready", () => {
       setDuration(wavesurferRef.current.getDuration());
       setIsLoading(false);
-      if (zoomLevel !== 1) {
-        wavesurferRef.current.zoom(zoomLevel);
-      }
     });
 
     wavesurferRef.current.on("timeupdate", (time) => {
@@ -344,7 +342,7 @@ const formatActualTime = useCallback((timeOffset) => {
       }
       wavesurferRef.current.load(audioRef.current);
     }
-  }, [audioUrl, zoomLevel, audioRef, waveformAccent, waveformColor]);
+  }, [audioUrl, audioRef, waveformAccent, waveformColor]);
 
   // Initialize AudioContext and Worker
   useEffect(() => {

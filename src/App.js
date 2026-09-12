@@ -482,10 +482,6 @@ const App = () => {
     return cachedTimeFormat || "24h"; // Default to 24-hour format
   });
 
-  const [branding, setBranding] = useState({
-    organization_name: 'Boondock Edge Server'
-  });
-
   const [reverseSort, setReverseSort] = useState(false);
 
   const setTimeFormatWithLogging = (newFormat) => {
@@ -549,8 +545,6 @@ const App = () => {
         // Always fetch fresh data in background, regardless of cache validity
         // This ensures we have the most up-to-date information
         await fetchAllData(true); // Show loading on initial load only
-        // Always fetch branding data to update title
-        await fetchBrandingData();
         setShowServerErrorModal(false); // Hide error modal if initialization succeeds
       } catch (error) {
         logger.error("Initialization error:", error);
