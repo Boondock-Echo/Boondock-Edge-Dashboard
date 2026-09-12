@@ -36,92 +36,6 @@ const WHISPER_MODELS = [
   { value: "large", label: "Highest", level: 5, model: "large", speed: "Slowest", accuracy: "Best", memory: "32 GB RAM", cpu: "Multi-Core High CPU, 250 TOPS GPU" },
 ];
 
-const TIMEZONES = [
-  // UTC
-  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
-  // North America - US Timezones
-  { value: "America/New_York", label: "US Eastern Time (ET)" },
-  { value: "America/Chicago", label: "US Central Time (CT)" },
-  { value: "America/Denver", label: "US Mountain Time (MT)" },
-  { value: "America/Phoenix", label: "US Arizona Time (AZ)" },
-  { value: "America/Los_Angeles", label: "US Pacific Time (PT)" },
-  { value: "America/Anchorage", label: "US Alaska Time (AKT)" },
-  { value: "America/Adak", label: "US Hawaii-Aleutian Time (HST)" },
-  { value: "Pacific/Honolulu", label: "US Hawaii Time (HST)" },
-  // North America - Canada
-  { value: "America/Vancouver", label: "Canada Pacific Time" },
-  { value: "America/Edmonton", label: "Canada Mountain Time" },
-  { value: "America/Winnipeg", label: "Canada Central Time" },
-  { value: "America/Toronto", label: "Canada Eastern Time" },
-  { value: "America/Halifax", label: "Canada Atlantic Time" },
-  { value: "America/St_Johns", label: "Canada Newfoundland Time" },
-  // Mexico
-  { value: "America/Mexico_City", label: "Mexico Central Time" },
-  { value: "America/Tijuana", label: "Mexico Pacific Time" },
-  // South America
-  { value: "America/Bogota", label: "Colombia Time (COT)" },
-  { value: "America/Lima", label: "Peru Time (PET)" },
-  { value: "America/Santiago", label: "Chile Time (CLT)" },
-  { value: "America/Argentina/Buenos_Aires", label: "Argentina Time (ART)" },
-  { value: "America/Sao_Paulo", label: "Brazil Time (BRT)" },
-  // Europe
-  { value: "Europe/London", label: "UK - Greenwich Mean Time (GMT)/British Summer Time (BST)" },
-  { value: "Europe/Dublin", label: "Ireland Time" },
-  { value: "Europe/Lisbon", label: "Portugal Time" },
-  { value: "Europe/Paris", label: "France - Central European Time (CET)" },
-  { value: "Europe/Berlin", label: "Germany - Central European Time (CET)" },
-  { value: "Europe/Madrid", label: "Spain Time" },
-  { value: "Europe/Rome", label: "Italy Time" },
-  { value: "Europe/Amsterdam", label: "Netherlands Time" },
-  { value: "Europe/Brussels", label: "Belgium Time" },
-  { value: "Europe/Vienna", label: "Austria Time" },
-  { value: "Europe/Zurich", label: "Switzerland Time" },
-  { value: "Europe/Stockholm", label: "Sweden Time" },
-  { value: "Europe/Oslo", label: "Norway Time" },
-  { value: "Europe/Copenhagen", label: "Denmark Time" },
-  { value: "Europe/Warsaw", label: "Poland Time" },
-  { value: "Europe/Athens", label: "Greece Time" },
-  { value: "Europe/Helsinki", label: "Finland Time" },
-  { value: "Europe/Moscow", label: "Russia - Moscow Time (MSK)" },
-  // Middle East
-  { value: "Asia/Istanbul", label: "Turkey Time (TRT)" },
-  { value: "Asia/Dubai", label: "United Arab Emirates Time (GST)" },
-  { value: "Asia/Riyadh", label: "Saudi Arabia Time (AST)" },
-  { value: "Asia/Tel_Aviv", label: "Israel Time (IST)" },
-  { value: "Asia/Tehran", label: "Iran Time (IRST)" },
-  // Asia
-  { value: "Asia/Kolkata", label: "India Time (IST)" },
-  { value: "Asia/Kathmandu", label: "Nepal Time (NPT)" },
-  { value: "Asia/Dhaka", label: "Bangladesh Time (BST)" },
-  { value: "Asia/Colombo", label: "Sri Lanka Time" },
-  { value: "Asia/Bangkok", label: "Thailand Time (ICT)" },
-  { value: "Asia/Singapore", label: "Singapore Time (SGT)" },
-  { value: "Asia/Kuala_Lumpur", label: "Malaysia Time (MYT)" },
-  { value: "Asia/Jakarta", label: "Indonesia Western Time (WIB)" },
-  { value: "Asia/Manila", label: "Philippines Time (PHT)" },
-  { value: "Asia/Hong_Kong", label: "Hong Kong Time (HKT)" },
-  { value: "Asia/Shanghai", label: "China Time (CST)" },
-  { value: "Asia/Taipei", label: "Taiwan Time (CST)" },
-  { value: "Asia/Seoul", label: "Korea Time (KST)" },
-  { value: "Asia/Tokyo", label: "Japan Time (JST)" },
-  // Australia & Pacific
-  { value: "Australia/Perth", label: "Australia Western Time (AWST)" },
-  { value: "Australia/Adelaide", label: "Australia Central Time (ACST)" },
-  { value: "Australia/Darwin", label: "Australia Central Time - NT (ACST)" },
-  { value: "Australia/Brisbane", label: "Australia Eastern Time - QLD (AEST)" },
-  { value: "Australia/Sydney", label: "Australia Eastern Time - NSW (AEST)" },
-  { value: "Australia/Melbourne", label: "Australia Eastern Time - VIC (AEST)" },
-  { value: "Australia/Hobart", label: "Australia Eastern Time - TAS (AEST)" },
-  { value: "Pacific/Auckland", label: "New Zealand Time (NZST)" },
-  { value: "Pacific/Fiji", label: "Fiji Time (FJT)" },
-  // Africa
-  { value: "Africa/Johannesburg", label: "South Africa Time (SAST)" },
-  { value: "Africa/Cairo", label: "Egypt Time (EET)" },
-  { value: "Africa/Nairobi", label: "East Africa Time (EAT)" },
-  { value: "Africa/Lagos", label: "West Africa Time (WAT)" },
-  { value: "Africa/Casablanca", label: "Morocco Time" }
-];
-
 const SelectCard = ({ selected, label, value, onClick, children }) => (
   <button
     type="button"
@@ -150,73 +64,6 @@ const Toggle = ({ checked, onChange, label, icon: Icon, description, metric, dis
     </label>
   </div>
 );
-// Time Zone Component
-const TimeZoneSelector = ({ selectedTimezone, onChange }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const filteredTimeZones = searchTerm
-    ? TIMEZONES.filter(tz =>
-        tz.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tz.value.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : TIMEZONES;
-  const selectedTZ = TIMEZONES.find(tz => tz.value === selectedTimezone) || TIMEZONES[0];
-
-  return (
-    <div >
-      <div className="row">
-        <Clock size={18} />
-        <label className={formStyles.label}>
-          Time Zone
-        </label>
-      </div>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-      >
-        <span>{selectedTZ.label}</span>
-        <svg
-          className="iconMedium"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-      {isOpen && (
-        <div >
-          <div >
-            <input
-              type="text"
-              placeholder="Search time zones..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={formStyles.input}
-            />
-          </div>
-          <div className="scrollPanel">
-            {filteredTimeZones.map((tz) => (
-              <button
-                key={tz.value}
-                onClick={() => {
-                  onChange(tz.value);
-                  setIsOpen(false);
-                  setSearchTerm('');
-                }}
-                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-              >
-                {tz.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const GlobalSettings = ({
   globalSettings = {
     global_target_language: "english",
@@ -224,7 +71,6 @@ const GlobalSettings = ({
     global_model: "base.en",
     global_transcribe_method: "local",
     global_transcription_api_key: "",
-    global_timezone: "Etc/UTC",
     global_enable_uniden_scanners: false,
     global_enable_edge_devices: true,
     global_enable_s3_upload: false,
@@ -250,7 +96,6 @@ const GlobalSettings = ({
   setNewKeyword = () => {},
   handleAddKeyword = () => {},
   handleRemoveKeyword = () => {},
-  timezone = "Etc/UTC",
   timeFormat = "24h",
   setTimeFormat = () => {},
   reverseSort = false,
@@ -295,7 +140,6 @@ const GlobalSettings = ({
     CHANNELS: 'cached_channels',
     MESSAGES: 'cached_messages',
     KEYWORDS: 'cached_keywords',
-    TIMEZONE: 'cached_timezone',
     LAST_FETCH: 'last_fetch_time'
   };
 
@@ -510,20 +354,6 @@ const GlobalSettings = ({
     localStorage.setItem('hideHallucination', JSON.stringify(hideHallucination));
   }, [hideHallucination]);
 
-  // Get browser timezone as default if not set
-  useEffect(() => {
-    if (!globalSettings.global_timezone) {
-      try {
-        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        handleGlobalChange("global_timezone", browserTimezone, false); // Don't show notification for initial setup
-      } catch (error) {
-        // Fallback to UTC if browser API fails
-        handleGlobalChange("global_timezone", "Etc/UTC", false); // Don't show notification for initial setup
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Map activeSection to section visibility (must be defined before useEffects that use these)
   const showDisplayLanguage = !activeSection || activeSection === 'display-language';
   const showDeviceManagement = !activeSection || activeSection === 'device-management';
@@ -613,13 +443,6 @@ const GlobalSettings = ({
                 Select the primary language for transcription. Audio will be processed to detect and transcribe this language.
               </p>
             </div>
-            <TimeZoneSelector
-              selectedTimezone={globalSettings.global_timezone || "Etc/UTC"}
-              onChange={(value) => handleGlobalChange("global_timezone", value)}
-                />
-            <p className="mutedText tinyText">
-              Set your local timezone. All timestamps in messages and recordings will be displayed in this timezone.
-            </p>
           </div>
           <div className="stack stackLarge">
             <div>
@@ -630,46 +453,43 @@ const GlobalSettings = ({
                 </label>
               </div>
               <div className="stack">
-                <div
-                  onClick={() => setTimeFormat("24h")}
-                  className={`${cardStyles.card} ${cardStyles.compact}`}
-                >
-                  <div className="row">
-                    <div className="row">
-                      {timeFormat === "24h" && (
-                        <div className={cardStyles.card} />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className={cardStyles.title}>
-                        24-Hour Format
-                      </h4>
-                      <p className="mutedText smallText">
-                        Display time as 14:30:45
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  onClick={() => setTimeFormat("12h")}
-                  className={`${cardStyles.card} ${cardStyles.compact}`}
-                >
-                  <div className="row">
-                    <div className="row">
-                      {timeFormat === "12h" && (
-                        <div className={cardStyles.card} />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className={cardStyles.title}>
-                        12-Hour Format
-                      </h4>
-                      <p className="mutedText smallText">
-                        Display time as 2:30:45 PM
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                {[
+                  {
+                    value: '24h',
+                    label: '24-Hour Format',
+                    description: 'Display time as 14:30:45',
+                    selected: timeFormat === '24h',
+                  },
+                  {
+                    value: '12h',
+                    label: '12-Hour Format',
+                    description: 'Display time as 2:30:45 PM',
+                    selected: timeFormat === '12h',
+                  },
+                ].map(({ value, label, description, selected }) => (
+                  <label
+                    key={value}
+                    className={`${formStyles.choiceCard} ${
+                      selected ? formStyles.choiceCardSelected : ''
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="time-format"
+                      value={value}
+                      checked={Boolean(selected)}
+                      onChange={() => {
+                        setTimeFormat(value);
+                      }}
+                    />
+                    <span className="stackCompact grow">
+                      <strong>{label}</strong>
+                      <div className="mutedText smallText">
+                        {description}
+                      </div>
+                    </span>
+                  </label>
+                ))}
               </div>
               <p className="mutedText tinyText">
                 Choose how time is displayed throughout the application (24-hour or 12-hour with AM/PM).
@@ -685,46 +505,43 @@ const GlobalSettings = ({
                   </label>
                 </div>
                 <div className="stack">
-                  <div
-                    onClick={() => handleGlobalChange("global_inbox_view_mode", "pagination")}
-                    className={`${cardStyles.card} ${cardStyles.compact}`}
-                  >
-                    <div className="row">
-                      <div className="row">
-                        {inboxViewMode === "pagination" && (
-                          <div className={cardStyles.card} />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={cardStyles.title}>
-                          Pagination (Recommended)
-                        </h4>
-                        <p className="mutedText smallText">
-                          Show a fixed number of messages per page with classic pagination controls.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    onClick={() => handleGlobalChange("global_inbox_view_mode", "continuous")}
-                    className={`${cardStyles.card} ${cardStyles.compact}`}
-                  >
-                    <div className="row">
-                      <div className="row">
-                        {inboxViewMode === "continuous" && (
-                          <div className={cardStyles.card} />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={cardStyles.title}>
-                          Continuous Scrolling
-                        </h4>
-                        <p className="mutedText smallText">
-                          Load more messages automatically as you scroll, ideal for monitoring in real time.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  {[
+                    {
+                      value: 'pagination',
+                      label: 'Pagination (Recommended)',
+                      description: 'Show a fixed number of messages per page with classic pagination controls.',
+                      selected: inboxViewMode === 'pagination',
+                    },
+                    {
+                      value: 'continuous',
+                      label: 'Continuous Scrolling',
+                      description: 'Load more messages automatically as you scroll, ideal for monitoring in real time.',
+                      selected: inboxViewMode === 'continuous',
+                    },
+                  ].map(({ value, label, description, selected }) => (
+                    <label
+                      key={value}
+                      className={`${formStyles.choiceCard} ${
+                        selected ? formStyles.choiceCardSelected : ''
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="time-format"
+                        value={value}
+                        checked={Boolean(selected)}
+                        onChange={() => {
+                          handleGlobalChange("global_inbox_view_mode", value);
+                        }}
+                      />
+                      <span className="stackCompact grow">
+                        <strong>{label}</strong>
+                        <div className="mutedText smallText">
+                          {description}
+                        </div>
+                      </span>
+                    </label>
+                  ))}
                 </div>
                 {/* Default records per page (pagination mode) */}
                 <div >

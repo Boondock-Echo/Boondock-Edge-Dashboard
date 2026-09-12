@@ -38,7 +38,7 @@ const SETTINGS_NAV_ICONS = {
   Logs: "history_edu",
 };
 
-const SettingsPage = ({ timezone, timeFormat, setTimeFormat, reverseSort, setReverseSort, onSettingsChange = () => {} }) => {
+const SettingsPage = ({ timeFormat, setTimeFormat, reverseSort, setReverseSort, onSettingsChange = () => {} }) => {
   const [loading, setLoading] = useState(true);
   const [keywords, setKeywords] = useState([]);
   const [newKeyword, setNewKeyword] = useState('');
@@ -317,7 +317,6 @@ const SettingsPage = ({ timezone, timeFormat, setTimeFormat, reverseSort, setRev
         global_transcription_api_key: settingsData.global_transcription_api_key ?? "",
         global_transcribe_node: settingsData.global_transcribe_node ?? true,
         global_hallucination: settingsData.global_hallucination ?? true,
-        global_timezone: settingsData.global_timezone ?? "UTC",
         global_enable_uniden_scanners: settingsData.global_enable_uniden_scanners ?? false,
         global_enable_edge_devices: settingsData.global_enable_edge_devices ?? true,
         global_enable_usb_audio_devices: settingsData.global_enable_usb_audio_devices ?? false,
@@ -491,7 +490,6 @@ const SettingsPage = ({ timezone, timeFormat, setTimeFormat, reverseSort, setRev
       <div className="contentWide">
             {activeSection === 'summary' && (
               <SummarySection
-                timezone={timezone}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
               />
@@ -536,7 +534,6 @@ const SettingsPage = ({ timezone, timeFormat, setTimeFormat, reverseSort, setRev
                 showToast={showToast}
                 globalSettings={globalSettings}
                 handleGlobalChange={handleGlobalChange}
-                timezone={timezone}
                 timeFormat={timeFormat}
                 setTimeFormat={setTimeFormat}
                 reverseSort={reverseSort}

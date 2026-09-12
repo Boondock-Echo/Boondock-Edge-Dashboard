@@ -2,7 +2,7 @@ import React from 'react';
 import F1TerminalLogs from './F1TerminalLogs';
 import pageStyles from '../ui/Page.module.css';
 
-const LogsPage = ({ timezone, timeFormat }) => {
+const LogsPage = () => {
   return (
     <div className={pageStyles.page}>
       <div className={pageStyles.container}>
@@ -13,7 +13,7 @@ const LogsPage = ({ timezone, timeFormat }) => {
           </div>
         </div>
 
-        <F1TerminalLogs timezone={timezone} timeFormat={timeFormat} />
+        <F1TerminalLogs />
       </div>
     </div>
   );

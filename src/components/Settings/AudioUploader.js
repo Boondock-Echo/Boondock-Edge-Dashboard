@@ -3,7 +3,7 @@ import formStyles from '../ui/Form.module.css';
 import buttonStyles from '../ui/Button.module.css';
 import { apiFetch } from '../../utils/apiClient';
 import React, { useState, useEffect } from 'react';
-import { Upload, FileAudio, AlertCircle, CheckCircle, Loader2, X, Clock, Globe, Tag, Radio, Settings, Zap, Volume2, Calendar, MapPin } from 'lucide-react';
+import { Upload, FileAudio, AlertCircle, CheckCircle, Loader2, X, Clock, Tag, Radio, Settings, Zap, Volume2, Calendar } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const AudioUploader = ({ }) => {
@@ -24,44 +24,16 @@ const AudioUploader = ({ }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [extractedDateTime, setExtractedDateTime] = useState(null);
   const [isAddingTags, setIsAddingTags] = useState(false);
-  const [timezoneData, setTimezoneData] = useState({
-    selectedTimezone: 'America/Chicago',
+  const [timestampData, setTimestampData] = useState({
     useCustomDateTime: false,
-    customDateTime: '',
     customDate: '',
     customTime: ''
   });
-
-  // Common timezones for selection
-  const timezones = [
-    { value: 'America/Chicago', label: 'Chicago (CST/CDT)', offset: '-06:00/-05:00' },
-    { value: 'America/New_York', label: 'New York (EST/EDT)', offset: '-05:00/-04:00' },
-    { value: 'America/Denver', label: 'Denver (MST/MDT)', offset: '-07:00/-06:00' },
-    { value: 'America/Los_Angeles', label: 'Los Angeles (PST/PDT)', offset: '-08:00/-07:00' },
-    { value: 'America/Phoenix', label: 'Phoenix (MST)', offset: '-07:00' },
-    { value: 'Europe/London', label: 'London (GMT/BST)', offset: '+00:00/+01:00' },
-    { value: 'Europe/Paris', label: 'Paris (CET/CEST)', offset: '+01:00/+02:00' },
-    { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)', offset: '+01:00/+02:00' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)', offset: '+09:00' },
-    { value: 'Asia/Shanghai', label: 'Shanghai (CST)', offset: '+08:00' },
-    { value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)', offset: '+10:00/+11:00' },
-    { value: 'UTC', label: 'UTC (Coordinated Universal Time)', offset: '+00:00' }
-  ];
 
   // Fetch channels and tags on component mount
   useEffect(() => {
     fetchChannels();
     fetchAvailableTags();
-  }, []);
-
-  // Update current time display every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Force re-render to update current time display
-      setTimezoneData(prev => ({ ...prev }));
-    }, 1000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchChannels = async () => {
@@ -200,8 +172,8 @@ const AudioUploader = ({ }) => {
     }));
   };
 
-  const handleTimezoneChange = (field, value) => {
-    setTimezoneData(prev => {
+  const handleTimestampChange = (field, value) => {
+    setTimestampData(prev => {
       const newData = {
         ...prev,
         [field]: value
@@ -259,46 +231,19 @@ const AudioUploader = ({ }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const convertToUTC = (dateTime, timezone) => {
-    try {
-      // Parse the input date and time
-      const [datePart, timePart] = dateTime.split('T');
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hours, minutes] = timePart.split(':').map(Number);
-      
-      // Create a date object representing the local time in the specified timezone
-      // We need to treat this as if it's already in the target timezone
-      const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      
-      // Get the timezone offset for the specified timezone at this specific date
-      // This accounts for daylight saving time changes
-      const tempDate = new Date(year, month - 1, day, 12, 0, 0, 0); // Use noon to avoid DST edge cases
-      const utcTemp = new Date(tempDate.getTime() + (tempDate.getTimezoneOffset() * 60000));
-      const targetTemp = new Date(utcTemp.toLocaleString("en-US", {timeZone: timezone}));
-      const timezoneOffsetMinutes = (targetTemp.getTime() - utcTemp.getTime()) / (1000 * 60);
-      
-      // Convert the local time to UTC by subtracting the timezone offset
-      const utcResult = new Date(localDate.getTime() - (timezoneOffsetMinutes * 60000));
-      
-      return utcResult;
-    } catch (error) {
-      console.error('Error converting timezone:', error);
-      // Fallback: return current time in UTC
-      return new Date();
-    }
-  };
+  const convertToUTC = (dateTime) => new Date(dateTime);
 
   const generateFilename = () => {
     let dateToUse;
     
-    if (timezoneData.useCustomDateTime && timezoneData.customDate && timezoneData.customTime) {
+    if (timestampData.useCustomDateTime && timestampData.customDate && timestampData.customTime) {
       // Use custom date and time
-      const customDateTime = `${timezoneData.customDate}T${timezoneData.customTime}`;
-      dateToUse = convertToUTC(customDateTime, timezoneData.selectedTimezone);
+      const customDateTime = `${timestampData.customDate}T${timestampData.customTime}`;
+      dateToUse = convertToUTC(customDateTime);
     } else {
-      // Use current time in selected timezone
+      // Use the current UTC instant
       const now = new Date();
-      dateToUse = convertToUTC(now.toISOString(), timezoneData.selectedTimezone);
+      dateToUse = now;
     }
     
     const year = dateToUse.getUTCFullYear();
@@ -342,9 +287,9 @@ const AudioUploader = ({ }) => {
       const params = new URLSearchParams({ channel_id: selectedChannel });
       
       // Add custom timestamp if using custom datetime
-      if (timezoneData.useCustomDateTime && timezoneData.customDate && timezoneData.customTime) {
-        const customDateTime = `${timezoneData.customDate}T${timezoneData.customTime}`;
-        const utcDateTime = convertToUTC(customDateTime, timezoneData.selectedTimezone);
+      if (timestampData.useCustomDateTime && timestampData.customDate && timestampData.customTime) {
+        const customDateTime = `${timestampData.customDate}T${timestampData.customTime}`;
+        const utcDateTime = convertToUTC(customDateTime);
         const utcTimestamp = utcDateTime.toISOString().replace('Z', 'Z');
         params.append('timestamp', utcTimestamp);
       }
@@ -436,10 +381,8 @@ const AudioUploader = ({ }) => {
           audioLevel: '',
           initResponse: false
         });
-        setTimezoneData({
-          selectedTimezone: 'America/Chicago',
+        setTimestampData({
           useCustomDateTime: false,
-          customDateTime: '',
           customDate: '',
           customTime: ''
         });
@@ -724,39 +667,12 @@ const AudioUploader = ({ }) => {
 
           {/* Right Column */}
           <div className="stack">
-        {/* Timezone and DateTime Selection */}
+        {/* Optional recording timestamp */}
         <div className={cardStyles.card}>
           <div className="row">
-            <div >
-              <Globe  />
-            </div>
             <h3 className="pageTitle">
-              Timezone & Timestamp Settings
+              Timestamp Settings
             </h3>
-          </div>
-
-          {/* Timezone Selection */}
-          <div >
-            <label className={formStyles.label}>
-              <MapPin  />
-              Timezone
-            </label>
-            <div >
-            <select
-              value={timezoneData.selectedTimezone}
-              onChange={(e) => handleTimezoneChange('selectedTimezone', e.target.value)}
-                className={formStyles.select}
-            >
-              {timezones.map((tz) => (
-                <option key={tz.value} value={tz.value}>
-                  {tz.label} ({tz.offset})
-                </option>
-              ))}
-            </select>
-              <div className="row">
-                <Globe  />
-              </div>
-            </div>
           </div>
 
           {/* Custom DateTime Toggle */}
@@ -764,8 +680,8 @@ const AudioUploader = ({ }) => {
             <input
               type="checkbox"
               id="useCustomDateTime"
-              checked={timezoneData.useCustomDateTime}
-              onChange={(e) => handleTimezoneChange('useCustomDateTime', e.target.checked)}
+              checked={timestampData.useCustomDateTime}
+              onChange={(e) => handleTimestampChange('useCustomDateTime', e.target.checked)}
               className={formStyles.input}
             />
             <label htmlFor="useCustomDateTime" className={formStyles.label}>
@@ -775,7 +691,7 @@ const AudioUploader = ({ }) => {
           </div>
 
            {/* Custom DateTime Inputs */}
-           {timezoneData.useCustomDateTime && (
+           {timestampData.useCustomDateTime && (
              <div className={cardStyles.card}>
                <div className="gridTwo">
                <div>
@@ -785,8 +701,8 @@ const AudioUploader = ({ }) => {
                  </label>
                  <input
                    type="date"
-                   value={timezoneData.customDate || getCurrentDateTime().date}
-                   onChange={(e) => handleTimezoneChange('customDate', e.target.value)}
+                   value={timestampData.customDate || getCurrentDateTime().date}
+                   onChange={(e) => handleTimestampChange('customDate', e.target.value)}
                      className={formStyles.input}
                  />
                </div>
@@ -798,8 +714,8 @@ const AudioUploader = ({ }) => {
                  <input
                    type="time"
                    step="1"
-                   value={timezoneData.customTime || getCurrentDateTime().time}
-                   onChange={(e) => handleTimezoneChange('customTime', e.target.value)}
+                   value={timestampData.customTime || getCurrentDateTime().time}
+                   onChange={(e) => handleTimestampChange('customTime', e.target.value)}
                      className={formStyles.input}
                  />
                  </div>
@@ -811,8 +727,8 @@ const AudioUploader = ({ }) => {
                    type="button"
                    onClick={() => {
                      const currentDateTime = getCurrentDateTime();
-                     handleTimezoneChange('customDate', currentDateTime.date);
-                     handleTimezoneChange('customTime', currentDateTime.time);
+                     handleTimestampChange('customDate', currentDateTime.date);
+                     handleTimestampChange('customTime', currentDateTime.time);
                    }}
                    className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
                  >
@@ -823,47 +739,20 @@ const AudioUploader = ({ }) => {
              </div>
            )}
 
-           {/* Timezone Conversion Example */}
-           {timezoneData.useCustomDateTime && timezoneData.customDate && timezoneData.customTime && (
+           {/* UTC conversion preview */}
+           {timestampData.useCustomDateTime && timestampData.customDate && timestampData.customTime && (
              <div className={cardStyles.card}>
-               <div className="row">
-                 <Globe  />
-                 <span className="mutedText smallText">
-                   Timezone Conversion:
-                 </span>
-               </div>
+               <p className="mutedText smallText">Timestamp Conversion:</p>
                <div >
                  <div >
-                   <strong>Local Time:</strong> {timezoneData.customDate} {timezoneData.customTime} ({timezones.find(tz => tz.value === timezoneData.selectedTimezone)?.label})
+                   <strong>Local Time:</strong> {timestampData.customDate} {timestampData.customTime} (browser local time)
                  </div>
                  <div>
-                   <strong>UTC Time:</strong> {convertToUTC(`${timezoneData.customDate}T${timezoneData.customTime}`, timezoneData.selectedTimezone).toISOString().replace('T', ' ').replace('Z', ' UTC')}
+                   <strong>UTC Time:</strong> {convertToUTC(`${timestampData.customDate}T${timestampData.customTime}`).toISOString().replace('T', ' ').replace('Z', ' UTC')}
                  </div>
                </div>
              </div>
            )}
-
-           {/* Current Time Display */}
-           <div className={cardStyles.card}>
-             <div className="row">
-               <Clock  />
-               <span className="mutedText smallText">
-                 Current time in {timezones.find(tz => tz.value === timezoneData.selectedTimezone)?.label}:
-               </span>
-             </div>
-             <div >
-               {new Date().toLocaleString("en-US", { 
-                 timeZone: timezoneData.selectedTimezone,
-                 year: 'numeric',
-                 month: '2-digit',
-                 day: '2-digit',
-                 hour: '2-digit',
-                 minute: '2-digit',
-                 second: '2-digit',
-                 hour12: false
-               })}
-             </div>
-           </div>
 
            {/* UTC Preview */}
            <div className={cardStyles.card}>

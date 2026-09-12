@@ -7,6 +7,7 @@ import formStyles from '../ui/Form.module.css';
 import listStyles from '../ui/List.module.css';
 import noticeStyles from '../ui/Notice.module.css';
 import styles from '../ui/SummarySection.module.css';
+import { formatLocalDateTime, formatLocalTime, getBrowserTimeZone, parseUtcTimestamp } from '../../utils/dateTime';
 
 const SUMMARY_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -53,7 +54,7 @@ const DeviceBentoCard = ({
   );
 };
 
-const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChange }) => {
+const SummarySection = ({ globalSettings, handleGlobalChange }) => {
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
   const [stats, setStats] = useState({
@@ -92,7 +93,7 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
       const todayStr = new Date().toISOString().split('T')[0];
 
       const [metricsRes, logsRes] = await Promise.all([
-        api.get(`/settings/summary/metrics`, { params: { timezone } }),
+        api.get(`/settings/summary/metrics`, { params: { timezone: getBrowserTimeZone() } }),
         api.get(`/logs?date=${todayStr}&limit=20`),
       ]);
 
@@ -113,7 +114,7 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
     } finally {
       setLoading(false);
     }
-  }, [timezone, flattenLogsPayload]);
+  }, [flattenLogsPayload]);
 
   const fetchRecordingsDetail = useCallback(async () => {
     setDetailLoading((prev) => ({ ...prev, recordings: true }));
@@ -212,29 +213,10 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
     detailData.recordings.forEach(recording => {
       if (!recording.timestamp) return;
       
-      let recordingDateUTC;
-      if (typeof recording.timestamp === 'string') {
-        if (/^\d{8}_\d{6}$/.test(recording.timestamp)) {
-          const datePart = recording.timestamp.substring(0, 8);
-          const timePart = recording.timestamp.substring(9, 15);
-          const year = parseInt(datePart.substring(0, 4));
-          const month = parseInt(datePart.substring(4, 6)) - 1;
-          const day = parseInt(datePart.substring(6, 8));
-          const hour = parseInt(timePart.substring(0, 2));
-          const minute = parseInt(timePart.substring(2, 4));
-          const second = parseInt(timePart.substring(4, 6));
-          recordingDateUTC = new Date(Date.UTC(year, month, day, hour, minute, second));
-        } else {
-          recordingDateUTC = new Date(recording.timestamp);
-        }
-      } else {
-        recordingDateUTC = new Date(recording.timestamp);
-      }
-      
+      const recordingDateUTC = parseUtcTimestamp(recording.timestamp);
       if (isNaN(recordingDateUTC.getTime())) return;
       
       const dateStr = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
@@ -312,27 +294,15 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
     return logs
       .filter((l) => l && (l.message || l.msg || l.timestamp))
       .sort((a, b) => {
-        const ta = new Date(a.timestamp || 0).getTime();
-        const tb = new Date(b.timestamp || 0).getTime();
+        const ta = parseUtcTimestamp(a.timestamp || 0).getTime();
+        const tb = parseUtcTimestamp(b.timestamp || 0).getTime();
         return tb - ta;
       })
       .slice(0, 8);
   };
 
-  const formatLogRowTime = (log) => {
-    if (!log?.timestamp) return '—';
-    try {
-      return new Date(log.timestamp).toLocaleTimeString('en-US', {
-        timeZone: timezone,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      });
-    } catch {
-      return String(log.timestamp).slice(11, 19) || '—';
-    }
-  };
+  const formatLogRowTime = (log) =>
+    log?.timestamp ? formatLocalTime(log.timestamp) : '—';
 
   const logLevelBadge = (level) => {
     const l = (level || 'info').toLowerCase();
@@ -347,7 +317,7 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
   const visibleUsers = usersList.slice(0, 3);
   const usersOverflow = Math.max(0, usersList.length - 3);
   const isCompactView = true;
-  const recentLogEvents = useMemo(() => getRecentLogEvents(), [detailData.logs, timezone]);
+  const recentLogEvents = useMemo(() => getRecentLogEvents(), [detailData.logs]);
 
   return (
     <div className={`${styles.root} stack stackLarge`}>
@@ -400,9 +370,9 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
 
           {expandedCard && (
             <div className={`${cardStyles.card} ${styles.detailPanel}`}>
-              {expandedCard === 'recordings' && <RecordingsDetail recordingsByDay={groupRecordingsByDay()} timezone={timezone} formatDuration={formatDuration} />}
-              {expandedCard === 'errors' && <ErrorsWarningsDetail errorsAndWarnings={getErrorsAndWarnings()} timezone={timezone} />}
-              {expandedCard === 'users' && <UsersDetail users={getUsersWithLogins()} timezone={timezone} />}
+              {expandedCard === 'recordings' && <RecordingsDetail recordingsByDay={groupRecordingsByDay()} formatDuration={formatDuration} />}
+              {expandedCard === 'errors' && <ErrorsWarningsDetail errorsAndWarnings={getErrorsAndWarnings()} />}
+              {expandedCard === 'users' && <UsersDetail users={getUsersWithLogins()} />}
             </div>
           )}
 
@@ -414,7 +384,6 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
               </div>
               <div className="gridThree">
                 <DeviceBentoCard title="Uniden scanners" categoryLabel="RF monitoring" symbol="radio" checked={globalSettings.global_enable_uniden_scanners} onCheckedChange={(checked) => handleGlobalChange('global_enable_uniden_scanners', checked)} statusLineLeft="Discovery" statusLineRight={globalSettings.global_enable_uniden_scanners ? 'On' : 'Off'} statusLine2Left="Role" statusLine2Right="Scanner bridge" footerNote={globalSettings.global_enable_uniden_scanners ? 'Application will look for Uniden BC125AT devices on startup.' : 'Uniden discovery is disabled.'} compact={isCompactView} />
-                <DeviceBentoCard title="USB recorders" categoryLabel="Local capture" symbol="usb" checked={globalSettings.global_enable_usb_audio_devices} onCheckedChange={(checked) => handleGlobalChange('global_enable_usb_audio_devices', checked)} statusLineLeft="USB audio path" statusLineRight={globalSettings.global_enable_usb_audio_devices ? 'Active' : 'Idle'} statusLine2Left="Interfaces" statusLine2Right="OS default" footerNote={globalSettings.global_enable_usb_audio_devices ? 'USB audio devices can be used as recorders.' : 'Enable to scan for USB audio interfaces at startup.'} compact={isCompactView} />
                 <DeviceBentoCard title="Boondock Edge" categoryLabel="Edge recorders" symbol="settings_input_antenna" checked={globalSettings.global_enable_edge_devices} onCheckedChange={(checked) => handleGlobalChange('global_enable_edge_devices', checked)} statusLineLeft="Edge discovery" statusLineRight={globalSettings.global_enable_edge_devices ? 'On' : 'Off'} statusLine2Left="Note" statusLine2Right="Restart service" footerNote="ESP32 / CP210x based Boondock Edge recorders. Changing this may require a restart." footerClass="pillWarning" compact={isCompactView} />
               </div>
             </section>
@@ -447,7 +416,7 @@ const SummarySection = ({ timezone = 'Etc/UTC', globalSettings, handleGlobalChan
 };
 
 // Recordings Detail Component
-const RecordingsDetail = ({ recordingsByDay, timezone, formatDuration }) => {
+const RecordingsDetail = ({ recordingsByDay, formatDuration }) => {
   return (
     <div className="stack">
       <h3 className={cardStyles.title}>Recordings by Day</h3>
@@ -466,7 +435,6 @@ const RecordingsDetail = ({ recordingsByDay, timezone, formatDuration }) => {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                      timeZone: timezone
                     })}
                   </strong>
                 </div>
@@ -485,7 +453,7 @@ const RecordingsDetail = ({ recordingsByDay, timezone, formatDuration }) => {
                     } else {
                       try {
                         const date = new Date(rec.timestamp);
-                        timeStr = date.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        timeStr = formatLocalTime(date);
                       } catch (e) {
                         timeStr = rec.timestamp;
                       }
@@ -510,7 +478,7 @@ const RecordingsDetail = ({ recordingsByDay, timezone, formatDuration }) => {
 };
 
 // Errors and Warnings Detail Component
-const ErrorsWarningsDetail = ({ errorsAndWarnings, timezone }) => {
+const ErrorsWarningsDetail = ({ errorsAndWarnings }) => {
   const { errors, warnings } = errorsAndWarnings;
   
   return (
@@ -524,7 +492,7 @@ const ErrorsWarningsDetail = ({ errorsAndWarnings, timezone }) => {
               <div key={idx} className={`${noticeStyles.notice} ${noticeStyles.error}`}>
                 <div className={noticeStyles.body}>
                   <p><strong>{error.message || error.msg || 'Error'}</strong></p>
-                  {error.timestamp && <p>{new Date(error.timestamp).toLocaleString('en-US', { timeZone: timezone })}</p>}
+                  {error.timestamp && <p>{formatLocalDateTime(error.timestamp)}</p>}
                 </div>
               </div>
             ))}
@@ -539,7 +507,7 @@ const ErrorsWarningsDetail = ({ errorsAndWarnings, timezone }) => {
               <div key={idx} className={`${noticeStyles.notice} ${noticeStyles.warning}`}>
                 <div className={noticeStyles.body}>
                   <p><strong>{warning.message || warning.msg || 'Warning'}</strong></p>
-                  {warning.timestamp && <p>{new Date(warning.timestamp).toLocaleString('en-US', { timeZone: timezone })}</p>}
+                  {warning.timestamp && <p>{formatLocalDateTime(warning.timestamp)}</p>}
                 </div>
               </div>
             ))}
@@ -552,7 +520,7 @@ const ErrorsWarningsDetail = ({ errorsAndWarnings, timezone }) => {
 };
 
 // Users Detail Component
-const UsersDetail = ({ users, timezone }) => {
+const UsersDetail = ({ users }) => {
   return (
     <div className="stack">
       <h3 className={cardStyles.title}>Users and Login History</h3>
@@ -577,7 +545,7 @@ const UsersDetail = ({ users, timezone }) => {
                       let loginTime = '';
                       if (login.timestamp) {
                         try {
-                          loginTime = new Date(login.timestamp).toLocaleString('en-US', { timeZone: timezone });
+                          loginTime = formatLocalDateTime(login.timestamp);
                         } catch (e) {
                           loginTime = login.timestamp;
                         }

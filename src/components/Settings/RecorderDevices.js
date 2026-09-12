@@ -194,7 +194,6 @@ const RecorderDevices = ({ enabled }) => {
     }
   }, [enabled, loadConfigsForPorts]);
 
-
   const fetchChannels = useCallback(async () => {
     try {
       const response = await api.get(`/channels`);
@@ -218,7 +217,6 @@ const RecorderDevices = ({ enabled }) => {
         host_password: settings.host_password || '',
         host_ip: settings.host_ip || '',
         host_port: settings.host_port || '',
-        global_timezone: settings.global_timezone || 'Etc/UTC'
       });
     } catch (err) {
       console.debug('Failed to fetch global settings:', err);
@@ -296,22 +294,6 @@ const RecorderDevices = ({ enabled }) => {
       }));
     }
   }, [enabled]);
-
-  // Calculate timezone offset in hours (for autoconfig command)
-  const getTimezoneOffsetHours = useCallback((timezone) => {
-    try {
-      if (!timezone) return 0;
-      const now = new Date();
-      const utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-      const tzTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-      const offsetMinutes = (tzTime.getTime() - utcTime.getTime()) / (1000 * 60);
-      const offsetHours = offsetMinutes / 60;
-      return Math.round(offsetHours);
-    } catch (err) {
-      console.warn('Failed to calculate timezone offset:', err);
-      return 0;
-    }
-  }, []);
 
   useEffect(() => {
     fetchDevices();

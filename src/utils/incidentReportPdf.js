@@ -1,6 +1,7 @@
 import { apiFetch } from './apiClient';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatLocalDateTime, getBrowserTimeZone, getLocalTimeZoneAbbreviation, parseUtcTimestamp } from './dateTime';
 
 const BRAND = [0, 49, 120]; // #003178
 const BODY = [17, 24, 39];
@@ -8,46 +9,11 @@ const MUTED = [71, 85, 105];
 const BORDER = [226, 232, 240];
 const PAGE_MARGIN = 14;
 
-function resolveTimezone(settingsTimezone) {
-  const cached =
-    settingsTimezone || (typeof localStorage !== 'undefined' && localStorage.getItem('cached_timezone')) || 'Etc/UTC';
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: cached });
-    return cached;
-  } catch {
-    return 'Etc/UTC';
-  }
-}
-
-function parseDate(dateString) {
-  if (!dateString) return null;
-  if (/^\d{8}_\d{6}$/.test(dateString)) {
-    const y = Number(dateString.slice(0, 4));
-    const m = Number(dateString.slice(4, 6)) - 1;
-    const d = Number(dateString.slice(6, 8));
-    const hh = Number(dateString.slice(9, 11));
-    const mm = Number(dateString.slice(11, 13));
-    const ss = Number(dateString.slice(13, 15));
-    return new Date(Date.UTC(y, m, d, hh, mm, ss));
-  }
-  return new Date(dateString);
-}
-
-function getTzAbbrev(date, tz) {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(date);
-    const part = parts.find((p) => p.type === 'timeZoneName');
-    return part?.value?.replace('GMT', 'UTC') || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-}
-
-function formatForReport(dateString, timeFormat, tz) {
-  const date = parseDate(dateString);
+function formatForReport(dateString, timeFormat) {
+  const date = parseUtcTimestamp(dateString);
   if (!date || Number.isNaN(date.getTime())) return 'Invalid Date';
   const use12h = timeFormat !== '24h';
-  const fmt = new Intl.DateTimeFormat('en-US', {
+  const formatted = formatLocalDateTime(date, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
@@ -55,10 +21,8 @@ function formatForReport(dateString, timeFormat, tz) {
     minute: '2-digit',
     second: '2-digit',
     hour12: use12h,
-    timeZone: tz,
   });
-  const abbr = getTzAbbrev(date, tz);
-  return `${fmt.format(date)} (${abbr})`;
+  return `${formatted} (${getLocalTimeZoneAbbreviation(date)})`;
 }
 
 function displaySource(src, channelsById) {
@@ -99,20 +63,6 @@ function safeFilename(title) {
   return `${String(title || 'incident').replace(/[^a-z0-9]/gi, '_')}_report.pdf`;
 }
 
-/** Normalize API branding logo (raw base64 or data URL) for use in <img> / jsPDF. */
-export function brandingLogoToDataUrl(logo) {
-  if (logo == null || logo === '') return null;
-  const s = String(logo).trim();
-  if (s.startsWith('data:image')) return s;
-  const b64 = s.replace(/\s/g, '');
-  if (!b64) return null;
-  if (b64.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${b64}`;
-  if (b64.startsWith('/9j/')) return `data:image/jpeg;base64,${b64}`;
-  if (b64.startsWith('UklGR')) return `data:image/webp;base64,${b64}`;
-  if (b64.startsWith('R0lGOD')) return `data:image/gif;base64,${b64}`;
-  return `data:image/jpeg;base64,${b64}`;
-}
-
 function imageFormatForJsPdf(dataUrl) {
   const m = /^data:image\/(png|jpeg|jpg|webp|gif)/i.exec(dataUrl);
   if (!m) return 'JPEG';
@@ -147,43 +97,25 @@ function fitLogoToMmBox(nw, nh, maxWmm, maxHmm) {
 }
 
 /**
- * Loads organization name and logo from GET /branding (same source as Global → Branding).
- * @returns {Promise<{ organizationName: string | null, logoDataUrl: string | null }>}
- */
-export async function fetchBrandingForPdf() {
-  try {
-    const resp = await apiFetch(`/branding`);
-    if (!resp.ok) return { organizationName: null, logoDataUrl: null };
-    const data = await resp.json();
-    const organizationName = (data.organization_name && String(data.organization_name).trim()) || null;
-    const logoDataUrl = brandingLogoToDataUrl(data.assets?.logo);
-    return { organizationName, logoDataUrl };
-  } catch {
-    return { organizationName: null, logoDataUrl: null };
-  }
-}
-
-/**
  * Builds a print-ready, light-theme incident report PDF (suitable for records / compliance).
  * @param {object} report — mapped incident object from ReportsManagement
- * @param {{ user?: object | null, timeFormat?: string, settingsTimezone?: string | null, channelsById?: Record<string,string>, organizationName?: string | null, logoDataUrl?: string | null }} options
+ * @param {{ user?: object | null, timeFormat?: string, channelsById?: Record<string,string>, organizationName?: string | null, logoDataUrl?: string | null }} options
  * @returns {Promise<Blob>}
  */
 export async function buildIncidentReportPdfBlob(report, options = {}) {
   const {
     user = null,
     timeFormat = '24h',
-    settingsTimezone = null,
     channelsById = {},
     organizationName = null,
     logoDataUrl = null,
   } = options;
-  const tz = resolveTimezone(settingsTimezone);
+  const tz = getBrowserTimeZone();
   const createdByName = user?.name || user?.username || 'Boondock Team';
   const createdByFull = user ? `${user.name || createdByName} (${user.username || '—'})` : 'Unknown';
   const incidentCode = `RE-${String(report.id).padStart(5, '0')}`;
   const generatedAt = new Date();
-  const genFmt = new Intl.DateTimeFormat('en-US', {
+  const genStr = `${formatLocalDateTime(generatedAt, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
@@ -191,9 +123,7 @@ export async function buildIncidentReportPdfBlob(report, options = {}) {
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-    timeZone: tz,
-  });
-  const genStr = `${genFmt.format(generatedAt)} (${getTzAbbrev(generatedAt, tz)})`;
+  })} (${getLocalTimeZoneAbbreviation(generatedAt)})`;
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -276,10 +206,10 @@ export async function buildIncidentReportPdfBlob(report, options = {}) {
     ['Report ID', incidentCode],
     ...(organizationName ? [['Organization', organizationName]] : []),
     ['Title', String(report.title || '—')],
-    ['Created', formatForReport(report.date, timeFormat, tz)],
+    ['Created', formatForReport(report.date, timeFormat)],
     ['Created by', createdByFull],
-    ['Incident start', formatForReport(report.startTime, timeFormat, tz)],
-    ['Incident end', formatForReport(report.endTime, timeFormat, tz)],
+    ['Incident start', formatForReport(report.startTime, timeFormat)],
+    ['Incident end', formatForReport(report.endTime, timeFormat)],
     ['Channels / units', channelsInvolvedLabel(report, channelsById)],
     ['Severity', String(report.severity || '—')],
   ];
@@ -349,7 +279,7 @@ export async function buildIncidentReportPdfBlob(report, options = {}) {
   const audioRows = (report.audios || []).map((a, i) => [
     String(i + 1),
     displaySource(a.source, channelsById),
-    formatForReport(a.recordedAt, timeFormat, tz),
+    formatForReport(a.recordedAt, timeFormat),
     String(a.transcription || '—'),
   ]);
 

@@ -793,7 +793,7 @@ const InteractiveUserGuide = () => {
                     <div className={"grow"}>
                       <h5 className={styles.emphasis}>System Clock</h5>
                       <p className={styles.bodyText}>
-                        Displays the current system time and timezone. Click to adjust system time (admin only). Shows timezone abbreviation below the time.
+                        Displays the current time in your browser timezone. Click to adjust system time (admin only). Shows the detected browser timezone below the time.
                       </p>
                     </div>
                   </div>

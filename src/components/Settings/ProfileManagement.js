@@ -308,14 +308,20 @@ const ProfileManagement = () => {
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleFeatureToggle(feature.key)}
-                          className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
+                        <label
+                          className={formStyles.switch}
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          <div
-                            className={cardStyles.card}
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={() => handleFeatureToggle(feature.key)}
+                            aria-label={`Toggle ${feature.label}`}
                           />
-                        </button>
+                          <span className={formStyles.switchTrack} aria-hidden="true">
+                            <span className={formStyles.switchThumb} />
+                          </span>
+                        </label>
                       </div>
                     );
                   })}

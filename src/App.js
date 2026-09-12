@@ -67,7 +67,6 @@ const CACHE_KEYS = {
   CHANNELS: 'cached_channels',
   MESSAGES: 'cached_messages',
   KEYWORDS: 'cached_keywords',
-  TIMEZONE: 'cached_timezone',
   TIME_FORMAT: 'cached_time_format',
   LAST_FETCH: 'last_fetch_time'
 };
@@ -191,15 +190,6 @@ const clearOldCache = () => {
     }
   } catch (error) {
     logger.error('Error clearing old cache:', error);
-  }
-};
-
-const validateTimezone = (tz) => {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz });
-    return true;
-  } catch (e) {
-    return false;
   }
 };
 
@@ -355,7 +345,7 @@ const sortMessagesByTime = (messages) => {
 };
 
 // Function to process and order messages from API response
-const processMessagesFromAPI = (apiData, timezone) => {
+const processMessagesFromAPI = (apiData) => {
   if (!Array.isArray(apiData)) return [];
   
   const processedMessages = apiData.map(item => {
@@ -364,7 +354,6 @@ const processMessagesFromAPI = (apiData, timezone) => {
       team: `Channel ${item.channel_id}`,
       // The recording filename is the source of truth for when audio began.
       time: getRecordingTimestampFromFilename(item.filename, item.timestamp),
-      timezone,
       status: item.hasOwnProperty("status") ? item.status : "new",
       id: item.id,
       url: `${API_BASE_URL}/${item.filename}`,
@@ -488,26 +477,12 @@ const App = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
-  const [timezone, setTimezone] = useState(() => {
-    const cachedTimezone = getCachedData(CACHE_KEYS.TIMEZONE);
-    return cachedTimezone && validateTimezone(cachedTimezone) ? cachedTimezone : "Etc/UTC";
-  });
-
   const [timeFormat, setTimeFormat] = useState(() => {
     const cachedTimeFormat = getCachedData(CACHE_KEYS.TIME_FORMAT);
     return cachedTimeFormat || "24h"; // Default to 24-hour format
   });
 
-  const [branding, setBranding] = useState({
-    organization_name: 'Boondock Edge Server'
-  });
-
   const [reverseSort, setReverseSort] = useState(false);
-
-  const setTimezoneWithLogging = (newTz) => {
-    logger.debug(`Timezone changed from ${timezone} to ${newTz}`);
-    setTimezone(newTz);
-  };
 
   const setTimeFormatWithLogging = (newFormat) => {
     logger.debug(`Time format changed from ${timeFormat} to ${newFormat}`);
@@ -515,26 +490,7 @@ const App = () => {
     cacheData(CACHE_KEYS.TIME_FORMAT, newFormat);
   };
 
-  // Fetch branding data and update document title
-  const fetchBrandingData = async () => {
-    try {
-      const response = await api.get('/branding');
-      const brandingData = response.data;
-      setBranding(brandingData);
-      
-      // Update document title with organization name
-      if (brandingData.organization_name) {
-        document.title = brandingData.organization_name;
-      } else {
-        // Fallback to default title
-        document.title = 'Boondock Edge Server';
-      }
-    } catch (error) {
-      logger.error('Error fetching branding data:', error);
-      // Keep default title if fetch fails
-      document.title = 'Boondock Edge Server';
-    }
-  };
+  document.title = 'Boondock Edge Server';
 
   useEffect(() => {
     const dialog = serverErrorDialogRef.current;
@@ -542,24 +498,6 @@ const App = () => {
     if (showServerErrorModal && !dialog.open) dialog.showModal();
     if (!showServerErrorModal && dialog.open) dialog.close();
   }, [showServerErrorModal]);
-
-  // Update document title when branding changes
-  useEffect(() => {
-    if (branding.organization_name) {
-      document.title = branding.organization_name;
-    }
-  }, [branding.organization_name]);
-
-  // Memoized processed messages
-  const processedMessages = useMemo(() => {
-    return messages.map(message => ({
-      ...message,
-      localTime: new Date(message.time).toLocaleString('en-US', { 
-        timeZone: timezone,
-        hour12: timeFormat === "12h"
-      })
-    }));
-  }, [messages, timezone, timeFormat]);
 
   // Check if there's any cached data available
   const hasCachedData = () => {
@@ -607,8 +545,6 @@ const App = () => {
         // Always fetch fresh data in background, regardless of cache validity
         // This ensures we have the most up-to-date information
         await fetchAllData(true); // Show loading on initial load only
-        // Always fetch branding data to update title
-        await fetchBrandingData();
         setShowServerErrorModal(false); // Hide error modal if initialization succeeds
       } catch (error) {
         logger.error("Initialization error:", error);
@@ -666,7 +602,7 @@ const App = () => {
         return false;
       }
 
-      const processed = processMessagesFromAPI(rows, timezone);
+      const processed = processMessagesFromAPI(rows);
       setMessages((prev) => mergeMessagesById(prev, processed, maxCap));
 
       const next = {
@@ -682,7 +618,7 @@ const App = () => {
       logger.error('Older inbox fetch failed:', error);
       return false;
     }
-  }, [timezone]);
+  }, []);
 
   // Data fetching. Channels and settings are static unless explicitly refreshed;
   // the five-second update only needs the inbox.
@@ -796,7 +732,7 @@ const App = () => {
       }, {});
 
       // Process new inbox window rows and merge into current in-memory list.
-      const fetchedWindow = processMessagesFromAPI(inboxRows, timezone);
+      const fetchedWindow = processMessagesFromAPI(inboxRows);
 
       // Only update state if data has actually changed to prevent unnecessary re-renders
       if (channelsData) setChannels(prevChannels => {
@@ -830,17 +766,6 @@ const App = () => {
         if (prevStr !== newStr) return keywordsRes.data.keywords;
         return prevKeywords; // No changes, return previous to prevent re-render
       });
-
-      // Handle timezone
-      const newTimezone = keywordsRes?.data.global_timezone || timezone || "Etc/UTC";
-        if (validateTimezone(newTimezone)) {
-        setTimezoneWithLogging(newTimezone);
-        cacheData(CACHE_KEYS.TIMEZONE, newTimezone);
-      } else {
-        logger.warn(`Invalid timezone received: ${newTimezone}, falling back to UTC`);
-        setTimezoneWithLogging("Etc/UTC");
-        cacheData(CACHE_KEYS.TIMEZONE, "Etc/UTC");
-      }
 
       // Cache only messages inside the user's inbox view window (default: last 7 days)
       const messagesForCache = filterMessagesToInboxViewWindow(
@@ -1038,11 +963,10 @@ const App = () => {
             <Route element={<PrivateRoute />}>
               <Route path="/" element={
                   <LiveCommunications
-                    timezone={timezone}
                     timeFormat={timeFormat}
                     setMessages={setMessages}
                     channels={channels}
-                    messages={processedMessages}
+                    messages={messages}
                     keywords={keywords}
                     reverseSort={reverseSort}
                     setReverseSort={setReverseSort}
@@ -1054,7 +978,6 @@ const App = () => {
               } />
               <Route path="/settings" element={
                   <SettingsPage
-                    timezone={timezone}
                     timeFormat={timeFormat}
                     setTimeFormat={setTimeFormatWithLogging}
                     reverseSort={reverseSort}
@@ -1073,7 +996,7 @@ const App = () => {
                   <AdvancedAudioPlayer timeFormat={timeFormat} />
               } />
               <Route path="/logs" element={
-                  <LogsPage timezone={timezone} timeFormat={timeFormat} />
+                  <LogsPage />
               } />
               <Route path="/report" element={
                   <ReportPage timeFormat={timeFormat} />
