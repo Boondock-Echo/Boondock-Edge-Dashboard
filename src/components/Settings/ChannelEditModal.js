@@ -1,8 +1,7 @@
 import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
 import buttonStyles from '../ui/Button.module.css';
-import { apiFetch } from '../../utils/apiClient';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { RadioTower, X, Volume2, User2, Tag, ActivitySquare, Languages, Network,
   Radio, Trash2, Speaker } from 'lucide-react';
 
@@ -22,30 +21,8 @@ const ChannelEditModal = ({
   onFrequencyChange,
   onDelete,
 }) => {
-  const [availablePorts, setAvailablePorts] = useState([]);
-  
-  // Fetch available ports when audio_stream_enabled changes
-  useEffect(() => {
-    if (tempChannel?.audio_stream_enabled) {
-      const fetchAvailablePorts = async () => {
-        try {
-          const response = await apiFetch('/available-ports');
-          if (response.ok) {
-            const data = await response.json();
-            // Include current port even if not in available list
-            let ports = data.available_ports || [];
-            if (tempChannel.audio_stream_port && !ports.includes(tempChannel.audio_stream_port)) {
-              ports = [tempChannel.audio_stream_port, ...ports].sort((a, b) => a - b);
-            }
-            setAvailablePorts(ports);
-          }
-        } catch (error) {
-          console.error('Error fetching available ports:', error);
-        }
-      };
-      fetchAvailablePorts();
-    }
-  }, [tempChannel?.audio_stream_enabled]);
+  //TO-DO Update with Edge Streaming
+  const availablePorts = useMemo(() => Array.from({ length: 10 }, (_, index) => 6001 + index), []);
 
   // Early return after the hooks
   if (!editingChannel || !tempChannel) return null;
@@ -158,7 +135,7 @@ const ChannelEditModal = ({
                 onChange={(e) => onFieldChange("status", e.target.value)}
                 className={formStyles.select}
               >
-                <option value="resumed">Enabled</option>
+                <option value="enabled">Enabled</option>
                 <option value="disabled">Disabled</option>
               </select>
             </div>

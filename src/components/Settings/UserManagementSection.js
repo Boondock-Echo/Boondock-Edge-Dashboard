@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import UserManagement from '../Users/index';
 import ProfileManagement from './ProfileManagement';
-import { Users, Shield } from 'lucide-react';
+import { Shield, Users } from 'lucide-react';
 import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
-import {
-  SettingsPageHero,
-  SettingsSectionWidth,
-} from './SettingsSectionLayout';
+import { SettingsPageHero, SettingsSectionWidth } from './SettingsSectionLayout';
 import cardStyles from '../ui/Card.module.css';
 
 const UserManagementSection = () => {
@@ -16,36 +13,23 @@ const UserManagementSection = () => {
     <SettingsSectionWidth>
       <SettingsPageHero
         title="Users"
-        description="Manage users, roles, and profile settings for your organization."
+        description="Manage users, groups, permissions, and MFA requirements."
         icon={<span className="material-symbols-outlined iconMedium">group</span>}
       />
 
       <div className={cardStyles.card}>
         <SettingsSubnav embedded aria-label="User management">
-          <SettingsSubnavTab
-            active={activeTab === 'users'}
-            onClick={() => setActiveTab('users')}
-            className="row"
-          >
+          <SettingsSubnavTab active={activeTab === 'users'} onClick={() => setActiveTab('users')} className="row">
             <Users className="iconMedium noShrink" />
             Users
           </SettingsSubnavTab>
-          <SettingsSubnavTab
-            active={activeTab === 'profiles'}
-            onClick={() => setActiveTab('profiles')}
-            className="row"
-          >
+          <SettingsSubnavTab active={activeTab === 'groups'} onClick={() => setActiveTab('groups')} className="row">
             <Shield className="iconMedium noShrink" />
-            Profiles
+            Groups
           </SettingsSubnavTab>
         </SettingsSubnav>
 
-        {activeTab === 'users' && (
-          <UserManagement />
-        )}
-        {activeTab === 'profiles' && (
-          <ProfileManagement />
-        )}
+        {activeTab === 'users' ? <UserManagement /> : <ProfileManagement />}
       </div>
     </SettingsSectionWidth>
   );

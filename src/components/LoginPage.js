@@ -94,10 +94,8 @@ const LoginPage = () => {
       persistRemember();
       // TO-DO Pass user not fields
       login({
-        username: data.user.email,
         token: data.token,
-        name: data.user.name,
-        role: data.user.role
+        user: data.user,
       });
       if (data.show_mfa_reminder) {
         sessionStorage.removeItem('mfa_reminder_dismissed');

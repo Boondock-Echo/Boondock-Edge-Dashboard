@@ -1,9 +1,10 @@
-import { configureApiAuth } from '../utils/apiClient';
+import api, { configureApiAuth } from '../utils/apiClient';
 import React, {
   createContext,
   useCallback,
   useContext,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -13,6 +14,8 @@ const SENSITIVE_CACHE_KEYS = [
   'cached_keywords',
   'last_fetch_time',
 ];
+
+const PREFERENCE_SECTIONS = new Set(['inbox', 'reports']);
 
 export const clearSensitiveSession = () => {
   localStorage.removeItem('user');
@@ -37,23 +40,53 @@ const restoreUser = () => {
   }
 };
 
+const getPrincipal = (value) => value?.user ?? value ?? null;
+
+const replacePrincipal = (value, principal) => (
+  value?.user && typeof value.user === 'object'
+    ? { ...value, user: principal }
+    : principal
+);
+
+const normalizePreferences = (preferences = {}) => ({
+  inbox: { ...(preferences.inbox || {}) },
+  reports: { ...(preferences.reports || {}) },
+});
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(restoreUser);
+  const userRef = useRef(user);
+  const preferenceSaveQueueRef = useRef(Promise.resolve());
   const [token, setToken] = useState(() => user ? localStorage.getItem('token') : null);
   const [isReLogin, setIsReLogin] = useState(false);
   const [wasLoggedOut, setWasLoggedOut] = useState(false);
 
+  const persistUser = useCallback((nextUser) => {
+    userRef.current = nextUser;
+    setUser(nextUser);
+
+    if (!nextUser) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('name');
+      return;
+    }
+
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    const principal = getPrincipal(nextUser);
+    if (principal?.name) localStorage.setItem('name', principal.name);
+  }, []);
+
   const logout = useCallback(() => {
     clearSensitiveSession();
+    userRef.current = null;
     setToken(null);
     setUser(null);
     setIsReLogin(false);
     setWasLoggedOut(true);
   }, []);
 
-  // The Fetch client reads the current token and logs out rejected sessions.
   useLayoutEffect(() => {
     return configureApiAuth({
       token: () => token,
@@ -61,24 +94,70 @@ export const AuthProvider = ({ children }) => {
     });
   }, [logout, token]);
 
-  const login = (userData) => {
+  const login = useCallback((userData) => {
     setToken(userData.token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    if (userData.name) localStorage.setItem('name', userData.name);
     localStorage.setItem('token', userData.token);
-    setUser(userData);
+    persistUser(userData);
 
     if (wasLoggedOut) {
       setIsReLogin(true);
       setWasLoggedOut(false);
     }
-  };
+  }, [persistUser, wasLoggedOut]);
+
+  const updateUser = useCallback((changes) => {
+    const current = userRef.current;
+    const principal = getPrincipal(current);
+    if (!principal) return;
+
+    const nextPrincipal = typeof changes === 'function'
+      ? changes(principal)
+      : { ...principal, ...changes };
+
+    persistUser(replacePrincipal(current, nextPrincipal));
+  }, [persistUser]);
+
+  const updatePreferences = useCallback((section, changes) => {
+    if (!PREFERENCE_SECTIONS.has(section)) {
+      return Promise.reject(new Error(`Unknown preference section: ${section}`));
+    }
+    if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
+      return Promise.reject(new Error('Preference changes must be an object'));
+    }
+
+    const current = userRef.current;
+    const principal = getPrincipal(current);
+    if (!principal?.id) {
+      return Promise.reject(new Error('Authenticated user is unavailable'));
+    }
+
+    const nextPreferences = normalizePreferences(principal.preferences);
+    nextPreferences[section] = {
+      ...nextPreferences[section],
+      ...changes,
+    };
+
+    const nextPrincipal = {
+      ...principal,
+      preferences: nextPreferences,
+    };
+    persistUser(replacePrincipal(current, nextPrincipal));
+
+    const save = preferenceSaveQueueRef.current
+      .catch(() => undefined)
+      .then(() => api.patch(`/users/${principal.id}`, { preferences: nextPreferences }));
+
+    preferenceSaveQueueRef.current = save;
+    return save;
+  }, [persistUser]);
 
   return (
     <AuthContext.Provider value={{
       user,
       login,
       logout,
+      updateUser,
+      updatePreferences,
       isReLogin,
       resetReLoginFlag: () => setIsReLogin(false),
     }}>

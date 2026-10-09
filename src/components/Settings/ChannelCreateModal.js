@@ -62,7 +62,7 @@ const ChannelCreateModal = ({
     }
   
     try {
-      const response = await apiFetch(`/channel`, {
+      const response = await apiFetch(`/channels`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

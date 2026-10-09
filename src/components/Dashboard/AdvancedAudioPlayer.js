@@ -48,13 +48,9 @@ const ProfessionalAudioEditor = ({
   const location = useLocation();
   const navigationMessage = location.state?.message;
 
-
-
   // const initialAudioUrl = queryParams.get("audioUrl") || "/audio/bell-ringing-05.wav";
-  
-  //  const messageId = queryParams.get("messageId");
+  // const messageId = queryParams.get("messageId");
 
-  
   const urlMessageId = queryParams.get("messageId");
   const { audioRef, activeTrack, status: audioStatus, claim: claimSharedAudio, stop: stopSharedAudio } = useAudioPlayback();
   const advancedOwnerId = `advanced:${urlMessageId || navigationMessage?.url || 'player'}`;
@@ -64,7 +60,7 @@ const ProfessionalAudioEditor = ({
   const waveformRef = useRef(null);
   const historyDialogRef = useRef(null);
   const workerRef = useRef(null);
- const [error, setError] = useState(null);
+  const [error, setError] = useState(null);
   const isMounted = useRef(true);
   
   const [originalAudioBuffer, setOriginalAudioBuffer] = useState(null);
@@ -78,6 +74,7 @@ const ProfessionalAudioEditor = ({
   useEffect(() => {
     stopSharedAudio();
   }, [stopSharedAudio]);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [transcriptionText, setTranscriptionText] = useState(navigationMessage?.message || "");
@@ -87,8 +84,6 @@ const ProfessionalAudioEditor = ({
   const [audioUrl, setAudioUrl] = useState(navigationMessage?.url || "");
   const [initialAudioUrl, setInitialAudioUrl] = useState(navigationMessage?.url || "");
 
-  const [loading, setLoading] = useState(true);
-
   const [recordingTimes] = useState(() => getRecordingTimes(
     navigationMessage?.time,
     navigationMessage?.duration,
@@ -96,9 +91,6 @@ const ProfessionalAudioEditor = ({
   const browserTimezone = getBrowserTimeZone();
   const { recordingStartTime, recordingEndTime } = recordingTimes;
   const [channelName, setChannelName] = useState(navigationMessage?.channelName || "");
-
-  // Fetch audio URL based on messageId
-
  
  // Fetch audio URL based on messageId
   useEffect(() => {
@@ -143,16 +135,14 @@ const ProfessionalAudioEditor = ({
     // fetchAudioUrl();
   }, [messageId, urlMessageId, navigationMessage?.url]);
 
-
-
   // Parse audioUrl to extract channelId and audioName
   const parseAudioUrl = useCallback((url) => {
-  const absoluteUrl = new URL(url, window.location.origin); // Fix for relative URLs
-  const urlParts = absoluteUrl.pathname.split("/");
-  const audioName = urlParts.pop();
-  const channelId = urlParts.pop();
-  return { channelId, audioName };
-}, []);
+    const absoluteUrl = new URL(url, window.location.origin); // Fix for relative URLs
+    const urlParts = absoluteUrl.pathname.split("/");
+    const audioName = urlParts.pop();
+    const channelId = urlParts.pop();
+    return { channelId, audioName };
+  }, []);
 
 const datefillter = useCallback((url) => {
   if (!url) return "Unknown";
@@ -582,7 +572,7 @@ const handledownloadaudio = async () => {
       const fullDownloadUrl = new URL(downloadUrl, window.location.origin).href; // Ensure valid absolute URL
       console.log(fullDownloadUrl);
       // Use formatted filename from API response (respects time format preference), fallback to "audio.wav"
-      const filename = res.data.utc_filename || res.data.filename || "audio.wav";
+      const filename = res.data.filename || "audio.wav";
 
       const a = document.createElement("a");
       a.href = fullDownloadUrl;
@@ -601,7 +591,6 @@ const handledownloadaudio = async () => {
     toast.error(`Download failed: ${error.message}`);
   }
 };
-
 
   // Reload page
   const handleReload = useCallback(() => {
@@ -699,9 +688,6 @@ const handledownloadaudio = async () => {
     }, 500),
     [audioUrl, isProcessing, isLoading, formatTime]
   );
-
-
-
 
   // Function to reload audio after revert
   const reloadAudioAfterRevert = useCallback(async () => {

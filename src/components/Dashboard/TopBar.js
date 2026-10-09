@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Clock, Tag, Radio, User, CheckCheck, Moon, Sun, LayoutList } from 'lucide-react';
 import SystemClock from './SystemClock';
 import Button from '../ui/Button';
@@ -6,66 +6,60 @@ import formStyles from '../ui/Form.module.css';
 import styles from '../ui/TopBar.module.css';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
-import { useAuth } from '../AuthContext';
+import { useInboxFilters, useInboxPreferences, useInboxLayout, useInboxSelection, useInboxLive } from '../InboxContext';
 import {
   TIME_FILTERS,
   INBOX_TIME_RANGE_DROPDOWN_ORDER,
   getDefaultCustomRangeDates,
 } from '../../utils/inboxViewWindow';
 
-const TopBar = ({
-  timeFilter,
-  setTimeFilter,
-  showTime,
-  setShowTime,
-  showCar,
-  setShowCar,
-  showChannel,
-  setShowChannel,
-  showPerson,
-  setShowPerson,
-  isMobile,
-  isMultiSelectMode,
-  setIsMultiSelectMode,
-  setSelectedMessages,
-  selectedMessages,
-  toggleMultiSelectMode,
-  userRole,
-  showFullTimestamps,
-  setShowFullTimestamps,
-  startDate,
-  setStartDate,
-  endDate,
-  setEndDate,
-  startTime,
-  setStartTime,
-  endTime,
-  setEndTime,
-  timeFormat = "24h",
-  isVolumeOn,
-  setIsVolumeOn,
-  inboxViewMode,
-  onInboxViewModeChange,
-}) => {
+const TopBar = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  
-  // Show settings button only if user has access_settings permission or is admin
-  const canAccessSettings = user?.role === 'admin' || hasPermission('access_settings');
-  
+  const { timeFilter, appliedCustomRange, applyTimeView } = useInboxFilters();
+  const {
+    principal,
+    showTime,
+    showCar,
+    showChannel,
+    showPerson,
+    showFullTimestamps,
+    updatePreference,
+    timeFormat,
+    inboxViewMode,
+    setInboxViewMode,
+  } = useInboxPreferences();
+  const { isMobile } = useInboxLayout();
+  const { isMultiSelectMode, toggleMultiSelectMode } = useInboxSelection();
+  const { isVolumeOn, setIsVolumeOn } = useInboxLive();
+
+  const canAccessSettings = principal?.role === 'admin' || hasPermission('access_settings');
+
   const [isViewSettingsOpen, setIsViewSettingsOpen] = useState(false);
   const [isViewModalClosing, setIsViewModalClosing] = useState(false);
   const viewModalTimerRef = useRef(null);
 
-  // Clear any pending timers on unmount (MEDIUM-29)
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState(timeFilter);
+  const [draftStartDate, setDraftStartDate] = useState(appliedCustomRange.startDate || '');
+  const [draftEndDate, setDraftEndDate] = useState(appliedCustomRange.endDate || '');
+  const [draftStartTime, setDraftStartTime] = useState(appliedCustomRange.startTime || '');
+  const [draftEndTime, setDraftEndTime] = useState(appliedCustomRange.endTime || '');
+
   useEffect(() => {
-    return () => {
-      if (viewModalTimerRef.current) clearTimeout(viewModalTimerRef.current);
-    };
+    setSelectedTimeFilter(timeFilter);
+  }, [timeFilter]);
+
+  useEffect(() => {
+    setDraftStartDate(appliedCustomRange.startDate || '');
+    setDraftEndDate(appliedCustomRange.endDate || '');
+    setDraftStartTime(appliedCustomRange.startTime || '');
+    setDraftEndTime(appliedCustomRange.endTime || '');
+  }, [appliedCustomRange]);
+
+  useEffect(() => () => {
+    if (viewModalTimerRef.current) clearTimeout(viewModalTimerRef.current);
   }, []);
 
-//  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const closeViewModal = () => {
     setIsViewModalClosing(true);
     if (viewModalTimerRef.current) clearTimeout(viewModalTimerRef.current);
@@ -76,35 +70,52 @@ const TopBar = ({
   };
 
   const applyTimeRangePreset = (value) => {
+    setSelectedTimeFilter(value);
     if (value === TIME_FILTERS.CUSTOM) {
-      setTimeFilter(TIME_FILTERS.CUSTOM);
+      let startDate = draftStartDate;
+      let endDate = draftEndDate;
       if (!startDate || !endDate) {
-        const d = getDefaultCustomRangeDates();
-        setStartDate(d.startDate);
-        setEndDate(d.endDate);
+        const defaults = getDefaultCustomRangeDates();
+        startDate = defaults.startDate;
+        endDate = defaults.endDate;
+        setDraftStartDate(startDate);
+        setDraftEndDate(endDate);
       }
+      // Selecting Custom only opens the editor. It does not hit the API until Apply range.
       return;
     }
-    setStartDate('');
-    setEndDate('');
-    setStartTime('');
-    setEndTime('');
-    setTimeFilter(value);
+
+    setDraftStartDate('');
+    setDraftEndDate('');
+    setDraftStartTime('');
+    setDraftEndTime('');
+    applyTimeView({ timeFilter: value });
   };
 
+  const applyCustomRange = () => {
+    applyTimeView({
+      timeFilter: TIME_FILTERS.CUSTOM,
+      startDate: draftStartDate,
+      startTime: draftStartTime,
+      endDate: draftEndDate,
+      endTime: draftEndTime,
+    });
+  };
+
+  const selectValue = selectedTimeFilter;
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return JSON.parse(localStorage.getItem("isDarkMode")) || false;
+    try {
+      return JSON.parse(localStorage.getItem('isDarkMode')) || false;
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
-    const root = document.documentElement;
-    root.dataset.uiTheme = isDarkMode ? "night-ops" : "ember-command";
+    localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
+    document.documentElement.dataset.uiTheme = isDarkMode ? 'night-ops' : 'ember-command';
   }, [isDarkMode]);
-  
-
-  // Static colors for better visibility in dark mode
 
   return (
     <>
@@ -132,8 +143,18 @@ const TopBar = ({
               </label>
               <select
                 id="topbar-inbox-time-range"
-                value={timeFilter}
-                onChange={(e) => applyTimeRangePreset(e.target.value)}
+                value={selectValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === TIME_FILTERS.CUSTOM) {
+                    setSelectedTimeFilter(value);
+                    const defaults = getDefaultCustomRangeDates();
+                    if (!draftStartDate) setDraftStartDate(defaults.startDate);
+                    if (!draftEndDate) setDraftEndDate(defaults.endDate);
+                  } else {
+                    applyTimeRangePreset(value);
+                  }
+                }}
                 className={`${formStyles.select} ${styles.rangeSelect}`}
                 aria-label="Inbox time range"
               >
@@ -148,84 +169,83 @@ const TopBar = ({
               onClick={toggleMultiSelectMode}
               size="small"
               variant={isMultiSelectMode ? 'primary' : 'accent'}
-              title={isMultiSelectMode ? "Exit select" : "Select messages"}
-              aria-label={isMultiSelectMode ? "Exit select" : "Select messages"}
+              title={isMultiSelectMode ? 'Exit select' : 'Select messages'}
+              aria-label={isMultiSelectMode ? 'Exit select' : 'Select messages'}
             >
-              {isMobile ? <CheckCheck aria-hidden="true" /> : isMultiSelectMode ? "Exit select" : "Select messages"}
+              {isMobile ? <CheckCheck aria-hidden="true" /> : isMultiSelectMode ? 'Exit select' : 'Select messages'}
             </Button>
 
             <div className={styles.divider} aria-hidden="true" />
 
-            {isVolumeOn !== undefined && setIsVolumeOn && (
-              <div className={styles.liveControl}>
-                <span className={`${styles.liveDot}${isVolumeOn ? ` ${styles.liveDotActive}` : ''}`} aria-hidden="true" />
-                {!isMobile && <span className={styles.liveLabel}>LIVE</span>}
-                <label className={formStyles.switch} title={isVolumeOn ? "Turn off live mode" : "Turn on live mode"}>
-                  <input
-                    type="checkbox"
-                    checked={isVolumeOn}
-                    onChange={() => setIsVolumeOn(!isVolumeOn)}
-                    aria-label="Toggle live mode"
-                  />
-                  <span className={formStyles.switchTrack} aria-hidden="true">
-                    <span className={formStyles.switchThumb} />
-                  </span>
-                </label>
-              </div>
-            )}
+            <div className={styles.liveControl}>
+              <span className={`${styles.liveDot}${isVolumeOn ? ` ${styles.liveDotActive}` : ''}`} aria-hidden="true" />
+              {!isMobile && <span className={styles.liveLabel}>LIVE</span>}
+              <label className={formStyles.switch} title={isVolumeOn ? 'Turn off live mode' : 'Turn on live mode'}>
+                <input
+                  type="checkbox"
+                  checked={isVolumeOn}
+                  onChange={() => setIsVolumeOn(!isVolumeOn)}
+                  aria-label="Toggle live mode"
+                />
+                <span className={formStyles.switchTrack} aria-hidden="true">
+                  <span className={formStyles.switchThumb} />
+                </span>
+              </label>
+            </div>
 
             <Button type="button" onClick={() => setIsViewSettingsOpen(true)} variant="ghost" size="icon" aria-label="View settings" title="View settings">
               <span className="material-symbols-outlined">visibility</span>
             </Button>
 
             {canAccessSettings && (
-              <Button type="button" onClick={() => navigate("/settings")} variant="ghost" size="icon" aria-label="Settings" title="Settings">
+              <Button type="button" onClick={() => navigate('/settings')} variant="ghost" size="icon" aria-label="Settings" title="Settings">
                 <span className="material-symbols-outlined">settings</span>
               </Button>
             )}
 
-            <Button type="button" onClick={() => navigate("/report")} variant="ghost" size="icon" className={styles.desktopOnly} aria-label="Reports" title="Incident reports">
+            <Button type="button" onClick={() => navigate('/report')} variant="ghost" size="icon" className={styles.desktopOnly} aria-label="Reports" title="Incident reports">
               <span className="material-symbols-outlined">assignment</span>
             </Button>
 
-            <SystemClock
-              userRole={userRole}
-              timeFormat={timeFormat}
-            />
+            <SystemClock userRole={principal?.role || 'member'} timeFormat={timeFormat} />
           </div>
         </div>
 
-        {timeFilter === TIME_FILTERS.CUSTOM && (
+        {selectedTimeFilter === TIME_FILTERS.CUSTOM && (
           <div className={styles.customRange}>
             <div className={`rowBetween ${styles.customRangeHeader}`}>
               <span className={styles.customRangeTitle}>Custom from / to (local date and time)</span>
-              <Button type="button" onClick={() => applyTimeRangePreset(TIME_FILTERS.DAYS7)} variant="ghost" size="small">
-                Use last 7 days
-              </Button>
+              <div className="row">
+                <Button type="button" onClick={() => applyTimeRangePreset(TIME_FILTERS.DAYS7)} variant="ghost" size="small">
+                  Use last 7 days
+                </Button>
+                <Button type="button" onClick={applyCustomRange} variant="primary" size="small" disabled={!draftStartDate || !draftEndDate}>
+                  Apply range
+                </Button>
+              </div>
             </div>
             <div className={styles.customRangeGrid}>
               <label className={formStyles.field}>
                 <span className={formStyles.label}>From date</span>
-                <input type="date" value={startDate || ''} onChange={(e) => setStartDate(e.target.value)} className={formStyles.input} />
+                <input type="date" value={draftStartDate} onChange={(e) => setDraftStartDate(e.target.value)} className={formStyles.input} />
               </label>
               <label className={formStyles.field}>
                 <span className={formStyles.label}>From time</span>
-                <input type="time" value={startTime || ''} onChange={(e) => setStartTime(e.target.value)} step="1" lang="en-GB" className={formStyles.input} />
+                <input type="time" value={draftStartTime} onChange={(e) => setDraftStartTime(e.target.value)} step="1" lang="en-GB" className={formStyles.input} />
               </label>
               <label className={formStyles.field}>
                 <span className={formStyles.label}>To date</span>
-                <input type="date" value={endDate || ''} onChange={(e) => setEndDate(e.target.value)} min={startDate || undefined} className={formStyles.input} />
+                <input type="date" value={draftEndDate} onChange={(e) => setDraftEndDate(e.target.value)} min={draftStartDate || undefined} className={formStyles.input} />
               </label>
               <label className={formStyles.field}>
                 <span className={formStyles.label}>To time</span>
-                <input type="time" value={endTime || ''} onChange={(e) => setEndTime(e.target.value)} step="1" lang="en-GB" className={formStyles.input} />
+                <input type="time" value={draftEndTime} onChange={(e) => setDraftEndTime(e.target.value)} step="1" lang="en-GB" className={formStyles.input} />
               </label>
             </div>
           </div>
         )}
       </div>
 
-      {/* View Settings Modal */}
       {isViewSettingsOpen && (
         <div className={`${styles.viewOverlay}${isViewModalClosing ? ` ${styles.viewOverlayClosing}` : ''}`}>
           <div className={`${styles.viewModal}${isViewModalClosing ? ` ${styles.viewModalClosing}` : ''}`}>
@@ -241,25 +261,37 @@ const TopBar = ({
             <div className={styles.modalBody}>
               <div className={styles.settingList}>
                 {[
-                  { label: 'TIMING', icon: Clock, state: showTime, setState: setShowTime },
-                  { label: 'TAG', icon: Tag, state: showCar, setState: setShowCar },
-                  { label: 'CHANNEL', icon: Radio, state: showChannel, setState: setShowChannel },
-                  { label: 'PERSON', icon: User, state: showPerson, setState: setShowPerson },
-                ].map(({ label, icon: Icon, state, setState }) => (
+                  { label: 'TIMING', icon: Clock, state: showTime, key: 'show_time' },
+                  { label: 'TAG', icon: Tag, state: showCar, key: 'show_car' },
+                  { label: 'CHANNEL', icon: Radio, state: showChannel, key: 'show_channel' },
+                  { label: 'PERSON', icon: User, state: showPerson, key: 'show_person' },
+                ].map(({ label, icon: Icon, state, key }) => (
                   <div key={label} className={`${styles.settingRow}${state ? ` ${styles.settingRowActive}` : ''}`}>
                     <div className={styles.settingInfo}>
                       <span className={styles.settingIcon}><Icon aria-hidden="true" /></span>
                       <span className={styles.settingLabel}>{label}</span>
                     </div>
                     <label className={formStyles.switch}>
-                      <input type="checkbox" checked={state} onChange={() => setState(!state)} aria-label={label} />
+                      <input type="checkbox" checked={state} onChange={() => updatePreference(key, !state)} aria-label={label} />
                       <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
                     </label>
                   </div>
                 ))}
               </div>
 
-              {/* Show Full Timestamps Toggle */}
+              <label className={formStyles.field}>
+                <span className={styles.groupLabel}><Clock aria-hidden="true" /> TIME FORMAT</span>
+                <select
+                  value={timeFormat}
+                  onChange={(e) => updatePreference('time_format', e.target.value)}
+                  className={formStyles.select}
+                  aria-label="Time format"
+                >
+                  <option value="24h">24-hour (14:30:45)</option>
+                  <option value="12h">12-hour (2:30:45 PM)</option>
+                </select>
+              </label>
+
               <div className="stackCompact">
                 <div className={styles.groupLabel}><Clock aria-hidden="true" /> DATE</div>
                 <div className={`${styles.settingRow}${showFullTimestamps ? ` ${styles.settingRowActive}` : ''}`}>
@@ -268,24 +300,20 @@ const TopBar = ({
                     <span className={styles.settingLabel}>Show full timestamps</span>
                   </div>
                   <label className={formStyles.switch}>
-                    <input type="checkbox" checked={showFullTimestamps} onChange={() => setShowFullTimestamps(!showFullTimestamps)} aria-label="Show full timestamps" />
+                    <input type="checkbox" checked={showFullTimestamps} onChange={() => updatePreference('show_full_timestamps', !showFullTimestamps)} aria-label="Show full timestamps" />
                     <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
                   </label>
                 </div>
               </div>
 
-              {/* Inbox layout (pagination vs continuous) */}
-              {inboxViewMode != null && typeof onInboxViewModeChange === 'function' && (
-                <label className={formStyles.field}>
-                  <span className={styles.groupLabel}><LayoutList aria-hidden="true" /> INBOX LAYOUT</span>
-                  <select value={inboxViewMode === 'continuous' ? 'continuous' : 'pagination'} onChange={(e) => onInboxViewModeChange(e.target.value)} className={formStyles.select} aria-label="Inbox layout">
-                    <option value="pagination">Pagination (pages)</option>
-                    <option value="continuous">Continuous scroll</option>
-                  </select>
-                </label>
-              )}
+              <label className={formStyles.field}>
+                <span className={styles.groupLabel}><LayoutList aria-hidden="true" /> INBOX LAYOUT</span>
+                <select value={inboxViewMode} onChange={(e) => setInboxViewMode(e.target.value)} className={formStyles.select} aria-label="Inbox layout">
+                  <option value="pagination">Pagination (pages)</option>
+                  <option value="continuous">Continuous scroll</option>
+                </select>
+              </label>
 
-              {/* Theme Toggle */}
               <div className="stackCompact">
                 <div className={styles.groupLabel}>{isDarkMode ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />} APPEARANCE THEME</div>
                 <div className={styles.settingRow}>
@@ -294,7 +322,7 @@ const TopBar = ({
                     <span className={styles.settingLabel}>{isDarkMode ? 'Night Ops' : 'Ember Command'}</span>
                   </div>
                   <label className={formStyles.switch}>
-                    <input type="checkbox" checked={isDarkMode} onClick={() => setIsDarkMode((current) => !current)} aria-label={`Switch to ${isDarkMode ? 'Ember Command' : 'Night Ops'}`} />
+                    <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode((current) => !current)} aria-label={`Switch to ${isDarkMode ? 'Ember Command' : 'Night Ops'}`} />
                     <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
                   </label>
                 </div>
@@ -302,7 +330,7 @@ const TopBar = ({
             </div>
 
             <div className={styles.modalFooter}>
-              <Button onClick={closeViewModal} variant="primary">APPLY</Button>
+              <Button onClick={closeViewModal} variant="primary">CLOSE</Button>
             </div>
           </div>
         </div>
