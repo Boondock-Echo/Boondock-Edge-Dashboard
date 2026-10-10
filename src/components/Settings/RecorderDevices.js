@@ -57,7 +57,6 @@ const RecorderDevices = ({ enabled }) => {
   const [deviceStatus, setDeviceStatus] = useState({}); // Store parsed device status per port
   const [channels, setChannels] = useState([]); // Store channels for MAC address matching
   const [lastUpdateTime, setLastUpdateTime] = useState({}); // Track last update time per port
-  const [globalSettings, setGlobalSettings] = useState({}); // Store global settings for host config
   const [expandedDevices, setExpandedDevices] = useState({}); // Track which devices have expanded details
   const [dynamicRangeHistory, setDynamicRangeHistory] = useState({}); // Track last 5 dynamic range readings per port
   const [rebootCounts, setRebootCounts] = useState({}); // Track reboot counts per port
@@ -205,25 +204,6 @@ const RecorderDevices = ({ enabled }) => {
     }
   }, []);
 
-  const fetchGlobalSettings = useCallback(async () => {
-    try {
-      const response = await api.get(`/settings`);
-      const settings = response.data || {};
-      // Map backend field names to frontend field names
-      // Note: host_password may be masked as '***' - we'll handle that in validation
-      setGlobalSettings({
-        ...settings,
-        host_ssid: settings.host_ssid || '',
-        host_password: settings.host_password || '',
-        host_ip: settings.host_ip || '',
-        host_port: settings.host_port || '',
-      });
-    } catch (err) {
-      console.debug('Failed to fetch global settings:', err);
-      setGlobalSettings({});
-    }
-  }, []);
-
   const fetchRebootCounts = useCallback(async () => {
     if (!enabled) {
       return;
@@ -300,9 +280,8 @@ const RecorderDevices = ({ enabled }) => {
     fetchAllSerialPorts();
     fetchFirmwares();
     fetchChannels();
-    fetchGlobalSettings();
     fetchRebootCounts();
-  }, [fetchDevices, fetchAllSerialPorts, fetchFirmwares, fetchChannels, fetchGlobalSettings, fetchRebootCounts]);
+  }, [fetchDevices, fetchAllSerialPorts, fetchFirmwares, fetchChannels, fetchRebootCounts]);
 
   const fetchMonitorMessages = useCallback(async () => {
     if (!enabled) {
@@ -643,39 +622,10 @@ const RecorderDevices = ({ enabled }) => {
       return;
     }
 
-    // Validate host configuration (coerce to string — API/settings may return numbers)
-    const hostSsid = String(globalSettings.host_ssid ?? '').trim();
-    const hostPassword = String(globalSettings.host_password ?? '');
-    const hostIp = String(globalSettings.host_ip ?? '').trim();
-    const hostPort = globalSettings.host_port != null && globalSettings.host_port !== ''
-      ? String(globalSettings.host_port)
-      : '';
-
-    const isPasswordMasked = hostPassword === '***';
-    const hasPassword = hostPassword.trim() !== '' && !isPasswordMasked;
-
-    const portNum = parseInt(hostPort, 10);
-    const isValidPort = !isNaN(portNum) && portNum >= 1 && portNum <= 65535;
-
-    if (!hostSsid || !hasPassword || !hostIp || !isValidPort) {
-      if (isPasswordMasked) {
-        setNotification({ type: 'error', text: 'Host password is configured but masked. Please re-enter the password in Global Settings to use Auto Config.' });
-      } else if (!isValidPort) {
-        setNotification({ type: 'error', text: 'Please configure a valid Host Port (1-65535) in Global Settings.' });
-      } else {
-        setNotification({ type: 'error', text: 'Please configure Host SSID, Password, IP, and Port in Global Settings.' });
-      }
-      return;
-    }
-
     setSendingCommand(true);
     try {
       const response = await api.post(`/recorders/monitor/autoconfig`, {
         ports: selectedPorts,
-        host_ssid: hostSsid,
-        host_password: hostPassword,
-        host_ip: hostIp,
-        host_port: portNum,
         command_interval: 2.5,
       }, {
         timeout: 60000,
@@ -703,7 +653,7 @@ const RecorderDevices = ({ enabled }) => {
     } finally {
       setSendingCommand(false);
     }
-  }, [selectedPorts, globalSettings]);
+  }, [selectedPorts]);
 
   const handleReboot = useCallback(async () => {
     if (selectedPorts.length === 0) {

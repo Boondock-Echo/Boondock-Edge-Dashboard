@@ -1,687 +1,214 @@
-import cardStyles from '../ui/Card.module.css';
-import formStyles from '../ui/Form.module.css';
-import buttonStyles from '../ui/Button.module.css';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CheckCircle, Cloud, Database, Download, RefreshCw, Save, Server, XCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import api from '../../utils/apiClient';
-import { 
-  Database, 
-  Cloud, 
-  Download, 
-  RefreshCw, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  ChevronRight,
-  ChevronLeft,
-  FileText,
-  Music,
-  Settings as SettingsIcon,
-  AlertCircle,
-  Server,
-  DatabaseZap,
-  Globe,
-  HardDrive,
-  Plug
-} from 'lucide-react';
 import BackupProgressModal from './BackupProgressModal';
 import RestoreModal from './RestoreModal';
 import SettingsSectionHeader from './SettingsSectionHeader';
+import Button from '../ui/Button';
+import cardStyles from '../ui/Card.module.css';
+import formStyles from '../ui/Form.module.css';
+import noticeStyles from '../ui/Notice.module.css';
+import tableStyles from '../ui/Table.module.css';
 
-// Toggle component
-const Toggle = ({ checked, onChange, label, icon: Icon, description, metric, }) => (
-  <div >
-    <button
-      onClick={() => onChange(!checked)}
-      className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-    >
-      <div className="rowBetween">
-        <div className="row">
-          <div className={cardStyles.card}>
-            <Icon size={24}  />
-          </div>
-          <div >
-            <h4 className="pageTitle">
-              {label}
-            </h4>
-            <p className="mutedText smallText">
-              {description}
-            </p>
-            {metric && (
-              <div className="row">
-                {metric}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </button>
-  </div>
-);
+const EMPTY_SETTINGS = {
+  s3_enabled: false,
+  s3_endpoint_url: '',
+  s3_access_key: '',
+  s3_secret_key: '',
+  s3_region: 'us-east-1',
+  s3_bucket_name: '',
+  samba_enabled: false,
+  samba_share_path: '',
+  samba_username: '',
+  samba_password: '',
+};
 
-const BackupRestore = ({  showToast, globalSettings, handleGlobalChange, handleBackupNow }) => {
-  const [backupHistory, setBackupHistory] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+const BackupRestore = () => {
+  const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [configured, setConfigured] = useState({});
+  const [history, setHistory] = useState([]);
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testingSamba, setTestingSamba] = useState(false);
+  const [error, setError] = useState('');
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [testingSamba, setTestingSamba] = useState(false);
-  const [sambaTestResult, setSambaTestResult] = useState(null);
-  
-  const RECORDS_PER_PAGE = 10;
+
+  const loadSettings = useCallback(async () => {
+    const { data } = await api.get('/settings/backup');
+    setConfigured({
+      s3_access_key: Boolean(data.s3_access_key_configured),
+      s3_secret_key: Boolean(data.s3_secret_key_configured),
+      samba_password: Boolean(data.samba_password_configured),
+    });
+    setSettings({
+      ...EMPTY_SETTINGS,
+      s3_enabled: Boolean(data.s3_enabled),
+      s3_endpoint_url: data.s3_endpoint_url || '',
+      s3_region: data.s3_region || 'us-east-1',
+      s3_bucket_name: data.s3_bucket_name || '',
+      samba_enabled: Boolean(data.samba_enabled),
+      samba_share_path: data.samba_share_path || '',
+      samba_username: data.samba_username || '',
+    });
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    const { data } = await api.get('/s3/backup/history', { params: { page, per_page: 10 } });
+    setHistory(Array.isArray(data.history) ? data.history : []);
+    setTotalPages(Number(data.total_pages) || 1);
+  }, [page]);
 
   useEffect(() => {
-    fetchBackupHistory();
-  }, [currentPage]);
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([loadSettings(), loadHistory()])
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.response?.data?.error || 'Failed to load backup settings');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [loadHistory, loadSettings]);
 
-  const fetchBackupHistory = async () => {
+  const update = (field, value) => setSettings((previous) => ({ ...previous, [field]: value }));
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
     try {
-      setLoading(true);
-      const response = await api.get(
-        `/s3/backup/history?page=${currentPage}&per_page=${RECORDS_PER_PAGE}`
-      );
-      setBackupHistory(response.data.history || []);
-      setTotalPages(response.data.total_pages || 1);
-    } catch (error) {
-      console.error('Error fetching backup history:', error);
-      showToast('Error loading backup history', 'error');
+      const payload = {
+        s3_enabled: settings.s3_enabled,
+        s3_endpoint_url: settings.s3_endpoint_url.trim(),
+        s3_region: settings.s3_region.trim(),
+        s3_bucket_name: settings.s3_bucket_name.trim(),
+        samba_enabled: settings.samba_enabled,
+        samba_share_path: settings.samba_share_path.trim(),
+        samba_username: settings.samba_username.trim(),
+      };
+      if (settings.s3_access_key) payload.s3_access_key = settings.s3_access_key;
+      if (settings.s3_secret_key) payload.s3_secret_key = settings.s3_secret_key;
+      if (settings.samba_password) payload.samba_password = settings.samba_password;
+
+      const { data } = await api.patch('/settings/backup', payload);
+      setConfigured({
+        s3_access_key: Boolean(data.s3_access_key_configured),
+        s3_secret_key: Boolean(data.s3_secret_key_configured),
+        samba_password: Boolean(data.samba_password_configured),
+      });
+      setSettings((previous) => ({
+        ...previous,
+        s3_enabled: Boolean(data.s3_enabled),
+        s3_endpoint_url: data.s3_endpoint_url || '',
+        s3_access_key: '',
+        s3_secret_key: '',
+        s3_region: data.s3_region || 'us-east-1',
+        s3_bucket_name: data.s3_bucket_name || '',
+        samba_enabled: Boolean(data.samba_enabled),
+        samba_share_path: data.samba_share_path || '',
+        samba_username: data.samba_username || '',
+        samba_password: '',
+      }));
+      toast.success('Backup settings saved');
+    } catch (requestError) {
+      const message = requestError.response?.data?.error || 'Failed to save backup settings';
+      setError(message);
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleBackupNowClick = () => {
-    setShowBackupModal(true);
-    if (handleBackupNow) {
-      handleBackupNow();
-    }
-  };
-
-  const handleBackupComplete = () => {
-    setShowBackupModal(false);
-    fetchBackupHistory();
-  };
-
-  const handleRestore = () => {
-    setShowRestoreModal(true);
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+  const testSamba = async () => {
+    setTestingSamba(true);
     try {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    } catch (e) {
-      return dateString;
+      const payload = {
+        share_path: settings.samba_share_path || undefined,
+        username: settings.samba_username || undefined,
+        password: settings.samba_password || undefined,
+      };
+      const { data } = await api.post('/s3/backup/test-samba', payload);
+      toast[data.success ? 'success' : 'error'](data.message || (data.success ? 'Samba connection successful' : 'Samba connection failed'));
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || requestError.response?.data?.error || 'Samba connection failed');
+    } finally {
+      setTestingSamba(false);
     }
   };
 
-  const getStatusIcon = (status) => {
-    if (status === 'completed' || status === 'success') {
-      return <CheckCircle  />;
-    } else if (status === 'error' || status === 'failed') {
-      return <XCircle  />;
-    } else if (status === 'running') {
-      return <RefreshCw  />;
-    }
-    return <Clock  />;
-  };
-
-  const getStatusText = (status) => {
-    if (status === 'completed' || status === 'success') return 'Success';
-    if (status === 'error' || status === 'failed') return 'Failed';
-    if (status === 'running') return 'Running';
-    return 'Unknown';
-  };
+  if (loading) return <div className="centeredContent"><span className="spinner" /></div>;
 
   return (
-    <div className="stack">
+    <div className="stack stackLarge">
       <SettingsSectionHeader
         icon={Database}
-        title="Backup & Restore"
-        description="Manage your backups and restore data from Boondock Cloud storage"
+        title="Backup & restore"
+        description="Configure backup destinations and manage backup history."
         iconColor="blue"
       />
-      
-      <div >
-            <button
-              onClick={handleBackupNowClick}
-              className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-            >
-              <Cloud  />
-              Backup Now
-            </button>
-            <button
-              onClick={handleRestore}
-              className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.medium}`}
-            >
-              <Download  />
-              Restore
-            </button>
-            <button
-              onClick={() => {
-                setRefreshing(true);
-                fetchBackupHistory().finally(() => setRefreshing(false));
-              }}
-              disabled={refreshing}
-              className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-            >
-              <RefreshCw  />
-            </button>
+
+      {error ? <div className={`${noticeStyles.notice} ${noticeStyles.error}`}><div className={noticeStyles.body}><p>{error}</p></div></div> : null}
+
+      <div className="rowWrap">
+        <Button variant="primary" onClick={() => setShowBackupModal(true)}><Cloud size={18} />Backup now</Button>
+        <Button variant="secondary" onClick={() => setShowRestoreModal(true)}><Download size={18} />Restore</Button>
+        <Button variant="ghost" onClick={loadHistory}><RefreshCw size={18} />Refresh history</Button>
       </div>
 
-      {/* Backup History */}
-      <div className={cardStyles.card}>
-        <h3 className="pageTitle">
-          Backup History
-        </h3>
-
-        {loading ? (
-          <div className="row">
-            <RefreshCw  />
-          </div>
-        ) : backupHistory.length === 0 ? (
-          <div >
-            <Database  />
-            <p>No backup history found</p>
-          </div>
-        ) : (
-          <>
-            <div >
-              <table >
-                <thead>
-                  <tr >
-                    <th >
-                      Date & Time
-                    </th>
-                    <th >
-                      Status
-                    </th>
-                    <th >
-                      Files Uploaded
-                    </th>
-                    <th >
-                      Files Skipped
-                    </th>
-                    <th >
-                      Errors
-                    </th>
-                    <th >
-                      Duration
-                    </th>
-                    <th >
-                      Type
-                    </th>
-                    <th >
-                      Destination
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {backupHistory.map((backup, index) => (
-                    <tr
-                      key={index}
-                      
-                    >
-                      <td >
-                        {formatDate(backup.start_time || backup.timestamp)}
-                      </td>
-                      <td >
-                        <div className="row">
-                          {getStatusIcon(backup.status)}
-                          <span >
-                            {getStatusText(backup.status)}
-                          </span>
-                        </div>
-                      </td>
-                      <td >
-                        {backup.uploaded_files || backup.files_uploaded || 0}
-                      </td>
-                      <td >
-                        {backup.skipped_files || backup.files_skipped || 0}
-                      </td>
-                      <td >
-                        {backup.error_files || backup.files_errors || 0}
-                      </td>
-                      <td >
-                        {backup.duration ? `${backup.duration}s` : 'N/A'}
-                      </td>
-                      <td >
-                        <span className="mutedText smallText">
-                          {backup.manual ? 'Manual' : 'Scheduled'}
-                        </span>
-                      </td>
-                      <td >
-                        <span className="mutedText smallText">
-                          {(() => {
-                            const dest = backup.destination || 'cloud';
-                            if (dest === 'cloud') return 'Cloud';
-                            if (dest === 'samba') return 'Samba';
-                            if (dest === 'both') return 'Cloud + Samba';
-                            return dest;
-                          })()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="rowBetween">
-                <div >
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div >
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-                  >
-                    <ChevronLeft  />
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-                  >
-                    Next
-                    <ChevronRight  />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Backup Progress Modal */}
-      <BackupProgressModal
-        isOpen={showBackupModal}
-        onClose={() => {
-          setShowBackupModal(false);
-          fetchBackupHistory();
-        }}
-      />
-
-      {/* Restore Modal */}
-      <RestoreModal
-        isOpen={showRestoreModal}
-        onClose={() => setShowRestoreModal(false)}
-        showToast={showToast}
-      />
-
-      {/* Boondock Cloud Storage + Samba / Network Drive Backup */}
-      {globalSettings && handleGlobalChange && (
-        <div >
-          <div className="row">
-            <div className={cardStyles.card}>
-              <Cloud size={24}  />
-            </div>
-            <div>
-              <h2 className="pageTitle">
-                Backup Destinations
-              </h2>
-              <p className="mutedText smallText">
-                Configure cloud storage and optional Samba / network drive mirroring for your nightly backups.
-              </p>
-            </div>
-          </div>
-
-          <div className="stack stackCompact">
-            {/* Boondock Cloud configuration */}
-            <div className="stack">
-              <Toggle
-                checked={globalSettings.global_enable_s3_upload}
-                onChange={(checked) => handleGlobalChange("global_enable_s3_upload", checked)}
-                label="Enable Boondock Cloud Upload"
-                icon={Cloud}
-                description="Automatically sync audio files to Boondock Cloud-compatible cloud storage. Files are uploaded after local save."
-              />
-              
-              {/* Boondock Cloud Configuration - Only show when Boondock Cloud upload is enabled */}
-              {globalSettings.global_enable_s3_upload && (
-                <div className={cardStyles.card}>
-                  <div className="stack">
-                    {/* Boondock Cloud Endpoint URL */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <Server size={16}  />
-                          Boondock Cloud Endpoint URL
-                        </div>
-                      </label>
-                      <input
-                        type="text"
-                        value={globalSettings.s3_endpoint_url || ""}
-                        onChange={(e) => handleGlobalChange("s3_endpoint_url", e.target.value)}
-                        placeholder="https://s3.example.com"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        The Boondock Cloud-compatible storage endpoint URL (e.g., https://s3.amazonaws.com or custom endpoint)
-                      </p>
-                    </div>
-
-                    {/* Boondock Cloud Access Key */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <DatabaseZap size={16}  />
-                          Boondock Cloud Access Key
-                        </div>
-                      </label>
-                      <input
-                        type="password"
-                        value={globalSettings.s3_access_key || ""}
-                        onChange={(e) => handleGlobalChange("s3_access_key", e.target.value)}
-                        placeholder="Enter access key"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        Your Boondock Cloud access key ID. This field is hidden for security.
-                      </p>
-                    </div>
-
-                    {/* Boondock Cloud Secret Key */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <DatabaseZap size={16}  />
-                          Boondock Cloud Secret Key
-                        </div>
-                      </label>
-                      <input
-                        type="password"
-                        value={globalSettings.s3_secret_key || ""}
-                        onChange={(e) => handleGlobalChange("s3_secret_key", e.target.value)}
-                        placeholder="Enter secret key"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        Your Boondock Cloud secret access key. This field is hidden for security.
-                      </p>
-                    </div>
-
-                    {/* Boondock Cloud Region */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <Globe size={16}  />
-                          Boondock Cloud Region
-                        </div>
-                      </label>
-                      <input
-                        type="text"
-                        value={globalSettings.s3_region || "us-east-1"}
-                        onChange={(e) => handleGlobalChange("s3_region", e.target.value)}
-                        placeholder="us-east-1"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        The Boondock Cloud region (e.g., us-east-1, eu-west-1). Default is us-east-1.
-                      </p>
-                    </div>
-
-                    {/* Boondock Cloud Bucket Name */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <DatabaseZap size={16}  />
-                          Boondock Cloud Bucket Name
-                        </div>
-                      </label>
-                      <input
-                        type="text"
-                        value={globalSettings.s3_bucket_name || ""}
-                        onChange={(e) => handleGlobalChange("s3_bucket_name", e.target.value)}
-                        placeholder="my-bucket-name"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        The default Boondock Cloud bucket name for storing all client audio files. Files will be organized by MAC address within this bucket.
-                      </p>
-                    </div>
-
-                    {/* Boondock Cloud Backup Time */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <Clock size={16}  />
-                          Backup Time
-                        </div>
-                      </label>
-                      <input
-                        type="time"
-                        value={globalSettings.s3_backup_time || "03:00"}
-                        onChange={(e) => handleGlobalChange("s3_backup_time", e.target.value)}
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        Daily backup time for audio files, database, and logs. Default is 3:00 AM. Backups run automatically in the background.
-                      </p>
-                    </div>
-
-                    {/* Backup Now Button */}
-                    {handleBackupNow && (
-                      <div >
-                        <button
-                          onClick={() => handleBackupNow()}
-                          className={`${buttonStyles.button} ${buttonStyles.success} ${buttonStyles.medium}`}
-                        >
-                          <div className="row">
-                            <Cloud size={18} />
-                            Backup Now
-                          </div>
-                        </button>
-                        <p className="mutedText smallText">
-                          Start an immediate backup of all audio files, database, and logs to Boondock Cloud.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Samba / Network Drive Backup */}
-            <div className={cardStyles.card}>
-              <div className="row">
-                <div >
-                  <HardDrive size={20}  />
-                </div>
-                <div>
-                  <h3 className="pageTitle">
-                    Samba / Network Drive Backup
-                  </h3>
-                  <p className="mutedText smallText">
-                    Optionally mirror nightly backups to a Samba network share or NAS in your local environment.
-                  </p>
-                </div>
-              </div>
-
-              <div className="stack">
-                {/* Enable Samba Backup */}
-                <Toggle
-                  checked={globalSettings.samba_backup_enabled}
-                  onChange={(checked) => handleGlobalChange("samba_backup_enabled", checked)}
-                  label="Enable Samba / Network Drive Backup"
-                  icon={HardDrive}
-                  description="Copy database, audio recordings, and logs to a Samba network share as part of the nightly backup."
-                />
-
-                {globalSettings.samba_backup_enabled && (
-                  <div className={cardStyles.card}>
-                    {/* Samba Share Path */}
-                    <div >
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <Server size={16}  />
-                          Samba Share Path
-                        </div>
-                      </label>
-                      <input
-                        type="text"
-                        value={globalSettings.samba_share_path || ""}
-                        onChange={(e) => handleGlobalChange("samba_share_path", e.target.value)}
-                        placeholder="e.g. /mnt/boondock-backups or //SERVER/Share/boondock"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        This should be a path that the device can write to. In most setups, the Samba share is mounted by the OS and exposed as a local folder.
-                      </p>
-                    </div>
-
-                    {/* Samba Username */}
-                    <div >
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <DatabaseZap size={16}  />
-                          Samba Username (optional)
-                        </div>
-                      </label>
-                      <input
-                        type="text"
-                        value={globalSettings.samba_username || ""}
-                        onChange={(e) => handleGlobalChange("samba_username", e.target.value)}
-                        placeholder="Enter Samba username"
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        Stored for configuration reference. In most deployments the share is mounted by the OS using these credentials.
-                      </p>
-                    </div>
-
-                    {/* Samba Password */}
-                    <div>
-                      <label className={formStyles.label}>
-                        <div className="row">
-                          <DatabaseZap size={16}  />
-                          Samba Password (optional)
-                        </div>
-                      </label>
-                      <input
-                        type="password"
-                        value={globalSettings.samba_password === '***' ? '******' : (globalSettings.samba_password || "")}
-                        onChange={(e) => {
-                          // If user clears the field or changes it from ******, send the new value
-                          // If they're editing the masked password, treat it as a new password
-                          const newValue = e.target.value === '******' ? '' : e.target.value;
-                          handleGlobalChange("samba_password", newValue);
-                        }}
-                        onFocus={(e) => {
-                          // When focusing on a masked password field, clear it so user can type new password
-                          if (e.target.value === '******' || globalSettings.samba_password === '***') {
-                            e.target.value = '';
-                            handleGlobalChange("samba_password", '');
-                          }
-                        }}
-                        placeholder={globalSettings.samba_password === '***' ? "Password is set (click to change)" : "Enter Samba password"}
-                        className={formStyles.input}
-                      />
-                      <p className="mutedText smallText">
-                        {globalSettings.samba_password === '***' 
-                          ? 'Password is stored on the device. Click the field to change it.'
-                          : 'Password is stored on the device and never returned in clear text to the browser.'}
-                      </p>
-                    </div>
-
-                    {/* Test Connection Button */}
-                    <div >
-                      <button
-                        onClick={async () => {
-                          setTestingSamba(true);
-                          setSambaTestResult(null);
-                          try {
-                            const response = await api.post(`/s3/backup/test-samba`, {
-                              share_path: globalSettings.samba_share_path || '',
-                              username: globalSettings.samba_username || '',
-                              password: globalSettings.samba_password || ''
-                            });
-                            
-                            setSambaTestResult(response.data);
-                            if (response.data.success) {
-                              showToast('Samba connection test successful!', 'success');
-                            } else {
-                              showToast(`Samba connection test failed: ${response.data.message}`, 'error');
-                            }
-                          } catch (error) {
-                            const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
-                            setSambaTestResult({
-                              success: false,
-                              message: errorMessage,
-                              details: { error: errorMessage }
-                            });
-                            showToast(`Samba connection test failed: ${errorMessage}`, 'error');
-                          } finally {
-                            setTestingSamba(false);
-                          }
-                        }}
-                        disabled={testingSamba || !globalSettings.samba_share_path}
-                        className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-                      >
-                        {testingSamba ? (
-                          <>
-                            <RefreshCw  />
-                            Testing Connection...
-                          </>
-                        ) : (
-                          <>
-                            <Plug  />
-                            Test Connection
-                          </>
-                        )}
-                      </button>
-                      
-                      {/* Test Result Display */}
-                      {sambaTestResult && (
-                        <div className={cardStyles.card}>
-                          <div >
-                            {sambaTestResult.success ? (
-                              <CheckCircle  />
-                            ) : (
-                              <XCircle  />
-                            )}
-                            <div >
-                              <p className="mutedText smallText">
-                                {sambaTestResult.message}
-                              </p>
-                              {sambaTestResult.details && (
-                                <div className="stack stackCompact">
-                                  {sambaTestResult.details.path && (
-                                    <p>Path: {sambaTestResult.details.path}</p>
-                                  )}
-                                  {sambaTestResult.details.exists !== undefined && (
-                                    <p>Exists: {sambaTestResult.details.exists ? 'Yes' : 'No'}</p>
-                                  )}
-                                  {sambaTestResult.details.writable !== undefined && (
-                                    <p>Writable: {sambaTestResult.details.writable ? 'Yes' : 'No'}</p>
-                                  )}
-                                  {sambaTestResult.details.error && (
-                                    <p >Error: {sambaTestResult.details.error}</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <p className="mutedText smallText">
-                        Test the Samba share connection to verify the path is accessible and writable.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="gridTwo">
+        <div className={`${cardStyles.card} stackLarge`}>
+          <label className={`${formStyles.choiceCard} ${settings.s3_enabled ? formStyles.choiceCardSelected : ''}`}>
+            <span className="grow"><strong>Cloud / S3 backup</strong><p className="smallText mutedText">Upload backups to an S3-compatible destination.</p></span>
+            <span className={formStyles.switch}><input type="checkbox" checked={settings.s3_enabled} onChange={(event) => update('s3_enabled', event.target.checked)} /><span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span></span>
+          </label>
+          <label className={formStyles.label}>Endpoint URL</label>
+          <input className={formStyles.input} value={settings.s3_endpoint_url} onChange={(event) => update('s3_endpoint_url', event.target.value)} />
+          <label className={formStyles.label}>Region</label>
+          <input className={formStyles.input} value={settings.s3_region} onChange={(event) => update('s3_region', event.target.value)} />
+          <label className={formStyles.label}>Bucket</label>
+          <input className={formStyles.input} value={settings.s3_bucket_name} onChange={(event) => update('s3_bucket_name', event.target.value)} />
+          <label className={formStyles.label}>Access key</label>
+          <input type="password" autoComplete="new-password" className={formStyles.input} value={settings.s3_access_key} onChange={(event) => update('s3_access_key', event.target.value)} placeholder={configured.s3_access_key ? 'Configured — enter to replace' : 'Access key'} />
+          <label className={formStyles.label}>Secret key</label>
+          <input type="password" autoComplete="new-password" className={formStyles.input} value={settings.s3_secret_key} onChange={(event) => update('s3_secret_key', event.target.value)} placeholder={configured.s3_secret_key ? 'Configured — enter to replace' : 'Secret key'} />
         </div>
-      )}
+
+        <div className={`${cardStyles.card} stackLarge`}>
+          <label className={`${formStyles.choiceCard} ${settings.samba_enabled ? formStyles.choiceCardSelected : ''}`}>
+            <span className="grow"><strong>Samba / network share</strong><p className="smallText mutedText">Mirror backups to a mounted or network-accessible share.</p></span>
+            <span className={formStyles.switch}><input type="checkbox" checked={settings.samba_enabled} onChange={(event) => update('samba_enabled', event.target.checked)} /><span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span></span>
+          </label>
+          <label className={formStyles.label}>Share path</label>
+          <input className={formStyles.input} value={settings.samba_share_path} onChange={(event) => update('samba_share_path', event.target.value)} placeholder="//server/share or /mnt/share" />
+          <label className={formStyles.label}>Username</label>
+          <input className={formStyles.input} value={settings.samba_username} onChange={(event) => update('samba_username', event.target.value)} />
+          <label className={formStyles.label}>Password</label>
+          <input type="password" autoComplete="new-password" className={formStyles.input} value={settings.samba_password} onChange={(event) => update('samba_password', event.target.value)} placeholder={configured.samba_password ? 'Configured — enter to replace' : 'Password'} />
+          <Button variant="secondary" onClick={testSamba} disabled={testingSamba}>{testingSamba ? <RefreshCw className="spin" size={18} /> : <Server size={18} />}Test Samba connection</Button>
+        </div>
+      </div>
+
+      <div className="actionsEnd"><Button variant="primary" onClick={save} disabled={saving}>{saving ? <RefreshCw className="spin" size={18} /> : <Save size={18} />}Save backup settings</Button></div>
+
+      <div className={`${cardStyles.card} stack`}>
+        <h3 className={cardStyles.title}>Backup history</h3>
+        {history.length === 0 ? <p className="mutedText">No backup history found.</p> : (
+          <div className={tableStyles.scroll}>
+            <table className={tableStyles.table}>
+              <thead><tr><th className={tableStyles.header}>Date</th><th className={tableStyles.header}>Status</th><th className={tableStyles.header}>Uploaded</th><th className={tableStyles.header}>Skipped</th><th className={tableStyles.header}>Errors</th><th className={tableStyles.header}>Destination</th></tr></thead>
+              <tbody>{history.map((backup, index) => <tr key={backup.id || `${backup.start_time}-${index}`} className={tableStyles.row}><td className={tableStyles.cell}>{backup.start_time ? new Date(backup.start_time).toLocaleString() : backup.timestamp || '—'}</td><td className={tableStyles.cell}><span className="row">{backup.status === 'completed' || backup.status === 'success' ? <CheckCircle size={16} /> : backup.status === 'failed' || backup.status === 'error' ? <XCircle size={16} /> : <RefreshCw size={16} />} {backup.status || 'unknown'}</span></td><td className={tableStyles.cell}>{backup.uploaded_files ?? backup.files_uploaded ?? 0}</td><td className={tableStyles.cell}>{backup.skipped_files ?? backup.files_skipped ?? 0}</td><td className={tableStyles.cell}>{backup.error_files ?? backup.files_errors ?? 0}</td><td className={tableStyles.cell}>{backup.destination || 'cloud'}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        {totalPages > 1 ? <div className="rowBetween"><Button variant="ghost" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button><span className="smallText mutedText">Page {page} of {totalPages}</span><Button variant="ghost" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button></div> : null}
+      </div>
+
+      <BackupProgressModal isOpen={showBackupModal} onClose={() => { setShowBackupModal(false); loadHistory().catch(() => {}); }} />
+      <RestoreModal isOpen={showRestoreModal} onClose={() => setShowRestoreModal(false)} showToast={(message, type = 'success') => toast[type === 'error' ? 'error' : 'success'](message)} />
     </div>
   );
 };

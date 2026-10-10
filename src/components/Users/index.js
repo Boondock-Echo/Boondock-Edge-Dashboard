@@ -1,8 +1,8 @@
-import api from '../../utils/apiClient';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from '../AuthContext';
-import { Search, UserPlus, Shield, Activity, Edit, Trash2, Lock, Unlock, X, Save, Key, Users } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Edit, Key, Lock, Search, Save, Trash2, Unlock, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import api from '../../utils/apiClient';
+import { useAuth } from '../AuthContext';
 import Button from '../ui/Button';
 import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
@@ -10,35 +10,17 @@ import modalStyles from '../ui/Modal.module.css';
 import tableStyles from '../ui/Table.module.css';
 import SettingsSectionHeader from '../Settings/SettingsSectionHeader';
 
+const emptyUser = () => ({
+  email: '',
+  name: '',
+  password: '',
+  role: 'member',
+  groups: [],
+});
 
-const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = {} }) => {
-  const initialFormData = useMemo(() => 
-    user ? {
-      ...user,
-      password: ''
-    } : {
-      email: '',
-      name: '',
-      password: '',
-      role: 'member',
-      profile: 'Default'
-    },
-    [user]
-  );
-
-  const [formData, setFormData] = useState(initialFormData);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await onSubmit(formData);
-      onClose();
-    } catch (error) {
-      // Error handling will be done in parent component
-      throw error;
-    }
-  };
-
+const UserModal = ({ user, groups, onClose, onSubmit }) => {
+  const isEdit = Boolean(user?.id);
+  const [formData, setFormData] = useState(() => user ? { ...user, password: '' } : emptyUser());
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -49,211 +31,178 @@ const UserModal = ({ isEdit = false, user = null, onClose, onSubmit, profiles = 
     };
   }, []);
 
+  const toggleGroup = (groupId) => {
+    setFormData((current) => ({
+      ...current,
+      groups: current.groups.includes(groupId)
+        ? current.groups.filter((id) => id !== groupId)
+        : [...current.groups, groupId],
+    }));
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    await onSubmit(formData);
+  };
+
   return (
     <dialog ref={dialogRef} className={modalStyles.dialog} onCancel={onClose}>
       <div className={modalStyles.header}>
-        <h2 className={modalStyles.title}>
-          {isEdit ? 'Edit User' : 'Create New User'}
-        </h2>
-        <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close user editor">
-          <X size={20} />
-        </Button>
+        <h2 className={modalStyles.title}>{isEdit ? 'Edit user' : 'Create user'}</h2>
+        <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close user editor"><X /></Button>
       </div>
 
-      <div className={modalStyles.body}>
-        <form onSubmit={handleSubmit} className={formStyles.form}>
-          <div className={formStyles.field}>
-            <label className={formStyles.label}>Email</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
-              disabled={isEdit}
-              required
-              className={formStyles.input}
-            />
-          </div>
+      <form className={`${formStyles.form} ${modalStyles.body}`} onSubmit={submit}>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Email</label>
+          <input
+            type="email"
+            className={formStyles.input}
+            value={formData.email || ''}
+            onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+            required
+          />
+        </div>
 
-          <div className={formStyles.field}>
-            <label className={formStyles.label}>Name</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-              required
-              className={formStyles.input}
-            />
-          </div>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Name</label>
+          <input
+            className={formStyles.input}
+            value={formData.name || ''}
+            onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+            required
+          />
+        </div>
 
-          <div className={formStyles.field}>
-            <label className={formStyles.label}>
-              Password {isEdit && '(leave blank to keep current)'}
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({...prev, password: e.target.value}))}
-              required={!isEdit}
-              className={formStyles.input}
-            />
-          </div>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Password {isEdit ? '(leave blank to keep current)' : ''}</label>
+          <input
+            type="password"
+            className={formStyles.input}
+            value={formData.password || ''}
+            onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
+            required={!isEdit}
+          />
+        </div>
 
-          <div className={formStyles.field}>
-            <label className={formStyles.label}>Role</label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData(prev => ({...prev, role: e.target.value}))}
-              className={formStyles.select}
-            >
-              <option value="member">Member</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Role</label>
+          <select
+            className={formStyles.select}
+            value={formData.role || 'member'}
+            onChange={(event) => setFormData((current) => ({ ...current, role: event.target.value }))}
+          >
+            <option value="member">Member</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
 
-          <div className={formStyles.field}>
-            <label className={formStyles.label}>Profile</label>
-            <select
-              value={formData.profile || 'Default'}
-              onChange={(e) => setFormData(prev => ({...prev, profile: e.target.value}))}
-              className={formStyles.select}
-            >
-              {Object.keys(profiles).map(profileName => (
-                <option key={profileName} value={profileName}>
-                  {profileName}
-                </option>
-              ))}
-            </select>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Groups</label>
+          <div className="stackCompact">
+            {groups.map((group) => (
+              <label key={group.id} className="row">
+                <input
+                  type="checkbox"
+                  checked={(formData.groups || []).includes(group.id)}
+                  onChange={() => toggleGroup(group.id)}
+                />
+                <span>{group.name}</span>
+                {group.is_default && <span className="pill">default</span>}
+              </label>
+            ))}
           </div>
+        </div>
 
-          <div className={modalStyles.actions}>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="primary">
-              <Save size={18} />
-              {isEdit ? 'Update' : 'Create'}
-            </Button>
-          </div>
-        </form>
-      </div>
+        <div className={modalStyles.actions}>
+          <Button type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="primary"><Save size={18} /> {isEdit ? 'Save changes' : 'Create user'}</Button>
+        </div>
+      </form>
     </dialog>
   );
 };
 
-const UserManagement = () => {
-  const { user: currentAuthUser } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [profiles, setProfiles] = useState({});
-  const [loading, setLoading] = useState(true);
+const UserManagement = ({ users, groups, loading, refresh }) => {
+  const { user: authValue } = useAuth();
+  const principal = authValue?.user ?? authValue ?? null;
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const isAdmin = currentAuthUser?.role === 'admin';
+  const [editingUser, setEditingUser] = useState(null);
+  const [creating, setCreating] = useState(false);
 
-  const showToast = useCallback((message, type = 'success') => {
-    toast[type === 'error' ? 'error' : 'success'](message);
-  }, []);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const { data } = await api.get('/users');
-      const transformedUsers = Object.entries(data).map(([email, details]) => ({
-        ...details,
-        email,
-        role: details.role,
-        profile: details.profile || 'Default'
-      })); 
-      setUsers(transformedUsers);
-    } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to fetch users', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  const fetchProfiles = useCallback(async () => {
-    try {
-      const { data } = await api.get('/profiles');
-      setProfiles(data);
-    } catch (error) {
-      console.error('Failed to fetch profiles:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchProfiles();
-  }, [fetchUsers, fetchProfiles]);
-
-
-
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const groupsById = useMemo(
+    () => new Map(groups.map((group) => [group.id, group])),
+    [groups],
   );
 
-  const handleCreateUser = async (formData) => {
+  const filteredUsers = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase();
+    if (!needle) return users;
+    return users.filter((user) =>
+      `${user.name || ''} ${user.email || ''}`.toLowerCase().includes(needle),
+    );
+  }, [searchTerm, users]);
+
+  const saveUser = async (formData) => {
+    const payload = {
+      email: formData.email.trim(),
+      name: formData.name.trim(),
+      role: formData.role,
+      groups: formData.groups || [],
+    };
+    if (formData.password) payload.password = formData.password;
+
     try {
-      await api.post('/users', formData);
-      await fetchUsers();
-      showToast('User created successfully');
+      if (formData.id) {
+        await api.patch(`/users/${formData.id}`, payload);
+        toast.success('User updated.');
+      } else {
+        await api.post('/users', payload);
+        toast.success('User created.');
+      }
+      setEditingUser(null);
+      setCreating(false);
+      await refresh();
     } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to create user', 'error');
+      toast.error(error.response?.data?.error || 'Failed to save user.');
       throw error;
     }
   };
 
-  const handleUpdateUser = async (formData) => {
+  const deleteUser = async (user) => {
+    if (!window.confirm(`Delete ${user.email}?`)) return;
     try {
-      await api.put(`/users/${formData.email}`, formData);
-      await fetchUsers();
-      showToast('User updated successfully');
+      await api.delete(`/users/${user.id}`);
+      toast.success('User deleted.');
+      await refresh();
     } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to update user', 'error');
-      throw error;
+      toast.error(error.response?.data?.error || 'Failed to delete user.');
     }
   };
 
-  const handleDelete = async (email) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const resetMfa = async (user) => {
+    if (!window.confirm(`Reset MFA for ${user.email}?`)) return;
     try {
-      await api.delete(`/users/${email}`);
-      await fetchUsers();
-      showToast('User deleted successfully');
+      await api.post(`/users/${user.id}/mfa/reset`);
+      toast.success(`MFA reset for ${user.email}.`);
+      await refresh();
     } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to delete user', 'error');
+      toast.error(error.response?.data?.error || 'Failed to reset MFA.');
     }
   };
 
-  const handleResetMfa = async (email) => {
-    if (!window.confirm(`Are you sure you want to reset MFA for ${email}? They will be able to login with just password and can setup MFA again.`)) return;
+  const setMfaEnforcement = async (user, enforce) => {
     try {
-      await api.post(`/users/${email}/mfa/reset`);
-      await fetchUsers();
-      showToast(`MFA reset for ${email}`);
+      await api.post(`/users/${user.id}/mfa/enforcement`, { enforce });
+      toast.success(`MFA requirement ${enforce ? 'enabled' : 'disabled'}.`);
+      await refresh();
     } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to reset MFA', 'error');
-    }
-  };
-
-  const handleEnforceMfa = async (email, enforce) => {
-    try {
-      await api.post(`/users/${email}/mfa/enforce`, { enforce });
-      await fetchUsers();
-      showToast(`MFA enforcement ${enforce ? 'enabled' : 'removed'} for ${email}`);
-    } catch (error) {
-      showToast(error.response?.data?.error || `Failed to ${enforce ? 'enforce' : 'remove enforcement'} MFA`, 'error');
+      toast.error(error.response?.data?.error || 'Failed to update MFA requirement.');
     }
   };
 
   if (loading) {
-    return (
-      <div className="centeredContent">
-        <div className="row">
-          <span className="spinner" role="status" aria-label="Loading users" />
-          Loading Users...
-        </div>
-      </div>
-    );
+    return <div className="centeredContent"><span className="spinner" /> Loading users…</div>;
   }
 
   return (
@@ -261,65 +210,21 @@ const UserManagement = () => {
       <SettingsSectionHeader
         icon={Users}
         title="Users"
-        description="Manage system access, permissions, and user accounts"
+        description="Manage accounts, roles, groups, and MFA requirements."
         iconColor="blue"
       />
-      
-      <div className="actionsEnd">
-        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
-          <UserPlus size={20} />
-          Add New User
-        </Button>
-      </div>
 
-      <div className="gridThree">
-        {[
-          { 
-            title: 'Total Users', 
-            count: users.length,
-            icon: <Shield  size={24} />,
-          },
-          { 
-            title: 'Active Users', 
-            count: users.filter(user => user.status === 'Active').length,
-            icon: <Activity  size={24} />,
-          },
-          { 
-            title: 'Administrators', 
-            count: users.filter(user => user.role === 'admin').length,
-            icon: <Key  size={24} />,
-          }
-        ].map((stat, index) => (
-          <div 
-            key={index} 
-            className={cardStyles.card}
-          >
-            <div className="rowBetween">
-              <div>
-                <p className={cardStyles.description}>{stat.title}</p>
-                <h3 >
-                  {stat.count}
-                </h3>
-              </div>
-              <div className="avatar">
-                {stat.icon}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div >
+      <div className="rowBetween">
         <div className={formStyles.inputFrame}>
           <Search className={formStyles.inputIcon} size={20} />
           <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
             className={formStyles.iconInput}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search users…"
           />
         </div>
+        <Button variant="primary" onClick={() => setCreating(true)}><UserPlus size={18} /> Add user</Button>
       </div>
 
       <div className={`${cardStyles.card} ${cardStyles.flush}`}>
@@ -328,107 +233,73 @@ const UserManagement = () => {
             <thead>
               <tr className={tableStyles.row}>
                 <th className={tableStyles.header}>User</th>
-                <th className={tableStyles.header}>Email</th>
                 <th className={tableStyles.header}>Role</th>
-                <th className={tableStyles.header}>Profile</th>
-                <th className={tableStyles.header}>Status</th>
+                <th className={tableStyles.header}>Groups</th>
                 <th className={tableStyles.header}>MFA</th>
                 <th className={tableStyles.header}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr 
-                  key={user.email} 
-                  className={tableStyles.rowInteractive}
-                >
+                <tr key={user.id} className={tableStyles.rowInteractive}>
                   <td className={tableStyles.cell}>
-                    <div className="row">
-                      <div className="avatar">
-                      <span >
-                          {user.name.charAt(0).toUpperCase()}
+                    <strong>{user.name}</strong>
+                    <div className="tinyText mutedText">{user.email}</div>
+                  </td>
+                  <td className={tableStyles.cell}><span className="pill">{user.role}</span></td>
+                  <td className={tableStyles.cell}>
+                    <div className="rowWrap">
+                      {(user.groups || []).map((groupId) => (
+                        <span key={groupId} className="pill">
+                          {groupsById.get(groupId)?.name || `Group ${groupId}`}
                         </span>
-                      </div>
-                      <span >
-                        {user.name}
-                      </span>
+                      ))}
                     </div>
                   </td>
-                  <td className={tableStyles.cell}>{user.email}</td>
                   <td className={tableStyles.cell}>
-                    <span className={`pill ${user.role === 'admin' ? 'pillAccent' : ''}`}>
-                      {user.role === 'admin' ? 'Administrator' : 'Member'}
-                    </span>
-                  </td>
-                  <td className={tableStyles.cell}>
-                    <span className="pill">
-                      {user.profile || 'Default'}
-                    </span>
-                  </td>
-                  <td className={tableStyles.cell}>
-                    <span className={`pill ${user.status === 'Active' ? 'pillSuccess' : ''}`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className={tableStyles.cell}>
-                    <div className="stack stackCompact">
+                    <div className="rowWrap">
                       <span className={`pill ${user.mfa_enabled ? 'pillSuccess' : ''}`}>
                         {user.mfa_enabled ? 'Enabled' : 'Disabled'}
                       </span>
-                      {user.mfa_enforced && (
-                        <span className="pill pillWarning">
-                          Required
-                        </span>
-                      )}
+                      {user.mfa_enforced && <span className="pill pillWarning">Required</span>}
                     </div>
                   </td>
                   <td className={tableStyles.cell}>
                     <div className="rowWrap">
                       <Button
-                        onClick={() => {
-                          setCurrentUser(user);
-                          setIsEditModalOpen(true);
-                        }}
-                        variant="ghost" size="icon"
-                        title="Edit User"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setEditingUser(user)}
+                        title="Edit user"
                       >
                         <Edit size={18} />
                       </Button>
-                      {isAdmin && (
-                        <>
-                          {user.mfa_enforced ? (
-                            <Button
-                              onClick={() => handleEnforceMfa(user.email, false)}
-                              variant="warning" size="icon"
-                              title="Remove MFA Requirement"
-                            >
-                              <Unlock size={18} />
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() => handleEnforceMfa(user.email, true)}
-                              variant="warning" size="icon"
-                              title="Require MFA Setup"
-                            >
-                              <Lock size={18} />
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => handleResetMfa(user.email)}
-                            variant="warning" size="icon"
-                            title="Reset/Clear MFA"
-                          >
-                            <Key size={18} />
-                          </Button>
-                        </>
-                      )}
                       <Button
-                        onClick={() => handleDelete(user.email)}
-                        variant="danger" size="icon"
-                        title="Delete User"
+                        size="icon"
+                        variant="warning"
+                        onClick={() => setMfaEnforcement(user, !user.mfa_enforced)}
+                        title="Toggle MFA requirement"
                       >
-                        <Trash2 size={18} />
+                        {user.mfa_enforced ? <Unlock size={18} /> : <Lock size={18} />}
                       </Button>
+                      <Button
+                        size="icon"
+                        variant="warning"
+                        onClick={() => resetMfa(user)}
+                        title="Reset MFA"
+                      >
+                        <Key size={18} />
+                      </Button>
+                      {principal?.id !== user.id && (
+                        <Button
+                          size="icon"
+                          variant="danger"
+                          onClick={() => deleteUser(user)}
+                          title="Delete user"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -438,24 +309,19 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {isCreateModalOpen && (
-        <UserModal 
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={handleCreateUser}
-          profiles={profiles}
+      {creating && (
+        <UserModal
+          groups={groups}
+          onClose={() => setCreating(false)}
+          onSubmit={saveUser}
         />
       )}
-
-      {isEditModalOpen && currentUser && (
-        <UserModal 
-          isEdit={true} 
-          user={currentUser} 
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setCurrentUser(null);
-          }}
-          onSubmit={handleUpdateUser}
-          profiles={profiles}
+      {editingUser && (
+        <UserModal
+          user={editingUser}
+          groups={groups}
+          onClose={() => setEditingUser(null)}
+          onSubmit={saveUser}
         />
       )}
     </div>

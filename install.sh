@@ -277,7 +277,7 @@ if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = "install" ]; then
     WIFI_SSID=""
     WIFI_CONFIG_PASSWORD="${WIFI_PASSWORD:-}"
     WIFI_PASSWORD=""
-    WIFI_SETUP=None
+    WIFI_SETUP=null
     if command -v nmcli &> /dev/null; then
         WIFI_DEVICE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE device status | \
             awk -F: '$2 == "wifi" && $3 == "connected" { print $1; exit }')
@@ -517,17 +517,20 @@ if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
         rm -rf "venv"
     fi
 
-    if [ ! -x "venv/bin/python" ] && ! python3 -m venv "venv" &> /dev/null; then
-        echo -e "${YELLOW}Python venv support is incomplete. Installing python3-venv...${NC}"
+    if [ ! -x "venv/bin/python" ] || [ ! -f "venv/bin/activate" ]; then
+        if ! python3 -m venv "venv" &> /dev/null; then
+            echo -e "${YELLOW}Python venv support is incomplete. Installing python3-venv...${NC}"
 
-        apt-get update
-        apt-get install -y python3-venv
-    fi
+            rm -rf "venv"
 
-    if [ ! -x "venv/bin/python" ] && ! python3 -m venv "venv"; then
-        rm -rf "$VENV_TEST_DIR"
-        echo -e "${RED}Error: Unable to create a Python virtual environment.${NC}"
-        exit 1
+            apt-get update
+            apt-get install -y python3-venv
+
+            if ! python3 -m venv "venv"; then
+                echo -e "${RED}Error: Unable to create a Python virtual environment.${NC}"
+                exit 1
+            fi
+        fi
     fi
 
     if [ "$INSTALL_MODE" = "upgrade" ]; then

@@ -1,496 +1,174 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle, Cloud, Loader2, X } from 'lucide-react';
+import api from '../../utils/apiClient';
+import Button from '../ui/Button';
 import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
-import buttonStyles from '../ui/Button.module.css';
-import React, { useState, useEffect, useRef } from 'react';
-import api from '../../utils/apiClient';
-import { X, Cloud, CheckCircle, AlertCircle, Loader2, Info } from 'lucide-react';
+import modalStyles from '../ui/Modal.module.css';
+import noticeStyles from '../ui/Notice.module.css';
 
-const BackupProgressModal = ({ isOpen, onClose, globalSettings }) => {
+const EMPTY_PROGRESS = {
+  status: 'idle',
+  current_operation: '',
+  total_files: 0,
+  processed_files: 0,
+  uploaded_files: 0,
+  skipped_files: 0,
+  error_files: 0,
+  message: '',
+};
+
+const BackupProgressModal = ({ isOpen, onClose }) => {
+  const dialogRef = useRef(null);
+  const timerRef = useRef(null);
   const [backupType, setBackupType] = useState('incremental');
-  // Separate destination checkboxes to reduce vertical height
-  const [includeCloud, setIncludeCloud] = useState(true);
-  const [includeSamba, setIncludeSamba] = useState(false);
-  const [backupStarted, setBackupStarted] = useState(false);
-  const [progress, setProgress] = useState({
-    status: 'idle',
-    current_operation: null,
-    total_files: 0,
-    processed_files: 0,
-    uploaded_files: 0,
-    skipped_files: 0,
-    error_files: 0,
-    message: '',
-    start_time: null,
-    end_time: null
-  });
+  const [destination, setDestination] = useState('both');
+  const [available, setAvailable] = useState({ cloud: false, samba: false });
+  const [progress, setProgress] = useState(EMPTY_PROGRESS);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState('');
 
-  const cloudEnabled = globalSettings?.global_enable_s3_upload || false;
-  const sambaEnabled = globalSettings?.samba_backup_enabled || false;
-  const intervalRef = useRef(null);
+  const stopPolling = () => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const fetchProgress = async () => {
+    const { data } = await api.get('/s3/backup/status');
+    setProgress(data || EMPTY_PROGRESS);
+    if (data?.status && data.status !== 'running') stopPolling();
+  };
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return undefined;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+    return undefined;
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset progress when modal closes
-      setBackupStarted(false);
+      stopPolling();
+      setProgress(EMPTY_PROGRESS);
+      setError('');
       setBackupType('incremental');
-      setIncludeCloud(true);
-      setIncludeSamba(false);
-      setProgress({
-        status: 'idle',
-        current_operation: null,
-        total_files: 0,
-        processed_files: 0,
-        uploaded_files: 0,
-        skipped_files: 0,
-        error_files: 0,
-        message: '',
-        start_time: null,
-        end_time: null
+      return undefined;
+    }
+
+    let cancelled = false;
+    api.get('/settings/backup')
+      .then(({ data }) => {
+        if (cancelled) return;
+        const next = { cloud: Boolean(data.s3_enabled), samba: Boolean(data.samba_enabled) };
+        setAvailable(next);
+        if (next.cloud && next.samba) setDestination('both');
+        else if (next.cloud) setDestination('cloud');
+        else if (next.samba) setDestination('samba');
+      })
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.response?.data?.error || 'Failed to load backup destinations');
       });
-      return;
-    }
 
-    // Initialize destinations based on enabled targets
-    if (cloudEnabled && sambaEnabled) {
-      setIncludeCloud(true);
-      setIncludeSamba(true);
-    } else if (cloudEnabled) {
-      setIncludeCloud(true);
-      setIncludeSamba(false);
-    } else if (sambaEnabled) {
-      setIncludeCloud(false);
-      setIncludeSamba(true);
-    } else {
-      setIncludeCloud(false);
-      setIncludeSamba(false);
-    }
-  }, [isOpen, globalSettings]);
+    fetchProgress().catch(() => {});
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [isOpen]);
 
-  const handleStartBackup = async () => {
-    // Derive destination string from checkbox selections
-    let destination = null;
-    if (includeCloud && includeSamba) destination = 'both';
-    else if (includeCloud) destination = 'cloud';
-    else if (includeSamba) destination = 'samba';
-
-    if (!destination) {
-      setProgress(prev => ({
-        ...prev,
-        status: 'error',
-        message: 'Please select at least one backup destination.'
-      }));
-      return;
-    }
-
-    // Validate destination against enabled flags
-    if (destination === 'cloud' && !cloudEnabled) {
-      setProgress(prev => ({
-        ...prev,
-        status: 'error',
-        message: 'Cloud backup is not enabled. Please enable it in Settings first.'
-      }));
-      return;
-    }
-
-    if (destination === 'samba' && !sambaEnabled) {
-      setProgress(prev => ({
-        ...prev,
-        status: 'error',
-        message: 'Samba backup is not enabled. Please enable it in Settings first.'
-      }));
-      return;
-    }
-
-    if (destination === 'both' && (!cloudEnabled || !sambaEnabled)) {
-      setProgress(prev => ({
-        ...prev,
-        status: 'error',
-        message: 'Both Cloud and Samba must be enabled to use both destinations.'
-      }));
-      return;
-    }
-    
+  const startBackup = async () => {
+    setStarting(true);
+    setError('');
     try {
-      setBackupStarted(true);
-      await api.post(`/s3/backup/start`, { backup_type: backupType, destination });
-    } catch (error) {
-      console.error('Error starting backup:', error);
-      setBackupStarted(false);
-      setProgress(prev => ({
-        ...prev,
-        status: 'error',
-        message: error.response?.data?.error || 'Failed to start backup'
-      }));
+      await api.post('/s3/backup/start', {
+        backup_type: backupType,
+        destination,
+      });
+      await fetchProgress();
+      stopPolling();
+      timerRef.current = window.setInterval(() => {
+        fetchProgress().catch((requestError) => {
+          stopPolling();
+          setError(requestError.response?.data?.error || 'Failed to read backup progress');
+        });
+      }, 1000);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Failed to start backup');
+    } finally {
+      setStarting(false);
     }
   };
-
-  useEffect(() => {
-    if (!isOpen || !backupStarted) {
-      // Clear interval when modal closes or backup hasn't started
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    // Poll for progress updates
-    const pollProgress = async () => {
-      try {
-        const response = await api.get(`/s3/backup/status`);
-        const newProgress = response.data;
-        setProgress(newProgress);
-
-        // Stop polling if backup is completed or errored
-        if (newProgress.status === 'completed' || newProgress.status === 'error') {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching backup status:', error);
-        // Don't clear interval on error, keep trying
-      }
-    };
-
-    // Start polling immediately, then every second
-    pollProgress();
-    intervalRef.current = setInterval(pollProgress, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isOpen, backupStarted]);
 
   if (!isOpen) return null;
 
-  const progressPercentage = progress.total_files > 0 
-    ? Math.round((progress.processed_files / progress.total_files) * 100) 
-    : 0;
-
-  const getStatusIcon = () => {
-    if (progress.status === 'running') {
-      return <Loader2  />;
-    } else if (progress.status === 'completed') {
-      return <CheckCircle  />;
-    } else if (progress.status === 'error') {
-      return <AlertCircle  />;
-    }
-    return <Cloud  />;
-  };
-
-  const getStatusColor = () => {
-    if (progress.status === 'running') return 'text-blue-500';
-    if (progress.status === 'completed') return 'text-green-500';
-    if (progress.status === 'error') return 'text-red-500';
-    return 'text-gray-500';
-  };
-
-  const getOperationLabel = (operation) => {
-    switch (operation) {
-      case 'audio': return 'Audio Files';
-      case 'db': return 'Database';
-      case 'logs': return 'Logs';
-      case 'samba_db': return 'Samba Settings/DB';
-      case 'samba_audio': return 'Samba Audio Files';
-      case 'samba_logs': return 'Samba Logs';
-      default: return 'Initializing...';
-    }
-  };
+  const running = progress.status === 'running';
+  const finished = progress.status === 'completed';
+  const total = Number(progress.total_files) || 0;
+  const processed = Number(progress.processed_files) || 0;
+  const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+  const canStart = available.cloud || available.samba;
 
   return (
-    <div className="screenCenter">
-      <div >
-        {/* Header */}
-        <div className="rowBetween">
-          <div className="row">
-            {getStatusIcon()}
-            <h2 className="pageTitle">
-              Boondock Backup Progress
-            </h2>
-          </div>
-          {progress.status !== 'running' && (
-            <button
-              onClick={onClose}
-              className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.icon}`}
-            >
-              <X size={24} />
-            </button>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="stack">
-          {/* Backup Type & Destination Selection (before backup starts) */}
-          {!backupStarted && progress.status === 'idle' && (
-            <div className="stack">
-              <div>
-                <h3 className="pageTitle">
-                  Select Backup Type
-                </h3>
-
-                {/* Side-by-side backup type radios */}
-                <div className="gridTwo">
-                  <label className={formStyles.label}>
-                    <input
-                      type="radio"
-                      name="backupType"
-                      value="incremental"
-                      checked={backupType === 'incremental'}
-                      onChange={(e) => setBackupType(e.target.value)}
-                      className={formStyles.input}
-                    />
-                    <div >
-                      <div className="row">
-                        <span className="mutedText smallText">
-                          Incremental
-                        </span>
-                        <span className="mutedText smallText">
-                          Recommended
-                        </span>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className={formStyles.label}>
-                    <input
-                      type="radio"
-                      name="backupType"
-                      value="full"
-                      checked={backupType === 'full'}
-                      onChange={(e) => setBackupType(e.target.value)}
-                      className={formStyles.input}
-                    />
-                    <div >
-                      <div className="row">
-                        <span className="mutedText smallText">
-                          Full
-                        </span>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Dynamic description based on backup type */}
-                <div className={cardStyles.card}>
-                  <Info  />
-                  <p className="mutedText smallText">
-                    {backupType === 'incremental' ? (
-                      <>
-                        <strong>Incremental:</strong> Only backs up files that haven&apos;t been backed up yet. Faster and more efficient for regular backups.
-                      </>
-                    ) : (
-                      <>
-                        <strong>Full:</strong> Backs up all audio files regardless of previous backup status. Useful for periodic full backups and verification.
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Destination Selection */}
-              <div>
-                <h3 className="pageTitle">
-                  Select Destination
-                </h3>
-
-                {!cloudEnabled && !sambaEnabled && (
-                  <div className={cardStyles.card}>
-                    <p className="mutedText smallText">
-                      <strong>Warning:</strong> Neither Cloud nor Samba backup is enabled. Please enable at least one backup destination in Settings.
-                    </p>
-                  </div>
-                )}
-
-                {/* Side-by-side destination checkboxes */}
-                <div className="gridTwo">
-                  {/* Cloud checkbox */}
-                  <label className={formStyles.label}>
-                    <input
-                      type="checkbox"
-                      checked={includeCloud}
-                      onChange={(e) => cloudEnabled && setIncludeCloud(e.target.checked)}
-                      disabled={!cloudEnabled}
-                      className={formStyles.input}
-                    />
-                    <div >
-                      <div className="row">
-                        <span className="mutedText smallText">
-                          Boondock Cloud
-                        </span>
-                        {!cloudEnabled && (
-                          <span className="mutedText smallText">
-                            Not Enabled
-                          </span>
-                        )}
-                      </div>
-                      <p className="mutedText smallText">
-                        Store backups in Boondock Cloud storage.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Samba checkbox */}
-                  <label className={formStyles.label}>
-                    <input
-                      type="checkbox"
-                      checked={includeSamba}
-                      onChange={(e) => sambaEnabled && setIncludeSamba(e.target.checked)}
-                      disabled={!sambaEnabled}
-                      className={formStyles.input}
-                    />
-                    <div >
-                      <div className="row">
-                        <span className="mutedText smallText">
-                          Samba / Network Drive
-                        </span>
-                        {!sambaEnabled && (
-                          <span className="mutedText smallText">
-                            Not Enabled
-                          </span>
-                        )}
-                      </div>
-                      <p className="mutedText smallText">
-                        Mirror backups to a Samba / NAS share.
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                <p className="mutedText smallText">
-                  You can select one or both destinations. If both are selected, the backup will run to Cloud and Samba in a single job.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Status Message */}
-          {backupStarted && (
-            <div className={cardStyles.card}>
-              <p className="mutedText smallText">
-                {progress.message || 'Initializing backup...'}
-              </p>
-              {progress.current_operation && (
-                <p className="mutedText smallText">
-                  Current: {getOperationLabel(progress.current_operation)}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Progress Bar */}
-          {backupStarted && progress.status === 'running' && (
-            <div>
-              <div className="rowBetween">
-                <span className="mutedText smallText">
-                  Progress
-                </span>
-                <span className="mutedText smallText">
-                  {progress.processed_files} of {progress.total_files} files
-                </span>
-              </div>
-              <div >
-                <div style={{ width: `${progressPercentage}%` }} />
-              </div>
-            </div>
-          )}
-
-          {/* Statistics */}
-          {backupStarted && (
-            <div className="gridTwo">
-            <div >
-              <div >
-                {progress.uploaded_files}
-              </div>
-              <div >
-                Uploaded
-              </div>
-            </div>
-            <div >
-              <div >
-                {progress.skipped_files}
-              </div>
-              <div >
-                Skipped
-              </div>
-            </div>
-            <div >
-              <div >
-                {progress.error_files}
-              </div>
-              <div >
-                Errors
-              </div>
-            </div>
-            <div >
-              <div >
-                {progress.total_files}
-              </div>
-              <div >
-                Total
-              </div>
-            </div>
-          </div>
-          )}
-
-          {/* Completion Message */}
-          {backupStarted && progress.status === 'completed' && (
-            <div className={cardStyles.card}>
-              <p className="mutedText smallText">
-                Backup completed successfully!
-              </p>
-              <p className="mutedText smallText">
-                {progress.uploaded_files} files uploaded, {progress.skipped_files} skipped, {progress.error_files} errors
-              </p>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {backupStarted && progress.status === 'error' && (
-            <div className={cardStyles.card}>
-              <p className="mutedText smallText">
-                Backup failed
-              </p>
-              <p className="mutedText smallText">
-                {progress.message}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className={cardStyles.card}>
-          {!backupStarted ? (
-            <>
-              <button
-                onClick={onClose}
-                className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.medium}`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleStartBackup}
-                className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-              >
-                Start Backup
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onClose}
-              disabled={progress.status === 'running'}
-              className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-            >
-              {progress.status === 'running' ? 'Backup in Progress...' : 'Close'}
-            </button>
-          )}
-        </div>
+    <dialog
+      ref={dialogRef}
+      className={modalStyles.dialog}
+      onCancel={(event) => { event.preventDefault(); if (!running) onClose(); }}
+      onClose={() => { if (!running) onClose(); }}
+    >
+      <div className={modalStyles.header}>
+        <div><h2 className={modalStyles.title}>Run backup</h2><p className="smallText mutedText">Start a manual backup using the configured destinations.</p></div>
+        <Button size="icon" variant="ghost" disabled={running} onClick={onClose}><X size={18} /></Button>
       </div>
-    </div>
+
+      <div className={`${modalStyles.body} stack stackLarge`}>
+        {error ? <div className={`${noticeStyles.notice} ${noticeStyles.error}`}><AlertCircle className={noticeStyles.icon} /><div className={noticeStyles.body}><p>{error}</p></div></div> : null}
+        {!canStart ? <div className={`${noticeStyles.notice} ${noticeStyles.warning}`}><AlertCircle className={noticeStyles.icon} /><div className={noticeStyles.body}><p>Enable at least one backup destination before starting a backup.</p></div></div> : null}
+
+        {!running && !finished ? (
+          <>
+            <div>
+              <label className={formStyles.label}>Backup type</label>
+              <select className={formStyles.select} value={backupType} onChange={(event) => setBackupType(event.target.value)}>
+                <option value="incremental">Incremental</option>
+                <option value="full">Full</option>
+              </select>
+            </div>
+            <div>
+              <label className={formStyles.label}>Destination</label>
+              <select className={formStyles.select} value={destination} onChange={(event) => setDestination(event.target.value)}>
+                {available.cloud ? <option value="cloud">Cloud</option> : null}
+                {available.samba ? <option value="samba">Samba</option> : null}
+                {available.cloud && available.samba ? <option value="both">Cloud + Samba</option> : null}
+              </select>
+            </div>
+          </>
+        ) : null}
+
+        {running || finished ? (
+          <div className={`${cardStyles.card} stack`}>
+            <div className="rowBetween">
+              <span className="row">{finished ? <CheckCircle size={18} /> : <Loader2 className="spin" size={18} />}{finished ? 'Backup complete' : 'Backup running'}</span>
+              <strong>{percent}%</strong>
+            </div>
+            <progress max="100" value={percent} />
+            <p className="smallText mutedText">{progress.current_operation || progress.message || 'Processing backup...'}</p>
+            <div className="gridThree smallText">
+              <span>Processed: {processed}</span>
+              <span>Uploaded: {Number(progress.uploaded_files) || 0}</span>
+              <span>Skipped: {Number(progress.skipped_files) || 0}</span>
+              <span>Errors: {Number(progress.error_files) || 0}</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className={modalStyles.actions}>
+        {finished ? <Button variant="primary" onClick={onClose}><CheckCircle size={18} />Close</Button> : <Button variant="primary" disabled={!canStart || starting || running} onClick={startBackup}>{starting || running ? <Loader2 className="spin" size={18} /> : <Cloud size={18} />}Start backup</Button>}
+      </div>
+    </dialog>
   );
 };
 

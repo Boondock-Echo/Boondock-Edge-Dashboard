@@ -4,25 +4,16 @@ import SimpleTagManager from './MasterTagKeyManagement';
 import { Siren, Tag } from 'lucide-react';
 import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
 import cardStyles from '../ui/Card.module.css';
-import {
-  SettingsPageHero,
-  SettingsSectionWidth,
-} from './SettingsSectionLayout';
+import { SettingsPageHero, SettingsSectionWidth } from './SettingsSectionLayout';
 
-const KeywordsAndTagsSection = ({
-  keywords = [],
-  newKeyword = '',
-  setNewKeyword,
-  handleAddKeyword,
-  handleRemoveKeyword,
-}) => {
+const KeywordsAndTagsSection = () => {
   const [activeTab, setActiveTab] = useState('keywords');
 
   return (
     <SettingsSectionWidth>
       <SettingsPageHero
         title="Keywords & tags"
-        description="Manage alert keywords and classification tags for your communications."
+        description="Manage group keyword tracking and classification tags."
         icon={<span className="material-symbols-outlined iconMedium">shutter_speed</span>}
       />
 
@@ -38,18 +29,7 @@ const KeywordsAndTagsSection = ({
           </SettingsSubnavTab>
         </SettingsSubnav>
 
-        {activeTab === 'keywords' && (
-          <KeywordsSection
-            keywords={keywords}
-            newKeyword={newKeyword}
-            setNewKeyword={setNewKeyword}
-            handleAddKeyword={handleAddKeyword}
-            handleRemoveKeyword={handleRemoveKeyword}
-          />
-        )}
-        {activeTab === 'tags' && (
-          <SimpleTagManager />
-        )}
+        {activeTab === 'keywords' ? <KeywordsSection /> : <SimpleTagManager />}
       </div>
     </SettingsSectionWidth>
   );

@@ -340,7 +340,6 @@ const UpdateIncidentModal = ({
  */
 const IncidentReportsUI = ({ 
   densityMode = 'comfortable',
-  timeFormat = "24h",
   isUpdateModalOpen,
   setIsUpdateModalOpen,
   selectedIncident,
@@ -498,11 +497,10 @@ const IncidentReportsUI = ({
     const formatForReport = (dateString) => {
       const date = parseUtcTimestamp(dateString);
       if (!date || isNaN(date.getTime())) return 'Invalid Date';
-      const use12h = timeFormat !== '24h';
       const formatted = formatLocalDateTime(date, {
         year: 'numeric', month: 'short', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: use12h,
+        hour12: false,
       });
       return `${formatted} (${getLocalTimeZoneAbbreviation(date)})`;
     };
@@ -610,7 +608,6 @@ const IncidentReportsUI = ({
     try {
       const blob = await buildIncidentReportPdfBlob(report, {
         user,
-        timeFormat,
         channelsById,
       });
       saveAs(blob, incidentReportPdfFilename(report.title));

@@ -10,7 +10,6 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import logger from "../../utils/logger";
 import IncidentReportModal from "./IncidentReportModal";
-import { useAuth } from "../AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAudioPlayback } from "../AudioPlaybackContext";
 import SharedInlineAudioPlayer from "../InlineAudioPlayer";
@@ -20,62 +19,173 @@ import buttonStyles from "../ui/Button.module.css";
 import formStyles from "../ui/Form.module.css";
 import styles from "../ui/FullscreenMessages.module.css";
 import { parseUtcTimestamp } from "../../utils/dateTime";
+import {
+  useInboxMessages,
+  useInboxChannels,
+  useInboxKeywords,
+  useInboxPreferences,
+  useInboxLayout,
+  useInboxSelection,
+} from "../InboxContext";
+import { keywordMatchRanges } from "../../utils/inboxKeywords";
+import liveStyles from "../ui/LiveCommunications.module.css";
 
 /** Longer transcripts collapse to one line until the user clicks More. */
 const MESSAGE_BODY_PREVIEW_CHAR_THRESHOLD = 110;
 
-const FullscreenMessages = ({
-  messages: messagesProp,
-  totalMessages = 0,
-  channels,
-  showTime,
-  showCar,
-  showChannel,
-  showPerson,
-  formatTime,
-  formatFeedRowSublineDate,
-  timeFormat = "24h",
-  highlightText,
-  searchQuery,
-  setActiveAudioUrl,
-  isFullscreen,
-  onToggleFullscreen,
-  setMessages: setMessagesProp,
-  isMobile,
-  isMultiSelectMode,
-  setIsMultiSelectMode,
-  setSelectedMessages,
-  selectedMessages,
-  toggleMultiSelectMode,
-  reverseSort,
-  currentPage,
-  onLoadMore,
-  hasMoreMessages,
-  isLoadingMore,
-  inboxViewMode = 'continuous', // 'pagination' or 'continuous'
-  isVolumeOn,
-  setIsVolumeOn,
-}) => {
+const FullscreenMessages = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const messagesTopRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
-  const messages = messagesProp;
-  
-  const setMessages = useCallback(
-    (newMessages) => setMessagesProp(newMessages),
-    [setMessagesProp]
-  );
+  const {
+    displayMessages: messages,
+    displayTotal: totalMessages,
+    loadOlder,
+    hasMore,
+    olderLoading,
+    patchMessage,
+    removeMessage,
+    removeMessages,
+  } = useInboxMessages();
+  const { channels } = useInboxChannels();
+  const { keywords, searchQuery } = useInboxKeywords();
+  const {
+    principal,
+    showTime,
+    showCar,
+    showChannel,
+    showPerson,
+    showFullTimestamps,
+    timeFormat,
+    reverseSort,
+    currentPage,
+    inboxViewMode,
+  } = useInboxPreferences();
+  const { isFullscreen, isMobile } = useInboxLayout();
+  const {
+    isMultiSelectMode,
+    setIsMultiSelectMode,
+    selectedMessages,
+    setSelectedMessages,
+  } = useInboxSelection();
 
-  const { logout, user } = useAuth();
+  const onLoadMore = inboxViewMode === 'continuous' ? loadOlder : null;
+  const hasMoreMessages = inboxViewMode === 'continuous' ? hasMore : false;
+  const isLoadingMore = inboxViewMode === 'continuous' ? olderLoading : false;
   const { hasPermission } = usePermissions();
 
+  const formatTime = useCallback((timestamp) => {
+    const date = parseUtcTimestamp(timestamp);
+    if (!date || Number.isNaN(date.getTime())) return String(timestamp || '');
+
+    if (showFullTimestamps) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours24 = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+
+      if (timeFormat === '12h') {
+        const hour = hours24 % 12 || 12;
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        return `${year}-${month}-${day} ${String(hour).padStart(2, '0')}:${minutes}:${seconds} ${period}`;
+      }
+      return `${year}-${month}-${day} ${String(hours24).padStart(2, '0')}:${minutes}:${seconds}`;
+    }
+
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const options = {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: timeFormat === '12h',
+    };
+
+    if (date.toDateString() === now.toDateString()) return date.toLocaleString('en-US', options);
+    if (date.toDateString() === yesterday.toDateString()) return `Yesterday ${date.toLocaleString('en-US', options)}`;
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+      ...options,
+    });
+  }, [showFullTimestamps, timeFormat]);
+
+  const formatFeedRowSublineDate = useCallback((timestamp) => {
+    if (!timestamp || String(timestamp).length < 15) return '—';
+    if (showFullTimestamps) return formatTime(timestamp);
+    const date = parseUtcTimestamp(timestamp);
+    if (!date || Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: timeFormat === '12h',
+    });
+  }, [formatTime, showFullTimestamps, timeFormat]);
+
+  const highlightText = useCallback((text, query) => {
+    const value = String(text ?? '');
+    if (!value) return value;
+
+    const keywordFlags = Array(value.length).fill(false);
+    const searchFlags = Array(value.length).fill(false);
+
+    for (const range of keywordMatchRanges(value, keywords)) {
+      for (let i = range.start; i < range.end && i < value.length; i += 1) keywordFlags[i] = true;
+    }
+
+    const needle = String(query || '').trim().toLowerCase();
+    if (needle) {
+      const haystack = value.toLowerCase();
+      let from = 0;
+      while (from < haystack.length) {
+        const index = haystack.indexOf(needle, from);
+        if (index < 0) break;
+        for (let i = index; i < index + needle.length && i < value.length; i += 1) searchFlags[i] = true;
+        from = index + Math.max(1, needle.length);
+      }
+    }
+
+    const output = [];
+    let startIndex = 0;
+    let currentClass = null;
+    const classAt = (index) => [
+      keywordFlags[index] ? liveStyles.keywordHighlight : '',
+      searchFlags[index] ? liveStyles.searchHighlight : '',
+    ].filter(Boolean).join(' ');
+
+    for (let i = 0; i <= value.length; i += 1) {
+      const nextClass = i < value.length ? classAt(i) : null;
+      if (i === 0) {
+        currentClass = nextClass;
+        continue;
+      }
+      if (nextClass === currentClass) continue;
+      const segment = value.slice(startIndex, i);
+      output.push(currentClass
+        ? <span key={`${startIndex}-${i}`} className={currentClass}>{segment}</span>
+        : segment);
+      startIndex = i;
+      currentClass = nextClass;
+    }
+
+    return output;
+  }, [keywords]);
+
   // Permission checks
-  const canPlayAudio = user?.role === 'admin' || hasPermission('play_audio');
-  const canDeleteAudio = user?.role === 'admin' || hasPermission('delete_audio');
-  const canAccessAdvancedPlayer = user?.role === 'admin' || hasPermission('access_advanced_player');
-  const canCreateReports = user?.role === 'admin' || hasPermission('create_reports');
+  const canPlayAudio = principal?.role === 'admin' || hasPermission('play_audio');
+  const canDeleteAudio = principal?.role === 'admin' || hasPermission('delete_audio');
+  const canAccessAdvancedPlayer = principal?.role === 'admin' || hasPermission('access_advanced_player');
+  const canCreateReports = principal?.role === 'admin' || hasPermission('create_reports');
 
   /** Message row toolbar: aligned hit targets + readable Material Symbols */
   const msgActionBtnBase = buttonStyles.button;
@@ -86,7 +196,6 @@ const FullscreenMessages = ({
   // State declarations - moved before useEffect that depends on them
   const [expandedPlayer, setExpandedPlayer] = useState(null); // Track which message has expanded player
   const { activeTrack, status: audioStatus } = useAudioPlayback();
-  const [hallucinations, setHallucinations] = useState([]);
   // UI state
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -104,8 +213,6 @@ const FullscreenMessages = ({
   const [selectedTag, setSelectedTag] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(null);
   const [allTags, setAllTags] = useState([]);
-  const [userRole, setUserRole] = useState(null);
-  const [isHallucinationEnabled, setIsHallucinationEnabled] = useState(true); // Default to true
   const [expandedMobileActions, setExpandedMobileActions] = useState(null); // Track which message has expanded actions on mobile
   /** Expanded full transcript body (per message id) */
   const [expandedMessageIds, setExpandedMessageIds] = useState(() => new Set());
@@ -166,20 +273,6 @@ const FullscreenMessages = ({
     }
   }, [messages, checkedMessageIds]);
 
-  // Fetch user role from API
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user) return;
-      try {
-        const response = await api.get(`/users/${user.username}`);
-        setUserRole(response.data[user.username]?.role || 'member');
-      } catch (error) {
-        logger.error('Error fetching user role:', error);
-        setUserRole('member');
-      }
-    };
-    fetchUserRole();
-  }, [user]);
 
   // Available tags and fetched tags
 
@@ -211,123 +304,6 @@ const FullscreenMessages = ({
     [isMobile]
   );
 
-  // Function to replace hallucination words with "....." in the text
-  const replaceHallucinationWords = (text, hallucinations) => {
-    // Safety check: ensure hallucinations is an array
-    if (!Array.isArray(hallucinations) || hallucinations.length === 0) {
-      return text;
-    }
-
-    let filteredText = text;
-
-    hallucinations.forEach(({ text: pattern, type }) => {
-      try {
-        let regexPattern;
-        const typeArr = Array.isArray(type) ? type : (typeof type === 'string' ? [type] : []);
-
-        if (typeArr.includes('regex')) {
-          // Check if pattern contains regex special characters
-          const hasRegexSpecialChars = /[.+*?^${}()|[\]\\]/.test(pattern);
-          
-          if (hasRegexSpecialChars) {
-            // User provided a regex pattern, use it as-is
-            regexPattern = pattern;
-          } else {
-            // Plain word - escape it and match anywhere (not just whole words)
-            // This allows matching "This" in "This is a test" or "somethingThis"
-            const escapedPattern = pattern.replace(/[.+*?^${}()|[\]\\]/g, '\\$&');
-            regexPattern = escapedPattern;
-          }
-        } else if (typeArr.includes('wildcard')) {
-          // Convert wildcard to regex
-          const hasWildcardChars = pattern.includes('*') || pattern.includes('?');
-          let escapedPattern = pattern
-            .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
-            .replace(/\*/g, '.*') // Convert * to .*
-            .replace(/\?/g, '.'); // Convert ? to .
-          
-          if (hasWildcardChars) {
-            regexPattern = escapedPattern;
-          } else {
-            // Plain word with wildcard type - match anywhere
-            regexPattern = escapedPattern;
-          }
-        } else {
-          // Unknown type, skip
-          return;
-        }
-        
-        const regex = new RegExp(regexPattern, 'gi'); // Global, case-insensitive
-        filteredText = filteredText.replace(regex, '.....');
-      } catch (err) {
-        logger.error(`Error processing hallucination pattern "${pattern}":`, err);
-      }
-    });
-
-    return filteredText;
-  };
-
-  const checkPatternMatches = (text, hallucinations) => {
-  const matches = { regex: false, wildcard: false };
-
-  // Safety check: ensure hallucinations is an array
-  if (!Array.isArray(hallucinations) || hallucinations.length === 0) {
-    return matches;
-  }
-
-  hallucinations.forEach(({ text: pattern, type }) => {
-    const typeArr = Array.isArray(type) ? type : (typeof type === 'string' ? [type] : []);
-    if (typeArr.includes('regex')) {
-      try {
-        // Check if pattern contains regex special characters
-        // If it's a plain word, escape it and search anywhere in text
-        // If it contains regex chars, use it as-is (user knows what they're doing)
-        const hasRegexSpecialChars = /[.+*?^${}()|[\]\\]/.test(pattern);
-        let regexPattern;
-        
-        if (hasRegexSpecialChars) {
-          // User provided a regex pattern, use it as-is
-          regexPattern = pattern;
-        } else {
-          // Plain word - escape it and search anywhere in text
-          const escapedPattern = pattern.replace(/[.+*?^${}()|[\]\\]/g, '\\$&');
-          regexPattern = escapedPattern;
-        }
-        
-        const regex = new RegExp(regexPattern, 'i'); // Case-insensitive regex
-        if (regex.test(text)) {
-          matches.regex = true;
-        }
-      } catch (err) {
-        logger.error(`Invalid regex pattern: ${pattern}`, err);
-      }
-    }
-    if (typeArr.includes('wildcard')) {
-      // Convert wildcard to regex (e.g., *test* -> .*test.*)
-      // If pattern doesn't contain * or ?, treat it as a word that can appear anywhere
-      const hasWildcardChars = pattern.includes('*') || pattern.includes('?');
-      let escapedPattern = pattern
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
-        .replace(/\*/g, '.*') // Convert * to .*
-        .replace(/\?/g, '.'); // Convert ? to .
-      
-      try {
-        // If no wildcard chars, check if pattern appears anywhere in text
-        // Otherwise, check if entire text matches the pattern
-        const wildcardRegex = hasWildcardChars 
-          ? new RegExp(`^${escapedPattern}$`, 'i') // Case-insensitive, full match
-          : new RegExp(escapedPattern, 'i'); // Case-insensitive, anywhere in text
-        if (wildcardRegex.test(text)) {
-          matches.wildcard = true;
-        }
-      } catch (err) {
-        logger.error(`Invalid wildcard pattern: ${pattern}`, err);
-      }
-    }
-  });
-
-  return matches;
-};
 
   const togglePlayerExpand = (messageId) => {
     if (expandedPlayer === messageId) {
@@ -513,55 +489,6 @@ const FullscreenMessages = ({
       }
     })();
   }, [showToast]);
-
-  // Fetch global settings to check if hallucination filtering is enabled
-  useEffect(() => {
-    const fetchGlobalSettings = async () => {
-      try {
-        const response = await api.get(`/settings`);
-        const hallucinationSetting = response.data?.global_hallucination || "True";
-        setIsHallucinationEnabled(hallucinationSetting === "True");
-      } catch (err) {
-        logger.error('Error fetching global settings:', err);
-        // Default to enabled if fetch fails
-        setIsHallucinationEnabled(true);
-      }
-    };
-    fetchGlobalSettings();
-  }, []);
-
-   useEffect(() => {
-      const fetchHallucinations = async () => {
-        // Only fetch hallucinations if the feature is enabled
-        if (!isHallucinationEnabled) {
-          setHallucinations([]);
-          return;
-        }
-
-        try {
-          const response = await apiFetch(`/hallucinations`);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to fetch hallucinations: ${response.status} ${response.statusText}`);
-          }
-          
-          const contentType = response.headers.get('content-type') || '';
-          if (!contentType.includes('application/json')) {
-            const text = await response.text();
-            logger.error('Non-JSON response (first 200 chars):', text.substring(0, 200));
-            throw new Error('Server returned non-JSON response. Check if endpoint is correct.');
-          }
-          
-          const data = await response.json();
-          logger.debug('Fetched hallucinations:', data);
-          setHallucinations(data);
-        } catch (err) {
-          logger.error('Error fetching hallucinations:', err);
-          // setError('Failed to load hallucinations');
-        }
-      };
-      fetchHallucinations();
-    }, [isHallucinationEnabled]);
   // Fetch tags for messages using batch endpoint with page-based caching
   useEffect(() => {
     const fetchTagsBatch = async () => {
@@ -800,64 +727,6 @@ const FullscreenMessages = ({
     }
   };
 
-  // Merge logic
-  const mergeSelectedMessages = async () => {
-    if (selectedMessages.size < 2) {
-      return showToast("Please select at least 2 messages to merge", "warning");
-    }
-    setIsProcessing(true);
-    try {
-      const toMerge = messages
-        .filter((m) => selectedMessages.has(m.id))
-        .sort((a, b) => new Date(a.time) - new Date(b.time));
-      const mergedText = toMerge.map((m) => m.message).join(" ");
-      const base = toMerge[0];
-      const newMsg = {
-        id: `merged_${Date.now()}`,
-        time: base.time,
-        message: mergedText,
-        channel: base.channel,
-        status: "merged",
-      };
-      // Replace in state
-      setMessages((prev) => {
-        const remaining = prev.filter((m) => !selectedMessages.has(m.id));
-        return [...remaining, newMsg].sort(
-          (a, b) => new Date(a.time) - new Date(b.time)
-        );
-      });
-      // Merge tags
-      const mergedTags = [
-        ...new Set(toMerge.flatMap((m) => tagsByMessage[m.id] || [])),
-      ];
-      if (mergedTags.length) {
-        try {
-          await Promise.all(
-            mergedTags.map((tag) =>
-              api.post(`/recordings_tag/${newMsg.id}/tags`, {
-                tag,
-              })
-            )
-          );
-          setTagsByMessage((prev) => ({
-            ...prev,
-            [newMsg.id]: mergedTags,
-          }));
-        } catch (err) {
-          logger.error("Failed to add merged tags:", err);
-          showToast("Failed to add tags to merged message", "error");
-        }
-      }
-      showToast(`Successfully merged ${selectedMessages.size} messages`, "success");
-      setIsMultiSelectMode(false);
-      clearSelection();
-    } catch (err) {
-      logger.error("Failed to merge messages:", err);
-      showToast("Failed to merge messages", "error");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   // Incident report
   const createIncidentReport = () => {
@@ -915,11 +784,15 @@ const FullscreenMessages = ({
     setIsProcessing(true);
     try {
       await Promise.all(
-        Array.from(selectedMessages).map((id) =>
-          api.delete(`/recordings/${id}`)
-        )
+        Array.from(selectedMessages).map(async (id) => {
+          try {
+            await api.delete(`/recordings/${id}`);
+          } catch (error) {
+            if (error?.response?.status !== 404) throw error;
+          }
+        })
       );
-      setMessages((prev) => prev.filter((m) => !selectedMessages.has(m.id)));
+      removeMessages(selectedMessages);
       setTagsByMessage((prev) => {
         const upd = { ...prev };
         selectedMessages.forEach((id) => delete upd[id]);
@@ -961,13 +834,22 @@ const FullscreenMessages = ({
           if (!shouldDelete) return;
           try {
             await api.delete(`/recordings/${id}`);
-            setMessages((p) => p.filter((m) => m.id !== id));
+            removeMessage(id);
             setTagsByMessage((p) => {
               const n = { ...p };
               delete n[id];
               return n;
             });
           } catch (err) {
+            if (err?.response?.status === 404) {
+              removeMessage(id);
+              setTagsByMessage((previous) => {
+                const next = { ...previous };
+                delete next[id];
+                return next;
+              });
+              return;
+            }
             logger.error("Failed to delete message:", err);
             showToast("Failed to delete message", "error");
             undo();
@@ -1006,7 +888,7 @@ const FullscreenMessages = ({
         }`}
         onClick={(e) => {
           e.stopPropagation();
-          togglePlayerExpand(messageId, url);
+          togglePlayerExpand(messageId);
         }}
         title={isExpanded ? "Close player" : "Open player"}
         aria-label={isExpanded ? "Close player" : "Open player"}
@@ -1250,17 +1132,7 @@ const FullscreenMessages = ({
           {messages.map((item) => {
   if (hiddenMessages.has(item.id)) return null;
 
-  // Check for regex and wildcard matches (for indicators) - only if hallucination filtering is enabled
-  const { regex, wildcard } = isHallucinationEnabled 
-    ? checkPatternMatches(item.message, hallucinations)
-    : { regex: false, wildcard: false };
-  
-  // Replace hallucination words with "....." in the message text - only if enabled
-  const filteredMessage = item.message !== 'No transcription available' 
-    ? (isHallucinationEnabled 
-        ? replaceHallucinationWords(item.message, hallucinations)
-        : item.message)
-    : item.message;
+  const filteredMessage = item.message;
 
   const bodyExpanded = expandedMessageIds.has(item.id);
   const isTranscript =
@@ -1372,7 +1244,7 @@ const FullscreenMessages = ({
                       if (!isMultiSelectMode) {
                         e.stopPropagation();
                         if (canPlayAudio && item.url) {
-                          togglePlayerExpand(item.id, item.url);
+                          togglePlayerExpand(item.id);
                         } else {
                           setExpandedMobileActions(
                             expandedMobileActions === item.id ? null : item.id
@@ -1396,13 +1268,6 @@ const FullscreenMessages = ({
                         className="pill pillWarning"
                       >
                         .....
-                      </span>
-                    )}
-                    {regex && (
-                      <span
-                        className={`pill pillAccent ${styles.inlineBadge}`}
-                      >
-                        Hallucination
                       </span>
                     )}
                   </div>
@@ -1429,7 +1294,7 @@ const FullscreenMessages = ({
                         try {
                           const response = await api.post(`/transcribe/${item.id}`);
                           if (response.data && response.data.transcription) {
-                            setMessages((prev) => prev.map((m) => m.id === item.id ? { ...m, message: response.data.transcription } : m));
+                            patchMessage(item.id, { transcription: response.data.transcription, message: response.data.transcription });
                             showToast('Transcription updated!', 'success');
                           } else {
                             showToast('No transcription returned', 'warning');
@@ -1467,7 +1332,7 @@ const FullscreenMessages = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePlayerExpand(item.id, item.url);
+                  togglePlayerExpand(item.id);
                 }}
                 className={`${buttonStyles.button} ${buttonStyles.icon} ${expandedPlayer === item.id ? buttonStyles.primary : buttonStyles.secondary}`}
               >
@@ -1597,7 +1462,7 @@ const FullscreenMessages = ({
                   onClick={(e) => {
                     if (canPlayAudio && item.url && !isMultiSelectMode) {
                       e.stopPropagation();
-                      togglePlayerExpand(item.id, item.url);
+                      togglePlayerExpand(item.id);
                     }
                   }}
                 >
@@ -1627,13 +1492,6 @@ const FullscreenMessages = ({
                     </span>
                   )}
 
-                  {regex && (
-                    <span
-                      className={`pill pillAccent ${styles.inlineBadge}`}
-                    >
-                      Hallucination
-                    </span>
-                  )}
                 </div>
                 {transcriptLong ? (
                   <button

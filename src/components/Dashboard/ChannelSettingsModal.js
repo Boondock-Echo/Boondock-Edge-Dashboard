@@ -26,7 +26,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
       // Fetch full channel data to ensure we have speaker_enabled and speaker_volume
       const fetchChannelData = async () => {
         try {
-          const response = await apiFetch(`/channel/${channel.id}`);
+          const response = await apiFetch(`/channels/${channel.id}`);
           if (response.ok) {
             const fullChannel = await response.json();
             const newSettings = {

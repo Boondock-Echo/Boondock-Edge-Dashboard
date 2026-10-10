@@ -1,107 +1,69 @@
-import { apiFetch } from '../../utils/apiClient';
-import React, { useState, useEffect } from 'react';
-import { Zap, PlusCircle, ToggleLeft, EyeOff, Copy } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { EyeOff, PlusCircle } from 'lucide-react';
+import api from '../../utils/apiClient';
 import SettingsSectionHeader from './SettingsSectionHeader';
-
+import Button from '../ui/Button';
 import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
-import buttonStyles from '../ui/Button.module.css';
 import noticeStyles from '../ui/Notice.module.css';
-const Toggle = ({ checked, onChange, label, icon: Icon, description }) => (
-  <div className={`${formStyles.choiceCard} ${checked ? formStyles.choiceCardSelected : ''}`}>
-    <div className="row grow">
-      <Icon className="iconMedium" />
-      <div className="grow">
-        <h4 className={cardStyles.title}>{label}</h4>
-        <p className="mutedText smallText">{description}</p>
-      </div>
-    </div>
-    <label className={formStyles.switch}>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
-    </label>
-  </div>
-);
-const HallucinationsSection = ({ globalSettings = {}, handleGlobalChange = () => {} }) => {
-  const [hallucinations, setHallucinations] = useState([]);
-  const [newHallucination, setNewHallucination] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  const [isRegex, setIsRegex] = useState(false);
-  const [isWildcard, setIsWildcard] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Fetch existing hallucinations on component mount
-  useEffect(() => {
-    const fetchHallucinations = async () => {
-      try {
-        const response = await apiFetch(`/hallucinations`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch hallucinations');
-        }
-        const data = await response.json();
-        setHallucinations(data);
-      } catch (err) {
-        console.error('Error fetching hallucinations:', err);
-        setError('Failed to load hallucinations');
-      }
-    };
-    fetchHallucinations();
+const EMPTY_DRAFT = {
+  pattern: '',
+  match_type: 'literal',
+  case_sensitive: false,
+};
+
+const HallucinationsSection = () => {
+  const [patterns, setPatterns] = useState([]);
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadPatterns = useCallback(async () => {
+    try {
+      setError('');
+      const { data } = await api.get('/hallucinations');
+      setPatterns(Array.isArray(data) ? data : []);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Failed to load hallucination patterns.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleAddHallucination = async () => {
-    if (!newHallucination.trim()) return;
+  useEffect(() => {
+    loadPatterns();
+  }, [loadPatterns]);
 
-    const hallucinationObj = {
-      text: newHallucination,
-      type: ['regex'], // Always use regex type for hallucinations
-      created_by: 'user', // Replace with actual user if available
-    };
+  const addPattern = async () => {
+    const pattern = draft.pattern.trim();
+    if (!pattern) return;
 
+    setSaving(true);
+    setError('');
     try {
-      const response = await apiFetch(`/hallucinations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(hallucinationObj),
+      const { data } = await api.post('/hallucinations', {
+        pattern,
+        match_type: draft.match_type,
+        case_sensitive: draft.case_sensitive,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add hallucination');
-      }
-
-      const newHallucinationFromServer = await response.json();
-      setHallucinations([...hallucinations, newHallucinationFromServer]);
-      setNewHallucination('');
-      setError(null);
-    } catch (err) {
-      console.error('Error adding hallucination:', err);
-      setError(err.message);
+      setPatterns((current) => [...current, data]);
+      setDraft(EMPTY_DRAFT);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Failed to add hallucination pattern.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleRemoveHallucination = async (hallucinationToRemove) => {
+  const removePattern = async (pattern) => {
+    setError('');
     try {
-      const response = await apiFetch(`/hallucinations/${hallucinationToRemove.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete hallucination');
-      }
-
-      setHallucinations(
-        hallucinations.filter((h) => h.id !== hallucinationToRemove.id)
-      );
-      setError(null);
-    } catch (err) {
-      console.error('Error deleting hallucination:', err);
-      setError(err.message);
+      await api.delete(`/hallucinations/${pattern.id}`);
+      setPatterns((current) => current.filter((item) => item.id !== pattern.id));
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Failed to delete hallucination pattern.');
     }
   };
 
@@ -110,126 +72,83 @@ const HallucinationsSection = ({ globalSettings = {}, handleGlobalChange = () =>
       <SettingsSectionHeader
         icon={EyeOff}
         title="Audio post processing"
-        description="Manage hallucination detection and filtering settings for audio transcriptions"
+        description="Manage literal and regular-expression patterns removed from transcriptions."
         iconColor="purple"
       />
-      
-      <div
-        className={cardStyles.card}
-      >
-        <div >
 
-        {/* Content Filtering Section */}
-        <div className={cardStyles.card}>
-          <div >
-            <h3 className={cardStyles.title}>
-              Content Filtering
-            </h3>
-            <p className="mutedText smallText">
-              Control how hallucination filtering works in your transcriptions
-            </p>
-          </div>
-          <Toggle
-            checked={globalSettings.global_hallucination}
-            onChange={(checked) => handleGlobalChange("global_hallucination", checked)}
-            label="Hide Hallucinations"
-            icon={ToggleLeft}
-            description="When enabled, automatically filters out AI-generated text that doesn't match the actual audio. This helps remove false transcriptions and improves accuracy."
-              />
-          <Toggle
-            checked={globalSettings.global_show_duplicate_files}
-            onChange={(checked) => handleGlobalChange("global_show_duplicate_files", checked)}
-            label="Show Duplicate Files"
-            icon={Copy}
-            description="Display duplicate audio files in the inbox. When disabled, duplicates are hidden by default."
-              />
+      {error && (
+        <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
+          <div className={noticeStyles.body}><p>{error}</p></div>
+        </div>
+      )}
+
+      <div className={`${cardStyles.card} stack`}>
+        <div className={formStyles.field}>
+          <label className={formStyles.label}>Pattern</label>
+          <input
+            className={formStyles.input}
+            value={draft.pattern}
+            onChange={(event) => setDraft((current) => ({ ...current, pattern: event.target.value }))}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                addPattern();
+              }
+            }}
+            placeholder="Text or regular expression"
+          />
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className={`${noticeStyles.notice} ${noticeStyles.error}`}>
-            {error}
+        <div className="rowWrap">
+          <select
+            className={`${formStyles.select} ${formStyles.selectInline}`}
+            value={draft.match_type}
+            onChange={(event) => setDraft((current) => ({ ...current, match_type: event.target.value }))}
+          >
+            <option value="literal">Literal</option>
+            <option value="regex">Regular expression</option>
+          </select>
+
+          <label className="row">
+            <input
+              type="checkbox"
+              checked={draft.case_sensitive}
+              onChange={(event) => setDraft((current) => ({ ...current, case_sensitive: event.target.checked }))}
+            />
+            Case sensitive
+          </label>
+
+          <Button type="button" variant="primary" onClick={addPattern} disabled={saving || !draft.pattern.trim()}>
+            <PlusCircle size={18} />
+            Add pattern
+          </Button>
+        </div>
+      </div>
+
+      <div className={`${cardStyles.card} stack`}>
+        <h3 className={cardStyles.title}>Patterns</h3>
+        {loading ? (
+          <div className="row"><span className="spinner spinnerSmall" /> Loading patterns…</div>
+        ) : patterns.length === 0 ? (
+          <p className={cardStyles.description}>No hallucination patterns are configured.</p>
+        ) : (
+          <div className="stackCompact">
+            {patterns.map((pattern) => (
+              <div key={pattern.id} className="rowBetween">
+                <div>
+                  <div className="rowWrap">
+                    <strong>{pattern.pattern}</strong>
+                    <span className="pill">{pattern.match_type}</span>
+                    {pattern.case_sensitive && <span className="pill">case-sensitive</span>}
+                  </div>
+                </div>
+                <Button type="button" size="small" variant="danger" onClick={() => removePattern(pattern)}>
+                  Delete
+                </Button>
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Input Area */}
-        <div
-          className="rowWrap"
-        >
-          <div className="rowWrap">
-            <input
-              type="text"
-              value={newHallucination}
-              onChange={(e) => setNewHallucination(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && newHallucination.trim() && handleAddHallucination()}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder="Enter new hallucination pattern"
-              className={formStyles.input}
-            />
-            <button
-              onClick={handleAddHallucination}
-              disabled={!newHallucination.trim()}
-              aria-label="Add hallucination"
-              className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.medium}`}
-            >
-              <PlusCircle size={18} />
-              <span>Add</span>
-            </button>
-          </div>
-
-        </div>
-
-        {/* Hallucination Patterns Section */}
-        <div >
-          <div >
-            <h3 className={cardStyles.title}>
-              Hallucination Patterns
-            </h3>
-            <p className="mutedText smallText">
-              Add patterns to detect potential hallucinations in transcriptions
-            </p>
-          </div>
-          <h4 className={cardStyles.title}>
-            {hallucinations.length > 0
-              ? `${hallucinations.length} Pattern${hallucinations.length > 1 ? 's' : ''} Configured`
-              : 'No hallucination patterns added yet'}
-          </h4>
-
-          {hallucinations.length > 0 ? (
-            <div className="rowWrap">
-              {hallucinations.map((hallucination, index) => (
-                <div
-                  key={`${hallucination.text}-${index}`}
-                  className="row"
-                >
-                  <span>
-                    {hallucination.text}
-                    {(Array.isArray(hallucination.type) ? hallucination.type : []).includes('regex') && (
-                      <span className="mutedText tinyText">[Hallucination]</span>
-                    )}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveHallucination(hallucination)}
-                    className={`${buttonStyles.button} ${buttonStyles.danger} ${buttonStyles.medium}`}
-                    aria-label={`Remove hallucination ${hallucination.text}`}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="centeredContent mutedText smallText"
-            >
-              <p className="mutedText smallText">
-                Add hallucination patterns to detect potential errors in your transcriptions
-              </p>
-            </div>
-          )}
-        </div>
-        </div>
       </div>
     </div>
   );

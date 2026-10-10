@@ -18,7 +18,7 @@ import {
   Square,
   Settings
 } from 'lucide-react';
-import GlobalSettings from './GlobalSettings';
+import TranscriptionSettings from './TranscriptionSettings';
 import {
   SettingsPageHero,
   SettingsSectionWidth,
@@ -31,10 +31,7 @@ import noticeStyles from '../ui/Notice.module.css';
 import tableStyles from '../ui/Table.module.css';
 import styles from '../ui/TranscriptionEngine.module.css';
 
-const TranscriptionEngine = ({
-  globalSettings,
-  handleGlobalChange,
-}) => {
+const TranscriptionEngine = () => {
   const [queueStatus, setQueueStatus] = useState(null);
   const [queueLogs, setQueueLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,7 +277,7 @@ const TranscriptionEngine = ({
 
         {showServiceSettings && (
           <div className={`${cardStyles.card} ${cardStyles.compact}`} data-testid="transcription-service-settings">
-            <GlobalSettings activeSection="transcription-services" globalSettings={globalSettings} handleGlobalChange={handleGlobalChange} />
+            <TranscriptionSettings />
           </div>
         )}
 
