@@ -67,11 +67,12 @@ const toUiMessage = (message) => ({
   isNew: message.isNew ?? true,
 });
 
-const normalizeBatch = (rows) => {
+const normalizeBatch = (rows, onRow = null) => {
   const byId = {};
   const orderedIds = [];
 
   for (const row of rows) {
+    onRow?.(row);
     const message = toUiMessage(row);
     const id = String(message.id);
     byId[id] = message;
@@ -143,11 +144,32 @@ const readStoredActiveChannels = (channels) => {
     localStorage.removeItem("activeChannels");
   }
 
+  const ids = Object.keys(channels);
   const result = {};
-  for (const id of Object.keys(channels)) {
+  for (const id of ids) {
     result[id] = stored?.[id] !== false;
   }
+
+  // When channels exist, the sidebar must always keep at least one selected.
+  if (ids.length && !ids.some((id) => result[id])) {
+    result[ids[0]] = true;
+  }
+
   return result;
+};
+
+const selectedChannelFilter = (activeChannels) => {
+  const ids = Object.keys(activeChannels);
+  const selectedIds = ids
+    .filter((id) => activeChannels[id] !== false)
+    .map(Number)
+    .filter(Number.isFinite);
+
+  // Omit channel_ids when all known channels are selected. That keeps the
+  // inbox open to recordings from channels created after the last refresh.
+  return ids.length === 0 || selectedIds.length === ids.length
+    ? null
+    : selectedIds;
 };
 
 const getPrincipal = (user) => user?.user ?? user ?? null;
@@ -166,6 +188,7 @@ export const InboxProvider = ({ children }) => {
   const [messages, setMessages] = useState(EMPTY_MESSAGES);
   const [channels, setChannels] = useState({});
   const [activeChannels, setActiveChannels] = useState({});
+  const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeKeywordIds, setActiveKeywordIds] = useState(() => new Set());
 
@@ -220,6 +243,8 @@ export const InboxProvider = ({ children }) => {
   const pollRunningRef = useRef(false);
   const hasMoreRef = useRef(false);
   const filtersRef = useRef(filters);
+  const channelsRef = useRef(channels);
+  const channelRefreshRef = useRef(false);
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -228,6 +253,10 @@ export const InboxProvider = ({ children }) => {
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
+
+  useEffect(() => {
+    channelsRef.current = channels;
+  }, [channels]);
 
 
   useEffect(() => {
@@ -244,11 +273,18 @@ export const InboxProvider = ({ children }) => {
     }
   }, [isVolumeOn]);
 
-  useEffect(() => () => {
-    mountedRef.current = false;
-    initialAbortRef.current?.abort();
-    olderAbortRef.current?.abort();
-    pollAbortRef.current?.abort();
+  useEffect(() => {
+    // React.StrictMode intentionally runs effect setup/cleanup/setup in
+    // development. Reset this flag on every setup so the second setup is
+    // considered mounted and inbox responses can initialize polling.
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      initialAbortRef.current?.abort();
+      olderAbortRef.current?.abort();
+      pollAbortRef.current?.abort();
+    };
   }, []);
 
   const isMobile = windowWidth < 768;
@@ -285,8 +321,66 @@ export const InboxProvider = ({ children }) => {
     });
   }, [updatePreferences]);
 
+  const updateNotifications = useCallback((data) => {
+    setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+  }, []);
+
+  const refreshChannels = useCallback(async () => {
+    if (channelRefreshRef.current) return;
+    channelRefreshRef.current = true;
+
+    try {
+      const response = await api.get(CHANNELS_ENDPOINT);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      const nextChannels = {};
+      for (const channel of rows) {
+        if (channel.status !== "disabled") {
+          nextChannels[String(channel.id)] = { ...channel, isActive: true };
+        }
+      }
+
+      if (!mountedRef.current) return;
+
+      channelsRef.current = nextChannels;
+      setChannels(nextChannels);
+      setActiveChannels((previous) => {
+        const next = {};
+        for (const id of Object.keys(nextChannels)) {
+          // Preserve existing choices; newly discovered channels start selected.
+          next[id] = Object.prototype.hasOwnProperty.call(previous, id)
+            ? previous[id] !== false
+            : true;
+        }
+
+        const ids = Object.keys(next);
+        if (ids.length && !ids.some((id) => next[id])) {
+          next[ids[0]] = true;
+        }
+
+        try {
+          localStorage.setItem("activeChannels", JSON.stringify(next));
+        } catch {
+          // Browser storage is optional.
+        }
+
+        return next;
+      });
+    } catch (error) {
+      console.error("Failed to refresh inbox channels:", error);
+    } finally {
+      channelRefreshRef.current = false;
+    }
+  }, []);
+
+  const checkRecordingChannel = useCallback((row) => {
+    const channelId = String(row?.channel_id ?? row?.channel ?? "");
+    if (channelId && !channelsRef.current[channelId]) {
+      void refreshChannels();
+    }
+  }, [refreshChannels]);
+
   const replaceMessages = useCallback((rows, meta) => {
-    const normalized = normalizeBatch(rows);
+    const normalized = normalizeBatch(rows, checkRecordingChannel);
     const orderedIds = normalized.orderedIds.slice(0, RETENTION_LIMIT);
     const byId = {};
     for (const id of orderedIds) byId[id] = normalized.byId[id];
@@ -305,7 +399,7 @@ export const InboxProvider = ({ children }) => {
       id: meta?.next_before_id ?? null,
     };
     pollBoundaryRef.current = latestUpdatedAt(rows, null) ?? Date.now();
-  }, []);
+  }, [checkRecordingChannel]);
 
   const runReplacement = useCallback(async (nextFilters) => {
     initialAbortRef.current?.abort();
@@ -320,12 +414,6 @@ export const InboxProvider = ({ children }) => {
     setCurrentPage(1);
     setMessages(EMPTY_MESSAGES);
 
-    if (Array.isArray(nextFilters.channelIds) && nextFilters.channelIds.length === 0) {
-      replaceMessages([], { total: 0, has_more: false });
-      setInitialLoading(false);
-      return;
-    }
-
     try {
       const response = await api.get(INBOX_ENDPOINT, {
         params: buildParams(nextFilters),
@@ -333,6 +421,7 @@ export const InboxProvider = ({ children }) => {
       });
       if (!mountedRef.current) return;
       const rows = Array.isArray(response.data?.messages) ? response.data.messages : [];
+      updateNotifications(response.data);
       replaceMessages(rows, response.data?.meta || {});
     } catch (error) {
       if (error?.cause?.name === "AbortError" || error?.name === "CanceledError") return;
@@ -342,7 +431,7 @@ export const InboxProvider = ({ children }) => {
         setInitialLoading(false);
       }
     }
-  }, [replaceMessages]);
+  }, [replaceMessages, updateNotifications]);
 
   const bootstrap = useCallback(async () => {
     initialAbortRef.current?.abort();
@@ -351,6 +440,8 @@ export const InboxProvider = ({ children }) => {
 
     setInitialLoading(true);
     setInitialError(null);
+
+    let nextFilters = filtersRef.current;
 
     try {
       const channelResponse = await api.get(CHANNELS_ENDPOINT, { signal: controller.signal });
@@ -362,28 +453,26 @@ export const InboxProvider = ({ children }) => {
         }
       }
 
-      const nextActiveChannels = readStoredActiveChannels(nextChannels);
-      const channelIds = Object.keys(nextActiveChannels)
-        .filter((id) => nextActiveChannels[id])
-        .map(Number)
-        .filter(Number.isFinite);
-
       if (!mountedRef.current) return;
+
+      const nextActiveChannels = readStoredActiveChannels(nextChannels);
+      channelsRef.current = nextChannels;
       setChannels(nextChannels);
       setActiveChannels(nextActiveChannels);
 
-      const nextFilters = {
+      nextFilters = {
         ...filtersRef.current,
-        channelIds,
+        channelIds: selectedChannelFilter(nextActiveChannels),
       };
       setFilters(nextFilters);
       filtersRef.current = nextFilters;
+    } catch (error) {
+      if (error?.cause?.name === "AbortError" || error?.name === "CanceledError") return;
+      // Channel metadata should not prevent the inbox itself from loading.
+      console.error("Failed to load inbox channels:", error);
+    }
 
-      if (channelIds.length === 0) {
-        replaceMessages([], { total: 0, has_more: false });
-        return;
-      }
-
+    try {
       const inboxResponse = await api.get(INBOX_ENDPOINT, {
         params: buildParams(nextFilters),
         signal: controller.signal,
@@ -391,7 +480,10 @@ export const InboxProvider = ({ children }) => {
       const inboxRows = Array.isArray(inboxResponse.data?.messages)
         ? inboxResponse.data.messages
         : [];
-      if (mountedRef.current) replaceMessages(inboxRows, inboxResponse.data?.meta || {});
+      if (mountedRef.current) {
+        updateNotifications(inboxResponse.data);
+        replaceMessages(inboxRows, inboxResponse.data?.meta || {});
+      }
     } catch (error) {
       if (error?.cause?.name === "AbortError" || error?.name === "CanceledError") return;
       if (mountedRef.current) setInitialError(error.message || "Failed to load inbox");
@@ -407,6 +499,7 @@ export const InboxProvider = ({ children }) => {
       setMessages(EMPTY_MESSAGES);
       setChannels({});
       setActiveChannels({});
+      setNotifications([]);
       setInitialLoading(false);
       return;
     }
@@ -450,17 +543,24 @@ export const InboxProvider = ({ children }) => {
   const toggleChannel = useCallback((channelId) => {
     const id = String(channelId);
     setActiveChannels((previous) => {
-      const next = { ...previous, [id]: previous[id] === false };
+      const currentlySelected = previous[id] !== false;
+
+      // Keep at least one channel selected in the sidebar.
+      if (currentlySelected) {
+        const selectedCount = Object.keys(previous)
+          .filter((candidate) => previous[candidate] !== false)
+          .length;
+        if (selectedCount <= 1) return previous;
+      }
+
+      const next = { ...previous, [id]: !currentlySelected };
       try {
         localStorage.setItem("activeChannels", JSON.stringify(next));
       } catch {
         // Browser storage is optional.
       }
-      const channelIds = Object.keys(next)
-        .filter((candidate) => next[candidate])
-        .map(Number)
-        .filter(Number.isFinite);
-      applyFilters({ channelIds });
+
+      applyFilters({ channelIds: selectedChannelFilter(next) });
       return next;
     });
   }, [applyFilters]);
@@ -564,7 +664,7 @@ export const InboxProvider = ({ children }) => {
       });
 
       const rows = Array.isArray(response.data?.messages) ? response.data.messages : [];
-      const normalized = normalizeBatch(rows);
+      const normalized = normalizeBatch(rows, checkRecordingChannel);
 
       setMessages((previous) => {
         const byId = { ...previous.byId, ...normalized.byId };
@@ -612,7 +712,7 @@ export const InboxProvider = ({ children }) => {
         setOlderLoading(false);
       }
     }
-  }, [inboxViewMode, olderLoading]);
+  }, [checkRecordingChannel, inboxViewMode, olderLoading]);
 
   const mergePollRows = useCallback((rows, meta) => {
     const total = Number(meta?.total);
@@ -629,6 +729,7 @@ export const InboxProvider = ({ children }) => {
       const newIds = [];
 
       for (const row of rows) {
+        checkRecordingChannel(row);
         const incoming = toUiMessage(row);
         const id = String(incoming.id);
         const existing = byId[id];
@@ -667,7 +768,7 @@ export const InboxProvider = ({ children }) => {
         total: Number.isFinite(total) ? total : previous.total,
       };
     });
-  }, []);
+  }, [checkRecordingChannel]);
 
   const pollingAllowed =
     principal &&
@@ -697,6 +798,7 @@ export const InboxProvider = ({ children }) => {
           signal: controller.signal,
         });
         const rows = Array.isArray(response.data?.messages) ? response.data.messages : [];
+        if (offset === 0) updateNotifications(response.data);
         mergePollRows(rows, response.data?.meta || {});
         newestBoundary = latestUpdatedAt(rows, newestBoundary);
 
@@ -712,7 +814,7 @@ export const InboxProvider = ({ children }) => {
     } finally {
       pollRunningRef.current = false;
     }
-  }, [mergePollRows, pollingAllowed]);
+  }, [mergePollRows, pollingAllowed, updateNotifications]);
 
   useEffect(() => {
     if (!pollingAllowed) return undefined;
@@ -772,6 +874,12 @@ export const InboxProvider = ({ children }) => {
   const removeMessage = useCallback((messageId) => {
     removeMessages([messageId]);
   }, [removeMessages]);
+
+  const removeNotification = useCallback((notificationId) => {
+    setNotifications((previous) =>
+      previous.filter((notification) => notification.id !== notificationId)
+    );
+  }, []);
 
 
   const toggleMultiSelectMode = useCallback(() => {
@@ -945,7 +1053,9 @@ export const InboxProvider = ({ children }) => {
   const liveValue = useMemo(() => ({
     isVolumeOn,
     setIsVolumeOn,
-  }), [isVolumeOn]);
+    notifications,
+    removeNotification,
+  }), [isVolumeOn, notifications, removeNotification]);
 
   return (
     <InboxMessagesContext.Provider value={messagesValue}>

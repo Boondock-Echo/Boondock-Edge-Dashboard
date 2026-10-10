@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Edit, Plus, Save, Shield, Trash2, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../utils/apiClient';
@@ -105,26 +105,9 @@ const GroupModal = ({ group, onClose, onSave }) => {
   );
 };
 
-const ProfileManagement = () => {
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ProfileManagement = ({ groups, loading, refresh }) => {
   const [creating, setCreating] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
-
-  const loadGroups = useCallback(async () => {
-    try {
-      const { data } = await api.get('/groups');
-      setGroups(Array.isArray(data) ? data : []);
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to load groups.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadGroups();
-  }, [loadGroups]);
 
   const saveGroup = async (formData) => {
     const payload = {
@@ -144,7 +127,7 @@ const ProfileManagement = () => {
       }
       setCreating(false);
       setEditingGroup(null);
-      await loadGroups();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to save group.');
       throw error;
@@ -156,13 +139,15 @@ const ProfileManagement = () => {
     try {
       await api.delete(`/groups/${group.id}`);
       toast.success('Group deleted.');
-      await loadGroups();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to delete group.');
     }
   };
 
-  if (loading) return <div className="row"><span className="spinner spinnerSmall" /> Loading groups…</div>;
+  if (loading) {
+    return <div className="row"><span className="spinner spinnerSmall" /> Loading groups…</div>;
+  }
 
   return (
     <div className="stack stackLarge">
@@ -174,7 +159,9 @@ const ProfileManagement = () => {
       />
 
       <div className="actionsEnd">
-        <Button variant="primary" onClick={() => setCreating(true)}><Plus size={18} /> Create group</Button>
+        <Button variant="primary" onClick={() => setCreating(true)}>
+          <Plus size={18} /> Create group
+        </Button>
       </div>
 
       <div className="gridThree">
@@ -193,21 +180,29 @@ const ProfileManagement = () => {
             <div>
               <p className="eyebrow">Permissions</p>
               <div className="rowWrap">
-                {(group.permissions || []).map((permission) => <span key={permission} className="pill">{permission}</span>)}
+                {(group.permissions || []).map((permission) => (
+                  <span key={permission} className="pill">{permission}</span>
+                ))}
               </div>
             </div>
 
             <div>
               <p className="eyebrow">Keywords</p>
               <div className="rowWrap">
-                {(group.keyword_details || []).map((keyword) => <span key={keyword.id} className="pill">{keyword.pattern}</span>)}
+                {(group.keyword_details || []).map((keyword) => (
+                  <span key={keyword.id} className="pill">{keyword.pattern}</span>
+                ))}
               </div>
             </div>
 
             <div className="rowWrap">
-              <Button size="small" variant="ghost" onClick={() => setEditingGroup(group)}><Edit size={16} /> Edit</Button>
+              <Button size="small" variant="ghost" onClick={() => setEditingGroup(group)}>
+                <Edit size={16} /> Edit
+              </Button>
               {!group.is_default && (
-                <Button size="small" variant="danger" onClick={() => deleteGroup(group)}><Trash2 size={16} /> Delete</Button>
+                <Button size="small" variant="danger" onClick={() => deleteGroup(group)}>
+                  <Trash2 size={16} /> Delete
+                </Button>
               )}
             </div>
           </div>
@@ -215,7 +210,13 @@ const ProfileManagement = () => {
       </div>
 
       {creating && <GroupModal onClose={() => setCreating(false)} onSave={saveGroup} />}
-      {editingGroup && <GroupModal group={editingGroup} onClose={() => setEditingGroup(null)} onSave={saveGroup} />}
+      {editingGroup && (
+        <GroupModal
+          group={editingGroup}
+          onClose={() => setEditingGroup(null)}
+          onSave={saveGroup}
+        />
+      )}
     </div>
   );
 };

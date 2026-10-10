@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edit, Key, Lock, Search, Save, Trash2, Unlock, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../utils/apiClient';
@@ -123,34 +123,12 @@ const UserModal = ({ user, groups, onClose, onSubmit }) => {
   );
 };
 
-const UserManagement = () => {
+const UserManagement = ({ users, groups, loading, refresh }) => {
   const { user: authValue } = useAuth();
   const principal = authValue?.user ?? authValue ?? null;
-  const [users, setUsers] = useState([]);
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [creating, setCreating] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const [usersResponse, groupsResponse] = await Promise.all([
-        api.get('/users'),
-        api.get('/groups'),
-      ]);
-      setUsers(Array.isArray(usersResponse.data) ? usersResponse.data : []);
-      setGroups(Array.isArray(groupsResponse.data) ? groupsResponse.data : []);
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to load users.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const groupsById = useMemo(
     () => new Map(groups.map((group) => [group.id, group])),
@@ -184,7 +162,7 @@ const UserManagement = () => {
       }
       setEditingUser(null);
       setCreating(false);
-      await load();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to save user.');
       throw error;
@@ -196,7 +174,7 @@ const UserManagement = () => {
     try {
       await api.delete(`/users/${user.id}`);
       toast.success('User deleted.');
-      await load();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to delete user.');
     }
@@ -207,7 +185,7 @@ const UserManagement = () => {
     try {
       await api.post(`/users/${user.id}/mfa/reset`);
       toast.success(`MFA reset for ${user.email}.`);
-      await load();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reset MFA.');
     }
@@ -217,7 +195,7 @@ const UserManagement = () => {
     try {
       await api.post(`/users/${user.id}/mfa/enforcement`, { enforce });
       toast.success(`MFA requirement ${enforce ? 'enabled' : 'disabled'}.`);
-      await load();
+      await refresh();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update MFA requirement.');
     }
@@ -272,25 +250,55 @@ const UserManagement = () => {
                   <td className={tableStyles.cell}>
                     <div className="rowWrap">
                       {(user.groups || []).map((groupId) => (
-                        <span key={groupId} className="pill">{groupsById.get(groupId)?.name || `Group ${groupId}`}</span>
+                        <span key={groupId} className="pill">
+                          {groupsById.get(groupId)?.name || `Group ${groupId}`}
+                        </span>
                       ))}
                     </div>
                   </td>
                   <td className={tableStyles.cell}>
                     <div className="rowWrap">
-                      <span className={`pill ${user.mfa_enabled ? 'pillSuccess' : ''}`}>{user.mfa_enabled ? 'Enabled' : 'Disabled'}</span>
+                      <span className={`pill ${user.mfa_enabled ? 'pillSuccess' : ''}`}>
+                        {user.mfa_enabled ? 'Enabled' : 'Disabled'}
+                      </span>
                       {user.mfa_enforced && <span className="pill pillWarning">Required</span>}
                     </div>
                   </td>
                   <td className={tableStyles.cell}>
                     <div className="rowWrap">
-                      <Button size="icon" variant="ghost" onClick={() => setEditingUser(user)} title="Edit user"><Edit size={18} /></Button>
-                      <Button size="icon" variant="warning" onClick={() => setMfaEnforcement(user, !user.mfa_enforced)} title="Toggle MFA requirement">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setEditingUser(user)}
+                        title="Edit user"
+                      >
+                        <Edit size={18} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="warning"
+                        onClick={() => setMfaEnforcement(user, !user.mfa_enforced)}
+                        title="Toggle MFA requirement"
+                      >
                         {user.mfa_enforced ? <Unlock size={18} /> : <Lock size={18} />}
                       </Button>
-                      <Button size="icon" variant="warning" onClick={() => resetMfa(user)} title="Reset MFA"><Key size={18} /></Button>
+                      <Button
+                        size="icon"
+                        variant="warning"
+                        onClick={() => resetMfa(user)}
+                        title="Reset MFA"
+                      >
+                        <Key size={18} />
+                      </Button>
                       {principal?.id !== user.id && (
-                        <Button size="icon" variant="danger" onClick={() => deleteUser(user)} title="Delete user"><Trash2 size={18} /></Button>
+                        <Button
+                          size="icon"
+                          variant="danger"
+                          onClick={() => deleteUser(user)}
+                          title="Delete user"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
                       )}
                     </div>
                   </td>
@@ -301,8 +309,21 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {creating && <UserModal groups={groups} onClose={() => setCreating(false)} onSubmit={saveUser} />}
-      {editingUser && <UserModal user={editingUser} groups={groups} onClose={() => setEditingUser(null)} onSubmit={saveUser} />}
+      {creating && (
+        <UserModal
+          groups={groups}
+          onClose={() => setCreating(false)}
+          onSubmit={saveUser}
+        />
+      )}
+      {editingUser && (
+        <UserModal
+          user={editingUser}
+          groups={groups}
+          onClose={() => setEditingUser(null)}
+          onSubmit={saveUser}
+        />
+      )}
     </div>
   );
 };

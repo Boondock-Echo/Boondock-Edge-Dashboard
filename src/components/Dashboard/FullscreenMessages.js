@@ -27,11 +27,7 @@ import {
   useInboxLayout,
   useInboxSelection,
 } from "../InboxContext";
-import {
-  keywordMatchRanges,
-  keywordMatches,
-  replacePatternMatches,
-} from "../../utils/inboxKeywords";
+import { keywordMatchRanges } from "../../utils/inboxKeywords";
 import liveStyles from "../ui/LiveCommunications.module.css";
 
 /** Longer transcripts collapse to one line until the user clicks More. */
@@ -62,7 +58,6 @@ const FullscreenMessages = () => {
     showChannel,
     showPerson,
     showFullTimestamps,
-    showHallucinations,
     timeFormat,
     reverseSort,
     currentPage,
@@ -201,7 +196,6 @@ const FullscreenMessages = () => {
   // State declarations - moved before useEffect that depends on them
   const [expandedPlayer, setExpandedPlayer] = useState(null); // Track which message has expanded player
   const { activeTrack, status: audioStatus } = useAudioPlayback();
-  const [hallucinations, setHallucinations] = useState([]);
   // UI state
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -219,7 +213,6 @@ const FullscreenMessages = () => {
   const [selectedTag, setSelectedTag] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(null);
   const [allTags, setAllTags] = useState([]);
-  const isHallucinationEnabled = !showHallucinations;
   const [expandedMobileActions, setExpandedMobileActions] = useState(null); // Track which message has expanded actions on mobile
   /** Expanded full transcript body (per message id) */
   const [expandedMessageIds, setExpandedMessageIds] = useState(() => new Set());
@@ -311,13 +304,6 @@ const FullscreenMessages = () => {
     [isMobile]
   );
 
-  const replaceHallucinationWords = (text, patterns) =>
-    replacePatternMatches(text, patterns, '.....');
-
-  const checkPatternMatches = (text, patterns) => ({
-    regex: (patterns || []).some((pattern) => keywordMatches(text, pattern)),
-    wildcard: false,
-  });
 
   const togglePlayerExpand = (messageId) => {
     if (expandedPlayer === messageId) {
@@ -503,26 +489,6 @@ const FullscreenMessages = () => {
       }
     })();
   }, [showToast]);
-  useEffect(() => {
-    if (!isHallucinationEnabled || principal?.role !== 'admin') {
-      setHallucinations([]);
-      return undefined;
-    }
-
-    let mounted = true;
-    const fetchHallucinations = async () => {
-      try {
-        const response = await api.get('/hallucinations');
-        if (mounted) setHallucinations(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        logger.error('Error fetching hallucinations:', error);
-        if (mounted) setHallucinations([]);
-      }
-    };
-
-    void fetchHallucinations();
-    return () => { mounted = false; };
-  }, [isHallucinationEnabled, principal?.role]);
   // Fetch tags for messages using batch endpoint with page-based caching
   useEffect(() => {
     const fetchTagsBatch = async () => {
@@ -1166,17 +1132,7 @@ const FullscreenMessages = () => {
           {messages.map((item) => {
   if (hiddenMessages.has(item.id)) return null;
 
-  // Check for regex and wildcard matches (for indicators) - only if hallucination filtering is enabled
-  const { regex, wildcard } = isHallucinationEnabled 
-    ? checkPatternMatches(item.message, hallucinations)
-    : { regex: false, wildcard: false };
-  
-  // Replace hallucination words with "....." in the message text - only if enabled
-  const filteredMessage = item.message !== 'No transcription available' 
-    ? (isHallucinationEnabled 
-        ? replaceHallucinationWords(item.message, hallucinations)
-        : item.message)
-    : item.message;
+  const filteredMessage = item.message;
 
   const bodyExpanded = expandedMessageIds.has(item.id);
   const isTranscript =
@@ -1312,13 +1268,6 @@ const FullscreenMessages = () => {
                         className="pill pillWarning"
                       >
                         .....
-                      </span>
-                    )}
-                    {regex && (
-                      <span
-                        className={`pill pillAccent ${styles.inlineBadge}`}
-                      >
-                        Hallucination
                       </span>
                     )}
                   </div>
@@ -1543,13 +1492,6 @@ const FullscreenMessages = () => {
                     </span>
                   )}
 
-                  {regex && (
-                    <span
-                      className={`pill pillAccent ${styles.inlineBadge}`}
-                    >
-                      Hallucination
-                    </span>
-                  )}
                 </div>
                 {transcriptLong ? (
                   <button

@@ -1,0 +1,14 @@
+--- a/src/components/Settings/TranscriptionEngine.js
++++ b/src/components/Settings/TranscriptionEngine.js
+@@
+-import GlobalSettings from './GlobalSettings';
++import TranscriptionSettings from './TranscriptionSettings';
+@@
+-const TranscriptionEngine = ({
+-  globalSettings,
+-  handleGlobalChange,
+-}) => {
++const TranscriptionEngine = () => {
+@@
+-            <GlobalSettings activeSection="transcription-services" globalSettings={globalSettings} handleGlobalChange={handleGlobalChange} />
++            <TranscriptionSettings />
