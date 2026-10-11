@@ -142,6 +142,79 @@ download_github_archive() {
         "$output"
 }
 
+install_dashboard_release() {
+    local tag="$1"
+    local destination="$2"
+
+    local archive_name="boondock-edge-dashboard-${tag}.tar.gz"
+    local checksum_name="${archive_name}.sha256"
+    local release_url="${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${GITHUB_DASHBOARD_REPO}/releases/download/${tag}"
+
+    local archive_path
+    local checksum_path
+    local staging
+    local expected_checksum
+    local actual_checksum
+
+    archive_path=$(mktemp --suffix=.tar.gz)
+    checksum_path=$(mktemp --suffix=.sha256)
+    staging=$(mktemp -d)
+
+    echo "Downloading Dashboard release ${tag} from ${GITHUB_OWNER}/${GITHUB_DASHBOARD_REPO}..."
+
+    if ! download_github \
+        "${release_url}/${archive_name}" \
+        "$archive_path"; then
+        rm -f -- "$archive_path" "$checksum_path"
+        rm -rf -- "$staging"
+        echo -e "${RED}Error: Failed to download Dashboard release ${tag}.${NC}" >&2
+        return 1
+    fi
+
+    if ! download_github \
+        "${release_url}/${checksum_name}" \
+        "$checksum_path"; then
+        rm -f -- "$archive_path" "$checksum_path"
+        rm -rf -- "$staging"
+        echo -e "${RED}Error: Failed to download Dashboard checksum.${NC}" >&2
+        return 1
+    fi
+
+    expected_checksum=$(awk '{print $1}' "$checksum_path")
+    actual_checksum=$(sha256sum "$archive_path" | awk '{print $1}')
+
+    if [ "$expected_checksum" != "$actual_checksum" ]; then
+        rm -f -- "$archive_path" "$checksum_path"
+        rm -rf -- "$staging"
+        echo -e "${RED}Error: Dashboard release checksum verification failed.${NC}" >&2
+        return 1
+    fi
+
+    echo "✓ Dashboard release checksum verified"
+
+    if ! tar -xzf "$archive_path" -C "$staging"; then
+        rm -f -- "$archive_path" "$checksum_path"
+        rm -rf -- "$staging"
+        echo -e "${RED}Error: Failed to extract Dashboard release.${NC}" >&2
+        return 1
+    fi
+
+    if [ ! -d "$staging/dashboard" ]; then
+        rm -f -- "$archive_path" "$checksum_path"
+        rm -rf -- "$staging"
+        echo -e "${RED}Error: Dashboard release does not contain dashboard/.${NC}" >&2
+        return 1
+    fi
+
+    rm -rf -- "$destination"
+    mv "$staging/dashboard" "$destination"
+
+    rm -f -- "$archive_path" "$checksum_path"
+    rm -rf -- "$staging"
+
+    echo "✓ Dashboard release ${tag} installed to $destination"
+}
+
 install_firmware_release() {
     local tag="$1"
     local destination="$2"
@@ -163,7 +236,6 @@ install_firmware_release() {
     mv "$staging" "$destination"
     echo "✓ Firmware release $tag installed to $destination"
 }
-
 
 install_component_archive() {
     local repository="$1"
@@ -455,7 +527,7 @@ UDP_DIR="$INSTALL_ROOT/streaming"
 
 echo -e "${GREEN}[2/8] Dashboard...${NC}"
 if _is_truthy "$INSTALL_DASHBOARD"; then
-    install_component_archive "$GITHUB_DASHBOARD_REPO" "$DASHBOARD_REF" "$DASHBOARD_DIR" "Dashboard"
+    install_dashboard_release "$DASHBOARD_REF" "$DASHBOARD_DIR"
 else
     echo -e "${YELLOW}Skipping Boondock Edge Dashboard.${NC}"
 fi
