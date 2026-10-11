@@ -64,7 +64,10 @@ jobs:
 
           sha256sum --check "$CHECKSUM"
 
-          if ! tar --list --gzip --file "$ARCHIVE" | grep -q '^dashboard/index.html$'; then
+          CONTENTS_FILE="$RUNNER_TEMP/dashboard-package-contents.txt"
+          tar --list --gzip --file "$ARCHIVE" > "$CONTENTS_FILE"
+
+          if ! grep -qx 'dashboard/index.html' "$CONTENTS_FILE"; then
             echo "Packaged archive does not contain dashboard/index.html." >&2
             exit 1
           fi
