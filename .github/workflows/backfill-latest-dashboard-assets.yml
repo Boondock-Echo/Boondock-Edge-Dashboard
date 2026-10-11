@@ -1,0 +1,93 @@
+name: Backfill latest Dashboard release assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    name: Package existing latest tag and upload assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out existing latest tag
+        uses: actions/checkout@v4
+        with:
+          ref: latest
+          fetch-depth: 0
+
+      - name: Verify latest tag contents
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f index.html ]]; then
+            echo "The latest tag does not contain a built Dashboard (index.html is missing)." >&2
+            exit 1
+          fi
+
+          if [[ ! -d static ]]; then
+            echo "The latest tag does not contain the Dashboard static/ directory." >&2
+            exit 1
+          fi
+
+      - name: Package existing latest Dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE_DIR="$RUNNER_TEMP/edge-dashboard-latest-package"
+          ARCHIVE="boondock-edge-dashboard-latest.tar.gz"
+          CHECKSUM="${ARCHIVE}.sha256"
+
+          rm -rf "$PACKAGE_DIR"
+          mkdir -p "$PACKAGE_DIR"
+
+          cp -a . "$PACKAGE_DIR/dashboard"
+          rm -rf "$PACKAGE_DIR/dashboard/.git"
+
+          tar             --create             --gzip             --file "$ARCHIVE"             --directory "$PACKAGE_DIR"             dashboard
+
+          sha256sum "$ARCHIVE" > "$CHECKSUM"
+
+          {
+            echo "ARCHIVE=$ARCHIVE"
+            echo "CHECKSUM=$CHECKSUM"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sha256sum --check "$CHECKSUM"
+
+          if ! tar --list --gzip --file "$ARCHIVE" | grep -q '^dashboard/index.html$'; then
+            echo "Packaged archive does not contain dashboard/index.html." >&2
+            exit 1
+          fi
+
+      - name: Upload assets to existing latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if ! gh release view latest >/dev/null 2>&1; then
+            echo "The latest GitHub Release does not exist." >&2
+            exit 1
+          fi
+
+          gh release upload latest             "$ARCHIVE"             "$CHECKSUM"             --clobber
+
+      - name: Show uploaded assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh release view latest             --json assets             --jq '.assets[].name'
