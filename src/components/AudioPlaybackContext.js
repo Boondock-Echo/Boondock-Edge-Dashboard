@@ -1,9 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { apiFetch } from '../utils/apiClient';
 
 const AudioPlaybackContext = createContext(null);
+const MAX_AUDIO_CACHE_BYTES = 100 * 1024 * 1024;
 
 export const AudioPlaybackProvider = ({ children }) => {
   const audioRef = useRef(null);
+
   const positionsRef = useRef(new Map());
   const callbacksRef = useRef({});
   const activeTrackRef = useRef(null);
@@ -12,6 +15,120 @@ export const AudioPlaybackProvider = ({ children }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(null);
+  const audioCacheRef = useRef(new Map());
+  const cacheGenerationRef = useRef(0);
+
+  // LRU Map: oldest entries come first. A lease prevents eviction while a
+  // component is using a blob URL (for example, the inline waveform/player).
+  const trimAudioCache = useCallback(() => {
+    const cache = audioCacheRef.current;
+    let bytes = 0;
+    for (const entry of cache.values()) bytes += entry.size || 0;
+    if (bytes <= MAX_AUDIO_CACHE_BYTES) return;
+
+    const mediaSrc = audioRef.current?.getAttribute('src');
+    for (const [key, entry] of cache) {
+      if (bytes <= MAX_AUDIO_CACHE_BYTES) break;
+      if (!entry.url || entry.leases > 0 || entry.url === mediaSrc ||
+          entry.url === activeTrackRef.current?.src) continue;
+      cache.delete(key);
+      URL.revokeObjectURL(entry.url);
+      bytes -= entry.size;
+    }
+    // Soft limit: if all entries are protected, memory may temporarily exceed 100 MB.
+  }, []);
+
+  const retainAudio = useCallback((src) => {
+    if (!src || src.startsWith('blob:')) return () => {};
+    const cache = audioCacheRef.current;
+    let entry = cache.get(src);
+    if (!entry) {
+      entry = { leases: 0, size: 0, url: null, promise: null };
+      cache.set(src, entry);
+    }
+    entry.leases += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      entry.leases = Math.max(0, entry.leases - 1);
+      trimAudioCache();
+    };
+  }, [trimAudioCache]);
+
+  const getAudio = useCallback(async (src) => {
+    if (!src) throw new Error('Audio URL is required');
+    // Edited audio is already local. Never own/revoke URLs created elsewhere.
+    if (src.startsWith('blob:')) {
+      const response = await fetch(src);
+      if (!response.ok) throw new Error('Failed to read local audio');
+      return { blob: await response.blob(), url: src };
+    }
+
+    const cache = audioCacheRef.current;
+    let entry = cache.get(src);
+    if (!entry) {
+      entry = { leases: 0, size: 0, url: null, promise: null };
+      cache.set(src, entry);
+    }
+    // Refresh the key's recency, including when awaiting an in-flight request.
+    cache.delete(src);
+    cache.set(src, entry);
+    if (entry.promise) return entry.promise;
+
+    const generation = cacheGenerationRef.current;
+    const pending = (async () => {
+      const response = await apiFetch(src);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error('Audio file is empty');
+      if (generation !== cacheGenerationRef.current) {
+        throw new Error('Audio cache cleared during download');
+      }
+      const url = URL.createObjectURL(blob);
+      entry.size = blob.size;
+      entry.url = url;
+      // Defer eviction until consumers awaiting the promise can attach the URL.
+      setTimeout(trimAudioCache, 0);
+      return { blob, url };
+    })();
+    entry.promise = pending;
+    try {
+      return await pending;
+    } catch (error) {
+      if (cache.get(src) === entry) cache.delete(src);
+      throw error;
+    }
+  }, [trimAudioCache]);
+
+  const clearAudioCache = useCallback(() => {
+    cacheGenerationRef.current += 1;
+    const audio = audioRef.current;
+    audio?.pause();
+    if (audio) { audio.removeAttribute('src'); audio.load(); }
+    activeTrackRef.current = null;
+    callbacksRef.current = {};
+    positionsRef.current.clear();
+    setActiveTrack(null);
+    setStatus('idle');
+    setCurrentTime(0);
+    setDuration(0);
+    for (const entry of audioCacheRef.current.values()) {
+      if (entry.url) URL.revokeObjectURL(entry.url);
+    }
+    audioCacheRef.current.clear();
+  }, []);
+
+  useEffect(() => () => {
+    // Unmount cleanup: revoke URLs including entries that are still leased.
+    cacheGenerationRef.current += 1;
+    for (const entry of audioCacheRef.current.values()) {
+      if (entry.url) URL.revokeObjectURL(entry.url);
+    }
+    audioCacheRef.current.clear();
+  }, []);
 
   if (audioRef.current === null && typeof Audio !== 'undefined') {
     audioRef.current = new Audio();
@@ -143,8 +260,35 @@ export const AudioPlaybackProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(() => ({
-    audioRef, activeTrack, status, currentTime, duration, error, claim, play, pause, stop, seek,
-  }), [activeTrack, status, currentTime, duration, error, claim, play, pause, stop, seek]);
+    audioRef,
+    activeTrack,
+    status,
+    currentTime,
+    duration,
+    error,
+    claim,
+    play,
+    pause,
+    stop,
+    seek,
+    getAudio,
+    retainAudio,
+    clearAudioCache,
+  }), [
+    activeTrack,
+    status,
+    currentTime,
+    duration,
+    error,
+    claim,
+    play,
+    pause,
+    stop,
+    seek,
+    getAudio,
+    retainAudio,
+    clearAudioCache,
+  ]);
 
   return <AudioPlaybackContext.Provider value={value}>{children}</AudioPlaybackContext.Provider>;
 };

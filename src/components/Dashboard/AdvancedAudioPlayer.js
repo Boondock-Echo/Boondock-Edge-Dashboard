@@ -52,7 +52,7 @@ const ProfessionalAudioEditor = ({
   // const messageId = queryParams.get("messageId");
 
   const urlMessageId = queryParams.get("messageId");
-  const { audioRef, activeTrack, status: audioStatus, claim: claimSharedAudio, stop: stopSharedAudio } = useAudioPlayback();
+  const { audioRef, activeTrack, status: audioStatus, claim: claimSharedAudio, stop: stopSharedAudio, getAudio, } = useAudioPlayback();
   const advancedOwnerId = `advanced:${urlMessageId || navigationMessage?.url || 'player'}`;
   const isAdvancedPlaying = activeTrack?.ownerId === advancedOwnerId && audioStatus === 'playing';
   const audioContextRef = useRef(null);
@@ -82,6 +82,7 @@ const ProfessionalAudioEditor = ({
   const navigate = useNavigate();
   // TO-DO Why do we need to variables?
   const [audioUrl, setAudioUrl] = useState(navigationMessage?.url || "");
+  const [cachedAudioUrl, setCachedAudioUrl] = useState('');
   const [initialAudioUrl, setInitialAudioUrl] = useState(navigationMessage?.url || "");
 
   const [recordingTimes] = useState(() => getRecordingTimes(
@@ -323,16 +324,16 @@ const formatActualTime = useCallback((timeOffset) => {
       setTranscriptionText(`WaveSurfer error: ${error}`);
     });
 
-    if (audioUrl) {
+    if (cachedAudioUrl) {
       // WaveSurfer v6 does not support the v7 `media` constructor option.
       // Loading the provider-owned element explicitly keeps WaveSurfer and the
       // global playback context attached to the same audio resource.
-      if (audioRef.current.getAttribute('src') !== audioUrl) {
-        audioRef.current.src = audioUrl;
+      if (audioRef.current.getAttribute('src') !== cachedAudioUrl) {
+        audioRef.current.src = cachedAudioUrl;
       }
       wavesurferRef.current.load(audioRef.current);
     }
-  }, [audioUrl, audioRef, waveformAccent, waveformColor]);
+  }, [cachedAudioUrl, audioRef, waveformAccent, waveformColor]);
 
   // Initialize AudioContext and Worker
   useEffect(() => {
@@ -472,22 +473,36 @@ const formatActualTime = useCallback((timeOffset) => {
     async (url) => {
       try {
         setIsLoading(true);
-        const response = await apiFetch(url, { mode: "cors" });
-        if (!response.ok) throw new Error("Failed to fetch audio");
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+
+        // Retrieve original audio from shared cache.
+        const { blob } = await getAudio(url);
+
+        const arrayBuffer = await blob.arrayBuffer();
+
+        const audioBuffer =
+          await audioContextRef.current.decodeAudioData(
+            arrayBuffer
+          );
+
         setOriginalAudioBuffer(audioBuffer);
         setProcessedAudioBuffer(audioBuffer);
+
         return audioBuffer;
+
       } catch (error) {
-        console.error("Error loading audio:", error);
-        setTranscriptionText(`Error: Failed to load audio - ${error.message}`);
+        console.error('Error loading audio:', error);
+
+        setTranscriptionText(
+          `Error: Failed to load audio - ${error.message}`
+        );
+
         return null;
+
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [getAudio]
   );
 
   // Serialize AudioBuffer for Web Worker
@@ -614,12 +629,8 @@ const handledownloadaudio = async () => {
       try {
         // TO-DO why are we calling audio for transription
         console.log('Fetching audio from:', audioUrl);
-        const response = await apiFetch( audioUrl, { mode: 'cors' });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
-        }
+        const { blob: audioBlob } = await getAudio(audioUrl);
 
-        const audioBlob = await response.blob();
         console.log('Audio blob fetched:', {
           size: audioBlob.size,
           type: audioBlob.type,
@@ -686,7 +697,7 @@ const handledownloadaudio = async () => {
         setTimeout(() => setProcessProgress(0), 1000);
       }
     }, 500),
-    [audioUrl, isProcessing, isLoading, formatTime]
+    [audioUrl, isProcessing, isLoading, formatTime, getAudio]
   );
 
   // Function to reload audio after revert
@@ -993,25 +1004,39 @@ const contentEditableRef = useRef(null);
 
   // Load audio and handle playback
   useEffect(() => {
-    if (!audioUrl) return;
+    if (!audioUrl) {
+      setCachedAudioUrl('');
+      return undefined;
+    }
 
-    const audio = audioRef.current;
-    audio.src = audioUrl;
-    audio.volume = volume;
+    let cancelled = false;
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      if (audioUrl === initialAudioUrl) {
-        loadAudioBuffer(audioUrl);
+    const loadAudio = async () => {
+      try {
+        const { url } = await getAudio(audioUrl);
+
+        if (cancelled) return;
+
+        setCachedAudioUrl(url);
+
+        if (audioUrl === initialAudioUrl) {
+          await loadAudioBuffer(audioUrl);
+        }
+
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error loading audio:', error);
+          setIsLoading(false);
+        }
       }
     };
 
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    loadAudio();
 
     return () => {
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      cancelled = true;
     };
-  }, [audioUrl, volume, initialAudioUrl, loadAudioBuffer, audioRef]);
+  }, [audioUrl, initialAudioUrl, getAudio, loadAudioBuffer]);
 
   const togglePlayPause = useCallback(() => {
     if (!wavesurferRef.current) return;
@@ -1022,10 +1047,13 @@ const contentEditableRef = useRef(null);
     if (audioRef.current && !audioRef.current.paused) {
       wavesurferRef.current.pause();
     } else {
-      claimSharedAudio({ ownerId: advancedOwnerId, src: audioUrl });
+      claimSharedAudio({
+        ownerId: advancedOwnerId,
+        src: cachedAudioUrl
+      });
       wavesurferRef.current.play();
     }
-  }, [advancedOwnerId, audioUrl, audioRef, claimSharedAudio]);
+  }, [advancedOwnerId, audioUrl, audioRef, claimSharedAudio, cachedAudioUrl]);
 
   const handleVolumeChange = useCallback((e) => {
     const newVolume = parseFloat(e.target.value);

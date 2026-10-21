@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
-import { apiFetch } from '../utils/apiClient';
 import { useAudioPlayback } from './AudioPlaybackContext';
 import Button from './ui/Button';
 import styles from './ui/AudioPlayer.module.css';
@@ -27,62 +26,128 @@ const InlineAudioPlayer = ({
   className = '',
   children,
 }) => {
-  const { audioRef, activeTrack, status, currentTime, duration, play, pause, stop, seek } = useAudioPlayback();
+  const { audioRef, activeTrack, status, currentTime, duration, play, pause, stop, seek, getAudio, retainAudio } = useAudioPlayback();
   const [waveform, setWaveform] = useState([]);
+  const [playbackSrc, setPlaybackSrc] = useState(null);
   const canvasRef = useRef(null);
   const isActive = activeTrack?.ownerId === ownerId;
   const isPlaying = isActive && status === 'playing';
   const playbackTime = isActive ? currentTime : 0;
   const playbackDuration = isActive ? duration : 0;
 
+  const callbacksRef = useRef({ onEnded, onError });
+  // Store callback updates without making the autoplay effect run again.
+  callbacksRef.current = { onEnded, onError };
+  const autoPlayedRef = useRef(null);
+
   useEffect(() => {
-    if (autoPlay && src) play({ ownerId, src, onEnded, onError });
-  }, [autoPlay, ownerId, src, onEnded, onError, play]);
+    if (!autoPlay || !playbackSrc) return;
+    const key = `${ownerId}:${playbackSrc}`;
+    if (autoPlayedRef.current === key) return;
+    autoPlayedRef.current = key;
+    play({
+      ownerId,
+      src: playbackSrc,
+      onEnded: () => callbacksRef.current.onEnded?.(),
+      onError: (error) => callbacksRef.current.onError?.(error),
+    });
+  }, [autoPlay, ownerId, playbackSrc, play]);
+
+  // Keep a lease on the source for the complete mounted player lifetime.
+  useEffect(() => retainAudio(src), [src, retainAudio]);
 
   useEffect(() => () => {
     if (stopOnUnmount) stop(ownerId);
   }, [ownerId, stop, stopOnUnmount]);
 
   useEffect(() => {
-    if (!showWaveform || !src) {
+    if (!src) {
       setWaveform([]);
+      setPlaybackSrc(null);
       return undefined;
     }
 
     let cancelled = false;
     let context;
-    const loadWaveform = async () => {
+
+    setPlaybackSrc(null);
+    setWaveform([]);
+
+    const loadAudio = async () => {
       try {
-        const response = await apiFetch(src);
-        const data = await response.arrayBuffer();
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        context = new AudioContext();
-        const buffer = await context.decodeAudioData(data);
-        const channel = buffer.getChannelData(0);
-        const sampleCount = 200;
-        const blockSize = Math.max(1, Math.floor(channel.length / sampleCount));
-        const samples = Array.from({ length: sampleCount }, (_, index) => {
-          const start = index * blockSize;
-          const end = Math.min(start + blockSize, channel.length);
-          let sum = 0;
-          for (let offset = start; offset < end; offset += 1) sum += Math.abs(channel[offset]);
-          return end > start ? sum / (end - start) : 0;
-        });
-        const peak = Math.max(...samples, 0);
-        if (!cancelled) setWaveform(samples.map((sample) => (peak ? sample / peak : 0)));
+        // Shared cache: no additional download if already loaded.
+        const { blob, url } = await getAudio(src);
+
+        if (cancelled) return;
+
+        if (showWaveform) {
+          const AudioContext =
+            window.AudioContext || window.webkitAudioContext;
+
+          context = new AudioContext();
+
+          const data = await blob.arrayBuffer();
+          const buffer = await context.decodeAudioData(data);
+
+          if (cancelled) return;
+
+          const channel = buffer.getChannelData(0);
+          const sampleCount = 200;
+
+          const blockSize = Math.max(
+            1,
+            Math.floor(channel.length / sampleCount)
+          );
+
+          const samples = Array.from(
+            { length: sampleCount },
+            (_, index) => {
+              const start = index * blockSize;
+              const end = Math.min(
+                start + blockSize,
+                channel.length
+              );
+
+              let sum = 0;
+
+              for (let offset = start; offset < end; offset += 1) {
+                sum += Math.abs(channel[offset]);
+              }
+
+              return end > start
+                ? sum / (end - start)
+                : 0;
+            }
+          );
+
+          const peak = Math.max(...samples, 0);
+
+          setWaveform(
+            samples.map(sample =>
+              peak ? sample / peak : 0
+            )
+          );
+        }
+
+        // Playback now uses the cached blob URL.
+        setPlaybackSrc(url);
+
       } catch (error) {
         if (!cancelled) {
+          setPlaybackSrc(null);
           setWaveform([]);
-          onError?.(error);
+          callbacksRef.current.onError?.(error);
         }
       }
     };
-    loadWaveform();
+
+    loadAudio();
+
     return () => {
       cancelled = true;
       context?.close().catch(() => {});
     };
-  }, [onError, showWaveform, src]);
+  }, [src, showWaveform, getAudio]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -110,7 +175,17 @@ const InlineAudioPlayer = ({
     return () => window.removeEventListener('resize', draw);
   }, [playbackDuration, playbackTime, waveform]);
 
-  const start = () => play({ ownerId, src, onEnded, onError });
+  const start = () => {
+    if (!playbackSrc) return;
+
+    return play({
+      ownerId,
+      src: playbackSrc,
+      onEnded: () => callbacksRef.current.onEnded?.(),
+      onError: (error) => callbacksRef.current.onError?.(error),
+    });
+  };
+  
   const toggle = () => (isPlaying ? pause() : start());
   const skip = (seconds) => seek(playbackTime + seconds);
   const seekFromPointer = (event) => {

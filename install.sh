@@ -12,12 +12,42 @@ NC='\033[0m'
 SOURCE_DIR=$(pwd)
 INSTALL_CONF="$SOURCE_DIR/install.conf"
 
+# Preserve root values supplied by the calling environment before loading
+# install.conf. Environment values take precedence over install.conf values.
+ENV_INSTALL_ROOT="${INSTALL_ROOT:-}"
+ENV_BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-}"
+
+# Clear only the root variables while loading install.conf so environment and
+# configuration-file values remain distinguishable.
+unset INSTALL_ROOT BOONDOCK_DATA_ROOT
+
 INSTALL_CHANNEL="latest"
 if [ -f "$INSTALL_CONF" ]; then
     echo "Loading installation configuration from $INSTALL_CONF"
     set -a
     source "$INSTALL_CONF"
     set +a
+fi
+
+CONF_INSTALL_ROOT="${INSTALL_ROOT:-}"
+CONF_BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-}"
+unset INSTALL_ROOT BOONDOCK_DATA_ROOT
+
+# Root precedence is resolved independently so code and persistent data may be
+# stored in different locations:
+#   1. calling environment
+#   2. install.conf
+#   3. interactive prompt/default
+if [ -n "$ENV_INSTALL_ROOT" ]; then
+    INSTALL_ROOT="$ENV_INSTALL_ROOT"
+elif [ -n "$CONF_INSTALL_ROOT" ]; then
+    INSTALL_ROOT="$CONF_INSTALL_ROOT"
+fi
+
+if [ -n "$ENV_BOONDOCK_DATA_ROOT" ]; then
+    BOONDOCK_DATA_ROOT="$ENV_BOONDOCK_DATA_ROOT"
+elif [ -n "$CONF_BOONDOCK_DATA_ROOT" ]; then
+    BOONDOCK_DATA_ROOT="$CONF_BOONDOCK_DATA_ROOT"
 fi
 
 case "${1:-}" in
@@ -142,6 +172,7 @@ download_github_archive() {
         "$output"
 }
 
+
 install_dashboard_release() {
     local tag="$1"
     local destination="$2"
@@ -237,6 +268,7 @@ install_firmware_release() {
     echo "✓ Firmware release $tag installed to $destination"
 }
 
+
 install_component_archive() {
     local repository="$1"
     local ref="$2"
@@ -278,23 +310,30 @@ fi
 
 echo -e "${GREEN}Installation configuration${NC}"
 prompt_if_unset INSTALL_ROOT "Installation root directory" "/opt/boondock/edge"
-if [ -e "$INSTALL_ROOT" ]; then
+prompt_if_unset BOONDOCK_DATA_ROOT "Data root directory" "$INSTALL_ROOT"
+export BOONDOCK_DATA_ROOT
+
+# An existing code root or an existing data-root db directory means this may be
+# an upgrade. This is especially important when BOONDOCK_DATA_ROOT points to a
+# persistent location separate from INSTALL_ROOT.
+if [ -e "$INSTALL_ROOT" ] || [ -d "$BOONDOCK_DATA_ROOT/db" ]; then
     prompt_if_unset INSTALL_MODE "Do you want to upgrade or do an install?" "upgrade"
-    case "${INSTALL_MODE,,}" in
-        upgrade)
-            INSTALL_MODE="upgrade"
-            ;;
-        install)
-            INSTALL_MODE="install"
-            ;;
-        *)
-            echo -e "${RED}Error: INSTALL_MODE must be upgrade or install.${NC}" >&2
-            exit 1
-            ;;
-    esac
 else
     INSTALL_MODE="install"
 fi
+
+case "${INSTALL_MODE,,}" in
+    upgrade)
+        INSTALL_MODE="upgrade"
+        ;;
+    install)
+        INSTALL_MODE="install"
+        ;;
+    *)
+        echo -e "${RED}Error: INSTALL_MODE must be upgrade or install.${NC}" >&2
+        exit 1
+        ;;
+esac
 prompt_if_unset INSTALL_USER "Linux user that should own and run Boondock Edge" "boondock"
 prompt_if_unset INSTALL_DASHBOARD "Install Boondock Edge Dashboard? (yes/no)" "yes"
 prompt_if_unset INSTALL_API "Install Boondock Edge API? (yes/no)" "yes"
@@ -480,13 +519,27 @@ else
     echo "✓ API service is not installed"
 fi
 
-echo -e "${GREEN}[1/8] Creating installation directory...${NC}"
-if [ "$INSTALL_MODE" = "install" ] && [ -e "$INSTALL_ROOT" ]; then
-    echo "Removing existing installation directory: $INSTALL_ROOT"
-    rm -rf -- "$INSTALL_ROOT"
+echo -e "${GREEN}[1/8] Creating installation and data directories...${NC}"
+if [ "$INSTALL_MODE" = "install" ]; then
+    if [ "$INSTALL_ROOT" = "$BOONDOCK_DATA_ROOT" ]; then
+        if [ -e "$INSTALL_ROOT" ]; then
+            echo "Removing existing installation/data directory: $INSTALL_ROOT"
+            rm -rf -- "$INSTALL_ROOT"
+        fi
+    else
+        if [ -e "$INSTALL_ROOT" ]; then
+            echo "Removing existing installation directory: $INSTALL_ROOT"
+            rm -rf -- "$INSTALL_ROOT"
+        fi
+        if [ -e "$BOONDOCK_DATA_ROOT" ]; then
+            echo "Removing existing data directory: $BOONDOCK_DATA_ROOT"
+            rm -rf -- "$BOONDOCK_DATA_ROOT"
+        fi
+    fi
 fi
-mkdir -p "$INSTALL_ROOT"
-echo "✓ Directory created: $INSTALL_ROOT"
+mkdir -p "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
+echo "✓ Installation directory ready: $INSTALL_ROOT"
+echo "✓ Data directory ready: $BOONDOCK_DATA_ROOT"
 
 if ! id "$INSTALL_USER" &>/dev/null; then
     echo -e "${YELLOW}User '$INSTALL_USER' not found. Creating user...${NC}"
@@ -547,22 +600,22 @@ fi
 #fi
 
 echo -e "${GREEN}[5/8] Creating application directories...${NC}"
-mkdir -p "$INSTALL_ROOT/db"
-mkdir -p "$INSTALL_ROOT/db/reports"
-mkdir -p "$INSTALL_ROOT/db/recorder_configs"
-mkdir -p "$INSTALL_ROOT/device_settings"
-mkdir -p "$INSTALL_ROOT/logs"
-mkdir -p "$INSTALL_ROOT/recordings"
-mkdir -p "$INSTALL_ROOT/uploads"
-mkdir -p "$INSTALL_ROOT/firmware"
+mkdir -p "$BOONDOCK_DATA_ROOT/db"
+mkdir -p "$BOONDOCK_DATA_ROOT/db/reports"
+mkdir -p "$BOONDOCK_DATA_ROOT/db/recorder_configs"
+mkdir -p "$BOONDOCK_DATA_ROOT/device_settings"
+mkdir -p "$BOONDOCK_DATA_ROOT/logs"
+mkdir -p "$BOONDOCK_DATA_ROOT/recordings"
+mkdir -p "$BOONDOCK_DATA_ROOT/uploads"
+mkdir -p "$BOONDOCK_DATA_ROOT/firmware"
 echo "✓ Directories created"
 
 echo -e "${GREEN}[6/8] Installing Echo and Tango firmware...${NC}"
-install_firmware_release "latest-echo" "$INSTALL_ROOT/firmware/latest_echo"
+install_firmware_release "latest-echo" "$BOONDOCK_DATA_ROOT/firmware/latest_echo"
 ECHO_FIRMWARE_CREATED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-install_firmware_release "latest-tango" "$INSTALL_ROOT/firmware/latest_tango"
+install_firmware_release "latest-tango" "$BOONDOCK_DATA_ROOT/firmware/latest_tango"
 TANGO_FIRMWARE_CREATED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-cat > "$INSTALL_ROOT/firmware/firmware.json" <<EOF
+cat > "$BOONDOCK_DATA_ROOT/firmware/firmware.json" <<EOF
 {
   "latest_echo": {
     "name": "Latest Echo",
@@ -578,7 +631,7 @@ cat > "$INSTALL_ROOT/firmware/firmware.json" <<EOF
   }
 }
 EOF
-echo "✓ Firmware catalog written to $INSTALL_ROOT/firmware/firmware.json"
+echo "✓ Firmware catalog written to $BOONDOCK_DATA_ROOT/firmware/firmware.json"
 
 echo -e "${GREEN}[7/8] Python virtual environment...${NC}"
 if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
@@ -658,6 +711,7 @@ User=$INSTALL_USER
 SupplementaryGroups=dialout
 WorkingDirectory=$INSTALL_ROOT/api
 Environment="PATH=$INSTALL_ROOT/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT"
 Environment="FLASK_PORT=4000"
 ExecStart=$INSTALL_ROOT/venv/bin/python $INSTALL_ROOT/api/run.py
 StandardOutput=journal
@@ -700,6 +754,10 @@ fi
 echo -e "${GREEN}Setting final ownership and permissions for $INSTALL_USER:$INSTALL_USER...${NC}"
 chown -R "$INSTALL_USER:$INSTALL_USER" "$INSTALL_ROOT"
 chmod -R 755 "$INSTALL_ROOT"
+if [ "$BOONDOCK_DATA_ROOT" != "$INSTALL_ROOT" ]; then
+    chown -R "$INSTALL_USER:$INSTALL_USER" "$BOONDOCK_DATA_ROOT"
+    chmod -R 755 "$BOONDOCK_DATA_ROOT"
+fi
 # if _is_truthy "$INSTALL_API" && [ -f "$SETUP_FILE" ]; then
 #     chmod 600 "$SETUP_FILE"
 # fi
@@ -709,11 +767,12 @@ if _is_truthy "$INSTALL_API"; then
     if [ "$INSTALL_MODE" = "upgrade" ]; then
         echo -e "${GREEN}Updating application data...${NC}"
         runuser -u "$INSTALL_USER" -- \
+            env "BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT" \
             "$INSTALL_ROOT/venv/bin/python" \
             "$API_DIR/manage.py" upgrade
         echo "✓ Application code updated"
     else
-        SETUP_FILE="$INSTALL_ROOT/db/setup.json"
+        SETUP_FILE="$BOONDOCK_DATA_ROOT/db/setup.json"
         echo -e "${GREEN}Writing setup configuration...${NC}"
         SELECTED_DEVICES="[]"
         if _is_truthy "$CONFIGURE_RECORDERS"; then
@@ -741,6 +800,7 @@ EOF
 
         echo -e "${GREEN}Initializing application data...${NC}"
         runuser -u "$INSTALL_USER" -- \
+            env "BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT" \
             "$INSTALL_ROOT/venv/bin/python" \
             "$API_DIR/manage.py" setup --config "$SETUP_FILE"
         rm -f -- "$SETUP_FILE"
@@ -808,6 +868,7 @@ echo -e "${GREEN}Installation Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Installation directory: $INSTALL_ROOT"
+echo "Data directory: $BOONDOCK_DATA_ROOT"
 
 if _is_truthy "$INSTALL_DASHBOARD"; then
     echo "Dashboard: installed in $DASHBOARD_DIR"
