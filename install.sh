@@ -172,7 +172,6 @@ download_github_archive() {
         "$output"
 }
 
-
 install_dashboard_release() {
     local tag="$1"
     local destination="$2"
@@ -267,7 +266,6 @@ install_firmware_release() {
     mv "$staging" "$destination"
     echo "✓ Firmware release $tag installed to $destination"
 }
-
 
 install_component_archive() {
     local repository="$1"
