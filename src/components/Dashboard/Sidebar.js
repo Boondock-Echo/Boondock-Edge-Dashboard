@@ -57,6 +57,7 @@ const Sidebar = () => {
       setIsSettingsOpen(false);
     } catch (error) {
       console.error("Error updating channel:", error);
+      throw error;
     } finally {
       setIsSaving(false);
     }

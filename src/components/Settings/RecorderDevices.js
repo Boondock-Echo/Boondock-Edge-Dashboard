@@ -67,6 +67,8 @@ const RecorderDevices = ({ enabled }) => {
   const firmwareUploadDialogRef = useRef(null);
   const flashDialogRef = useRef(null);
   const firmwareEditDialogRef = useRef(null);
+  const serialLogRef = useRef(null);
+  const followSerialLogRef = useRef(true);
 
   const setDeviceBusyState = useCallback((port, action) => {
     setDeviceBusy((prev) => ({ ...prev, [port]: action }));
@@ -1041,6 +1043,23 @@ const RecorderDevices = ({ enabled }) => {
     if (!firmwareEditModal.open && dialog.open) dialog.close();
   }, [firmwareEditModal.open]);
 
+  useEffect(() => {
+    const log = serialLogRef.current;
+
+    if (log && followSerialLogRef.current) {
+      log.scrollTop = log.scrollHeight;
+    }
+  }, [monitorMessages, selectedPorts]);
+
+  const handleSerialLogScroll = () => {
+    const log = serialLogRef.current;
+    if (!log) return;
+
+    const distanceFromBottom =
+      log.scrollHeight - log.scrollTop - log.clientHeight;
+
+    followSerialLogRef.current = distanceFromBottom < 30;
+  };
 
   return (
     <div className={`${cardStyles.card} ${cardStyles.compact}`}>
@@ -1209,27 +1228,44 @@ const RecorderDevices = ({ enabled }) => {
           </div>
           
           {/* Messages Display - Terminal Style */}
-          <div className={tableStyles.scroll}>
+          <div
+            ref={serialLogRef}
+            className={tableStyles.serialLog}
+            onScroll={handleSerialLogScroll}
+            role="log"
+            aria-label="Device serial messages"
+          >
             {monitorMessages
-              .filter(msg => selectedPorts.length === 0 || selectedPorts.includes(msg.port))
-              .slice()
-              .reverse()
-              .slice(0, 5)  // Show only latest 5 messages
+              .filter(msg =>
+                selectedPorts.length === 0 ||
+                selectedPorts.includes(msg.port)
+              )
+              .slice(-100)
               .map((msg, idx) => (
                 <div
                   key={`${msg.port}-${msg.timestamp}-${idx}`}
-                  
+                  className={tableStyles.serialLogEntry}
                 >
-                  <span className="pill pillAccent">{msg.port}</span>
-                  <span className="mutedText smallText">::</span>
-                  <span className="pill pillWarning">{msg.local_time}</span>
-                  <span className="mutedText smallText">::</span>
-                  <span className="pill pillSuccess">{msg.message}</span>
+                  <span className={tableStyles.serialLogPort}>
+                    {msg.port}
+                  </span>
+
+                  <span className={tableStyles.serialLogTime}>
+                    {msg.local_time}
+                  </span>
+
+                  <span className={tableStyles.serialLogMessage}>
+                    {msg.message}
+                  </span>
                 </div>
               ))}
-            {monitorMessages.filter(msg => selectedPorts.length === 0 || selectedPorts.includes(msg.port)).length === 0 && (
+
+            {monitorMessages.filter(msg =>
+              selectedPorts.length === 0 ||
+              selectedPorts.includes(msg.port)
+            ).length === 0 && (
               <div className="centeredContent mutedText smallText">
-                No messages to display. {selectedPorts.length === 0 ? 'Select ports to filter messages.' : 'Waiting for messages...'}
+                Waiting for messages...
               </div>
             )}
           </div>
