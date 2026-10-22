@@ -252,7 +252,7 @@ a {
 .pageHeader { margin-bottom: var(--space-8); }
 .pageTitle { margin: 0; color: var(--ui-text); font-family: var(--font-heading); font-size: 1.875rem; font-weight: 800; letter-spacing: -0.025em; }
 .pageSubtitle { margin: var(--space-1) 0 0; color: var(--ui-muted); font-size: 0.875rem; }
-.settingsWidth { width: min(100%, 64rem); margin-inline: auto; }
+.settingsWidth { width: min(100%, 80rem); margin-inline: auto; }
 .screenCenter { display: grid; min-height: 100dvh; place-items: center; padding: var(--space-4); }
 .scrollY { min-height: 0; overflow-y: auto; }
 

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import api from '../../utils/apiClient';
 import Button from '../ui/Button';
 import InlineAudioPlayer from '../InlineAudioPlayer';
 import { useAudioPlayback } from '../AudioPlaybackContext';
@@ -8,7 +7,6 @@ import { useInboxMessages, useInboxChannels, useInboxLive, useInboxPreferences }
 import styles from '../ui/LiveCommunications.module.css';
 import { parseUtcTimestamp } from '../../utils/dateTime';
 
-const POPUP_TRANSCRIPTION_POLL_MS = 2000;
 const LIVE_POPUP_QUEUE_LIMIT = 10;
 
 const transcriptionPending = (messageText) => {
@@ -31,7 +29,7 @@ const cursorGreater = (a, b) => {
 };
 
 const InboxLiveNotifications = () => {
-  const { messageList, patchMessage } = useInboxMessages();
+  const { messageList } = useInboxMessages();
   const { channels } = useInboxChannels();
   const { isVolumeOn } = useInboxLive();
   const { timeFormat } = useInboxPreferences();
@@ -126,28 +124,18 @@ const InboxLiveNotifications = () => {
   }, [isVolumeOn, popup, queue]);
 
   useEffect(() => {
-    if (!popup?.id || !transcriptionPending(popup.message)) return undefined;
-    const recordingId = popup.id;
+    if (!popup?.id || !transcriptionPending(popup.message)) return;
 
-    const pollTranscription = async () => {
-      try {
-        const { data } = await api.get(`/transcribe_save/${recordingId}`, { timeout: 4000 });
-        const transcription = data?.transcription;
-        if (!transcription || transcription === 'No transcription available') return;
+    const updated = messageList.find(
+      (message) => String(message.id) === String(popup.id)
+    );
 
-        setPopup((previous) => previous?.id === recordingId
-          ? { ...previous, message: transcription }
-          : previous);
-        patchMessage(recordingId, { transcription, message: transcription, status: 'new' });
-      } catch {
-        // Transcription is eventually consistent; retry on the next interval.
-      }
-    };
+    if (!updated || transcriptionPending(updated.message)) return;
 
-    const timer = window.setInterval(pollTranscription, POPUP_TRANSCRIPTION_POLL_MS);
-    void pollTranscription();
-    return () => window.clearInterval(timer);
-  }, [patchMessage, popup?.id, popup?.message]);
+    setPopup((previous) => previous && String(previous.id) === String(updated.id)
+      ? { ...previous, message: updated.message }
+      : previous);
+  }, [messageList, popup?.id, popup?.message]);
 
   if (!popup) return null;
 

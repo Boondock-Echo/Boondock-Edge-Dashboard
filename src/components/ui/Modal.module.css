@@ -78,3 +78,41 @@
 .dialog .actionsBetween {
   padding: var(--space-4);
 }
+
+/* Modal with a fixed header/footer and scrollable content */
+.scrollLayout[open] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 2rem);
+}
+
+.scrollLayout > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.scrollLayout > form > .body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.scrollLayout > form > .actionsBetween {
+  flex-shrink: 0;
+}
+
+.errorMessage {
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

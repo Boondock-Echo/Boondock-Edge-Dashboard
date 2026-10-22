@@ -19,7 +19,12 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
   });
   const [initialSettings, setInitialSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const dialogRef = useRef(null);
+
+  useEffect(() => {
+    setSaveError(null);
+  }, [settings]);
 
   useEffect(() => {
     if (channel && channel.id) {
@@ -75,7 +80,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
       };
       fetchChannelData();
     }
-  }, [channel]);
+  }, [channel?.id]);
 
 
   useEffect(() => {
@@ -197,55 +202,6 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
     return changesList.join('\n');
   };
 
-  // Map a channel setting key to the firmware CLI parameter name (see CLI reference / DEVICE_SERIAL.md).
-  const SERIAL_PARAM_MAP = {
-    threshold: 'audio.audioThreshold',
-    min_rec: 'audio.minrecordingms',
-    pre_record_ms: 'audio.prerecordms',
-    discard_small_enabled: 'audio.discardSmallFilesEnabled',
-    silence: 'audio.silencethresholdms',
-    max_rec: 'audio.maxrecordingms',
-    audio_gain: 'audio.codecgain',
-    discard_small_min_ms: 'audio.discardSmallFilesMinMs'
-  };
-
-  // Build "SET <param> <value>" lines for changed fields, followed by a SAVE.
-  const buildSerialCommands = (changedSettings) => {
-    const commands = Object.keys(changedSettings)
-      .map((key) => {
-        const param = SERIAL_PARAM_MAP[key];
-        if (!param) return null;
-        let value = settings[key];
-        if (key === 'discard_small_enabled') {
-          value = settings[key] ? 'true' : 'false';
-        }
-        return `SET ${param} ${value}`;
-      })
-      .filter(Boolean);
-
-    if (commands.length > 0) {
-      commands.push('SAVE');
-    }
-    return commands;
-  };
-
-  // Push changed audio settings to the matching recorder over the serial monitor.
-  // Best-effort: failures here must not block the channel save.
-  const pushSettingsToDevice = async (changedSettings) => {
-    if (!channel?.mac) return;
-    const commands = buildSerialCommands(changedSettings);
-    if (commands.length === 0) return;
-    try {
-      await apiFetch('/recorders/monitor/send-by-mac', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mac: channel.mac, commands })
-      });
-    } catch (error) {
-      console.error('Failed to push settings to recorder over serial:', error);
-    }
-  };
-
   const handleSetDefaults = () => {
     setSettings({
       threshold: "50",
@@ -265,12 +221,6 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
     try {
       const changedSettings = getChangedSettings();
       await onSave(channel.id, { ...channel, ...settings });
-
-      // Push the changed audio settings to the matching recorder over the
-      // Serial Messages monitor (SET ... then SAVE). Best-effort, non-blocking.
-      if (Object.keys(changedSettings).length > 0) {
-        await pushSettingsToDevice(changedSettings);
-      }
 
       if (Object.keys(changedSettings).length > 0) {
         toast.success(
@@ -297,15 +247,13 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
 
       onClose();
     } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error(`Failed to update Channel ${channel.name}`, {
-        position: "top-right",
-        autoClose: 4000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        'Unknown error';
+
+      setSaveError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -363,7 +311,7 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
   return (
     <dialog
       ref={dialogRef}
-      className={`${modalStyles.dialog} ${modalStyles.wide}`}
+      className={`${modalStyles.dialog} ${modalStyles.wide} ${modalStyles.scrollLayout}`}
       aria-labelledby="channel-settings-title"
       aria-describedby="channel-settings-description"
       onCancel={handleDialogCancel}
@@ -389,6 +337,11 @@ const ChannelSettingsModal = ({ isOpen, onClose, channel, onSave }) => {
         </div>
 
         <form onSubmit={handleSubmit} className={formStyles.form}>
+          {saveError && (
+            <div className={modalStyles.errorMessage} role="alert">
+              <strong>Unable to save settings:</strong> {saveError}
+            </div>
+          )}
           <div className={modalStyles.body}>
             <div className="gridTwo">
               {Object.entries(settings).map(([key, value]) => {
