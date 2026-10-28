@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import InlineAudioPlayer from '../InlineAudioPlayer';
 import { useAudioPlayback } from '../AudioPlaybackContext';
 import { useInboxMessages, useInboxChannels, useInboxLive, useInboxPreferences } from '../InboxContext';
+import modalStyles from '../ui/Modal.module.css';
 import styles from '../ui/LiveCommunications.module.css';
 import { parseUtcTimestamp } from '../../utils/dateTime';
 
@@ -140,25 +141,25 @@ const InboxLiveNotifications = () => {
   if (!popup) return null;
 
   return (
-    <div className={styles.popupOverlay} onClick={closePopup}>
-      <div className={styles.popupCard} onClick={(event) => event.stopPropagation()}>
-        <Button
-          onClick={closePopup}
-          variant="ghost"
-          size="icon"
-          aria-label="Close new message"
-          style={{ position: 'absolute', top: 'var(--space-4)', right: 'var(--space-4)' }}
-        >
-          <X size={24} aria-hidden="true" />
-        </Button>
-
-        <div className={styles.popupBody}>
+    <div className={`${modalStyles.overlay} ${styles.popupOverlay}`} onClick={closePopup}>
+      <div className={`${modalStyles.panel} ${modalStyles.wide}`} onClick={(event) => event.stopPropagation()}>
+        <div className={modalStyles.header}>
           <div className={styles.popupMeta}>
             <strong>{popup.channel}</strong>
             <span> • </span>
             <span>{popup.time}</span>
           </div>
+          <Button
+            onClick={closePopup}
+            variant="ghost"
+            size="icon"
+            aria-label="Close new message"
+          >
+            <X size={24} aria-hidden="true" />
+          </Button>
+        </div>
 
+        <div className={modalStyles.body}>
           <div className={styles.popupMessage}>{popup.message}</div>
 
           {popup.url && (

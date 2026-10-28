@@ -313,13 +313,19 @@ export const InboxProvider = ({ children }) => {
   const showCar = preferences.show_car === true;
   const showChannel = preferences.show_channel !== false;
   const showPerson = preferences.show_person === true;
-  const showHallucinations = preferences.show_hallucinations !== false;
+  const isAdmin = principal?.role === "admin";
+  const showDuplicateRecordings = isAdmin && preferences.show_duplicate_recordings === true;
+  const showHallucinations = isAdmin && preferences.show_hallucinations === true;
 
   const updatePreference = useCallback((key, value) => {
-    void updatePreferences("inbox", { [key]: value }).catch((error) => {
+    if (!isAdmin && ["show_duplicate_recordings", "show_hallucinations"].includes(key)) {
+      return Promise.resolve(false);
+    }
+    return updatePreferences("inbox", { [key]: value }).then(() => true).catch((error) => {
       console.error("Failed to save inbox preference:", error);
+      return false;
     });
-  }, [updatePreferences]);
+  }, [isAdmin, updatePreferences]);
 
   const updateNotifications = useCallback((data) => {
     setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
@@ -714,10 +720,16 @@ export const InboxProvider = ({ children }) => {
     }
   }, [checkRecordingChannel, inboxViewMode, olderLoading]);
 
-  const mergePollRows = useCallback((rows, meta) => {
+  const mergePollRows = useCallback((rows, meta, removedIds = []) => {
     const total = Number(meta?.total);
+    const removed = new Set(removedIds.map(String));
+    if (removed.size) {
+      setSelectedMessages((previous) => new Set(
+        [...previous].filter((id) => !removed.has(String(id))),
+      ));
+    }
 
-    if (!rows.length) {
+    if (!rows.length && !removed.size) {
       if (Number.isFinite(total)) {
         setMessages((previous) => total === previous.total ? previous : { ...previous, total });
       }
@@ -727,11 +739,14 @@ export const InboxProvider = ({ children }) => {
     setMessages((previous) => {
       const byId = { ...previous.byId };
       const newIds = [];
+      for (const id of removed) delete byId[id];
+      const retainedIds = previous.orderedIds.filter((id) => !removed.has(id));
 
       for (const row of rows) {
         checkRecordingChannel(row);
         const incoming = toUiMessage(row);
         const id = String(incoming.id);
+        if (removed.has(id)) continue;
         const existing = byId[id];
 
         if (existing) {
@@ -746,8 +761,8 @@ export const InboxProvider = ({ children }) => {
       }
 
       let orderedIds = filtersRef.current.sortDirection === "newest_first"
-        ? [...newIds.reverse(), ...previous.orderedIds]
-        : [...previous.orderedIds, ...newIds];
+        ? [...newIds.reverse(), ...retainedIds]
+        : [...retainedIds, ...newIds];
 
       if (orderedIds.length > RETENTION_LIMIT) {
         let evicted;
@@ -798,9 +813,12 @@ export const InboxProvider = ({ children }) => {
           signal: controller.signal,
         });
         const rows = Array.isArray(response.data?.messages) ? response.data.messages : [];
+        const removedIds = Array.isArray(response.data?.removed_ids) ? response.data.removed_ids : [];
         if (offset === 0) updateNotifications(response.data);
-        mergePollRows(rows, response.data?.meta || {});
+        mergePollRows(rows, response.data?.meta || {}, removedIds);
         newestBoundary = latestUpdatedAt(rows, newestBoundary);
+        const pageBoundary = Number(response.data?.meta?.latest_updated_at);
+        if (Number.isFinite(pageBoundary)) newestBoundary = Math.max(newestBoundary, pageBoundary);
 
         const nextOffset = response.data?.meta?.next_offset;
         if (response.data?.meta?.has_more !== true || nextOffset == null) break;
@@ -1000,6 +1018,7 @@ export const InboxProvider = ({ children }) => {
     showCar,
     showChannel,
     showPerson,
+    showDuplicateRecordings,
     showHallucinations,
     updatePreference,
     inboxViewMode,
@@ -1026,6 +1045,7 @@ export const InboxProvider = ({ children }) => {
     showCar,
     showChannel,
     showFullTimestamps,
+    showDuplicateRecordings,
     showHallucinations,
     showPerson,
     showTime,

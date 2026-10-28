@@ -7,6 +7,8 @@ import ChannelsAndStationsSection from './ChannelsAndStationsSection';
 import UserManagementSection from './UserManagementSection';
 import SystemSection from './SystemSection';
 import F1TerminalLogs from '../Logs/F1TerminalLogs';
+import ReleasePage from '../ReleasePage';
+import VersionPage from '../Version/VersionPage';
 import { useAuth } from '../AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import CommandCenterShell from '../layout/CommandCenterShell';
@@ -25,6 +27,8 @@ const SETTINGS_NAV_ICONS = {
   system: 'dns',
   'transcription-engine': 'record_voice_over',
   Logs: 'history_edu',
+  release: 'description',
+  version: 'system_update',
 };
 
 const SETTINGS_SECTIONS = [
@@ -35,6 +39,8 @@ const SETTINGS_SECTIONS = [
   { id: 'system', label: 'System' },
   { id: 'transcription-engine', label: 'Transcriptions' },
   { id: 'Logs', label: 'Logs' },
+  // { id: 'release', label: 'Release Notes' },
+  // { id: 'version', label: 'Software Update', adminOnly: true },
 ];
 
 const LEGACY_TAB_MAP = {
@@ -56,7 +62,10 @@ const SettingsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const canAccessSettings = user?.role === 'admin' || hasPermission('access_settings');
-  const sidebarItems = useMemo(() => SETTINGS_SECTIONS, []);
+  const sidebarItems = useMemo(
+    () => SETTINGS_SECTIONS.filter((item) => !item.adminOnly || user?.role === 'admin'),
+    [user?.role],
+  );
 
   const requestedTab = searchParams.get('tab');
   const normalizedTab = LEGACY_TAB_MAP[requestedTab] || requestedTab;
@@ -169,6 +178,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={() => navigateTo(item.id)}
                     className={`${navStyles.verticalItem} ${active ? navStyles.verticalActive : ''}`}
+                    aria-current={active ? 'page' : undefined}
                   >
                     <span className={`material-symbols-outlined ${navStyles.verticalIcon}`}>
                       {SETTINGS_NAV_ICONS[item.id] || 'chevron_right'}
@@ -191,6 +201,8 @@ const SettingsPage = () => {
         {activeSection === 'user-management' ? <UserManagementSection /> : null}
         {activeSection === 'system' ? <SystemSection /> : null}
         {activeSection === 'Logs' ? <F1TerminalLogs syncLogsTabToUrl /> : null}
+        {activeSection === 'release' ? <ReleasePage embedded /> : null}
+        {activeSection === 'version' ? <VersionPage embedded /> : null}
       </div>
     </CommandCenterShell>
   );

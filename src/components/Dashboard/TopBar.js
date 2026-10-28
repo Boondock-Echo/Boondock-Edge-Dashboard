@@ -3,10 +3,11 @@ import { X, Clock, Tag, Radio, User, CheckCheck, Moon, Sun, LayoutList } from 'l
 import SystemClock from './SystemClock';
 import Button from '../ui/Button';
 import formStyles from '../ui/Form.module.css';
+import modalStyles from '../ui/Modal.module.css';
 import styles from '../ui/TopBar.module.css';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
-import { useInboxFilters, useInboxPreferences, useInboxLayout, useInboxSelection, useInboxLive } from '../InboxContext';
+import { useInboxFilters, useInboxPreferences, useInboxLayout, useInboxSelection, useInboxLive, useInboxMessages } from '../InboxContext';
 import {
   TIME_FILTERS,
   INBOX_TIME_RANGE_DROPDOWN_ORDER,
@@ -23,6 +24,8 @@ const TopBar = () => {
     showCar,
     showChannel,
     showPerson,
+    showDuplicateRecordings,
+    showHallucinations,
     showFullTimestamps,
     updatePreference,
     timeFormat,
@@ -32,6 +35,12 @@ const TopBar = () => {
   const { isMobile } = useInboxLayout();
   const { isMultiSelectMode, toggleMultiSelectMode } = useInboxSelection();
   const { isVolumeOn, setIsVolumeOn } = useInboxLive();
+  const { refresh } = useInboxMessages();
+  const isAdmin = principal?.role === 'admin';
+
+  const updateRecordingVisibility = async (key, value) => {
+    if (await updatePreference(key, value)) refresh();
+  };
 
   const canAccessSettings = principal?.role === 'admin' || hasPermission('access_settings');
 
@@ -247,24 +256,28 @@ const TopBar = () => {
       </div>
 
       {isViewSettingsOpen && (
-        <div className={`${styles.viewOverlay}${isViewModalClosing ? ` ${styles.viewOverlayClosing}` : ''}`}>
-          <div className={`${styles.viewModal}${isViewModalClosing ? ` ${styles.viewModalClosing}` : ''}`}>
+        <div className={`${modalStyles.overlay} ${styles.viewOverlay}${isViewModalClosing ? ` ${styles.viewOverlayClosing}` : ''}`}>
+          <div className={`${modalStyles.panel} ${styles.viewModal}${isViewModalClosing ? ` ${styles.viewModalClosing}` : ''}`}>
             <div className={styles.accentBar} />
 
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>VIEW SETTINGS</h3>
+            <div className={modalStyles.header}>
+              <h3 className={`${modalStyles.title} ${styles.modalTitle}`}>VIEW SETTINGS</h3>
               <Button onClick={closeViewModal} variant="ghost" size="icon" aria-label="Close view settings">
                 <X aria-hidden="true" />
               </Button>
             </div>
 
-            <div className={styles.modalBody}>
+            <div className={`${modalStyles.body} ${styles.viewSettingsBody}`}>
               <div className={styles.settingList}>
                 {[
                   { label: 'TIMING', icon: Clock, state: showTime, key: 'show_time' },
                   { label: 'TAG', icon: Tag, state: showCar, key: 'show_car' },
                   { label: 'CHANNEL', icon: Radio, state: showChannel, key: 'show_channel' },
                   { label: 'PERSON', icon: User, state: showPerson, key: 'show_person' },
+                  ...(isAdmin ? [
+                    { label: 'Show duplicate recordings', icon: Radio, state: showDuplicateRecordings, key: 'show_duplicate_recordings' },
+                    { label: 'Show hallucinations', icon: Radio, state: showHallucinations, key: 'show_hallucinations' },
+                  ] : []),
                 ].map(({ label, icon: Icon, state, key }) => (
                   <div key={label} className={`${styles.settingRow}${state ? ` ${styles.settingRowActive}` : ''}`}>
                     <div className={styles.settingInfo}>
@@ -272,7 +285,11 @@ const TopBar = () => {
                       <span className={styles.settingLabel}>{label}</span>
                     </div>
                     <label className={formStyles.switch}>
-                      <input type="checkbox" checked={state} onChange={() => updatePreference(key, !state)} aria-label={label} />
+                      <input type="checkbox" checked={state} onChange={() => (
+                        ['show_duplicate_recordings', 'show_hallucinations'].includes(key)
+                          ? updateRecordingVisibility(key, !state)
+                          : updatePreference(key, !state)
+                      )} aria-label={label} />
                       <span className={formStyles.switchTrack} aria-hidden="true"><span className={formStyles.switchThumb} /></span>
                     </label>
                   </div>
@@ -329,7 +346,7 @@ const TopBar = () => {
               </div>
             </div>
 
-            <div className={styles.modalFooter}>
+            <div className={modalStyles.footer}>
               <Button onClick={closeViewModal} variant="primary">CLOSE</Button>
             </div>
           </div>

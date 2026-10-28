@@ -42,7 +42,7 @@ const ReleaseCard = ({ release, index, cardRef }) => (
   </div>
 );
 
-const ReleasePage = () => {
+const ReleasePage = ({ embedded = false }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [releases, setReleases] = useState([]);
@@ -81,13 +81,14 @@ const ReleasePage = () => {
   }, [releases]);
 
   const scrollToCard = (index) => cardRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const Container = embedded ? 'section' : 'main';
 
   return (
-    <main className={pageStyles.page}>
-      <header className={pageStyles.stickyHeader}>
-        <div className={pageStyles.wideContainer}>
+    <Container className={embedded ? 'stack' : pageStyles.page}>
+      <header className={embedded ? undefined : pageStyles.stickyHeader}>
+        <div className={embedded ? 'rowWrap' : pageStyles.wideContainer}>
           <div className="row">
-            <Button size="icon" onClick={() => navigate(-1)} aria-label="Back"><ArrowLeft size={20} /></Button>
+            {!embedded && <Button size="icon" onClick={() => navigate(-1)} aria-label="Back"><ArrowLeft size={20} /></Button>}
             <div className={pageStyles.headerIcon}><PackageOpen size={20} /></div>
             <div>
               <h1 className={pageStyles.title}>Release Notes</h1>
@@ -96,8 +97,8 @@ const ReleasePage = () => {
           </div>
           <div className="rowWrap">
             <Button size="icon" onClick={fetchNotes} disabled={loading} aria-label="Refresh releases"><RefreshCw size={16} /></Button>
-            <Button onClick={() => navigate('/')}>Dashboard</Button>
-            <Button onClick={() => navigate('/settings')}>Settings</Button>
+            {!embedded && <Button onClick={() => navigate('/')}>Dashboard</Button>}
+            {!embedded && <Button onClick={() => navigate('/settings')}>Settings</Button>}
           </div>
         </div>
       </header>
@@ -119,11 +120,11 @@ const ReleasePage = () => {
         </aside>
 
         <div className="grow stack">
-          {user && <ReleasePackageUpload />}
+          {user && <ReleasePackageUpload versionPath={embedded ? '/settings?tab=version' : '/version'} />}
           {loading && <div className="centeredContent"><span className="spinner spinnerLarge" role="status" aria-label="Loading release notes" /><p>Loading release notes…</p></div>}
           {!loading && error && <div className={`${noticeStyles.notice} ${noticeStyles.error}`}><div className={noticeStyles.body}><p>{error}</p><Button variant="danger" onClick={fetchNotes}>Retry</Button></div></div>}
           {!loading && !error && releases.length === 0 && (
-            <div className={cardStyles.card}><div className="centeredContent"><PackageOpen size={40} /><p>No releases recorded yet.</p><small>Run <code>release.bat</code> to create your first release entry.</small></div></div>
+            <div className={cardStyles.card}><div className="centeredContent"><PackageOpen size={40} /><p>No release notes recorded yet.</p></div></div>
           )}
           {!loading && !error && releases.length > 0 && (
             <div className={timelineStyles.timeline}>
@@ -133,7 +134,7 @@ const ReleasePage = () => {
           )}
         </div>
       </div>
-    </main>
+    </Container>
   );
 };
 
