@@ -245,6 +245,39 @@ install_dashboard_release() {
     echo "✓ Dashboard release ${tag} installed to $destination"
 }
 
+update_dashboard_manifest() {
+    python3 - "$DASHBOARD_DIR/build-info.json" "$BOONDOCK_DATA_ROOT/manifest.json" "$INSTALL_USER" <<'MANIFEST_PY'
+import json, os, pwd, sys, tempfile
+from pathlib import Path
+
+build_path, manifest_path, user = sys.argv[1:]
+path = Path(manifest_path)
+dashboard = json.loads(Path(build_path).read_text(encoding="utf-8"))
+if not isinstance(dashboard, dict) or dashboard.get("component") != "dashboard":
+    raise ValueError("Expected dashboard build information")
+manifest = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+if not isinstance(manifest, dict):
+    raise ValueError("Installed manifest must be a JSON object")
+manifest["dashboard"] = dashboard
+previous = path.stat() if path.exists() else None
+account = pwd.getpwnam(user)
+with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                 prefix=".manifest-", delete=False) as output:
+    try:
+        json.dump(manifest, output, indent=2)
+        output.write("\n")
+        output.flush()
+        os.fsync(output.fileno())
+        os.fchown(output.fileno(), previous.st_uid if previous else account.pw_uid,
+                  previous.st_gid if previous else account.pw_gid)
+        if previous:
+            os.fchmod(output.fileno(), previous.st_mode & 0o777)
+        os.replace(output.name, path)
+    finally:
+        Path(output.name).unlink(missing_ok=True)
+MANIFEST_PY
+}
+
 install_firmware_release() {
     local tag="$1"
     local destination="$2"
@@ -696,6 +729,10 @@ fi
 
 SERVICE_FILE="/etc/systemd/system/boondock-edge-api.service"
 if _is_truthy "$INSTALL_API"; then
+    if [ "$(id -u "$INSTALL_USER")" -eq 0 ]; then
+        echo "Error: The API service must run as an unprivileged account." >&2
+        exit 1
+    fi
     echo -e "${GREEN}Creating systemd service for API...${NC}"
 
     cat > "$SERVICE_FILE" << EOF
@@ -815,6 +852,11 @@ if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
     systemctl daemon-reload
 fi
 
+if _is_truthy "$INSTALL_API"; then
+    echo "Configuring web API restart support..."
+    (cd "$API_DIR" && bash deploy/systemd/install-api-restart.sh "${SERVICE_FILE##*/}")
+fi
+
 if _is_truthy "$ENABLE_SERVICES"; then
     if _is_truthy "$INSTALL_API"; then
         systemctl enable "boondock-edge-api.service"
@@ -859,6 +901,10 @@ fi
 #         systemctl status "boondock-edge-udp.service" --no-pager -l
 #     fi
 # fi
+
+if _is_truthy "$INSTALL_DASHBOARD"; then
+    update_dashboard_manifest
+fi
 
 echo ""
 echo -e "${GREEN}========================================${NC}"

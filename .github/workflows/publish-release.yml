@@ -61,7 +61,7 @@ jobs:
 
           if [[ "$RELEASE_TYPE" == "beta" ]]; then
             TAG="beta"
-            VERSION="$DISPLAY_NAME"
+            VERSION="0.0.0-beta.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}+${COMMIT:0:12}"
             PRERELEASE="true"
           elif [[ "$RELEASE_TYPE" == "numbered" ]]; then
             TAG="$VERSION_INPUT"
@@ -143,7 +143,7 @@ jobs:
           TAG: ${{ steps.release.outputs.tag }}
           COMMIT: ${{ steps.release.outputs.commit }}
           DISPLAY_NAME: ${{ inputs.display_name }}
-          REPOSITORY: ${{ github.repository }}
+          REPOSITORY: Boondock-Echo/Boondock-Edge-Dashboard
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
@@ -180,22 +180,6 @@ jobs:
               encoding="utf-8",
           )
 
-          manifest = {
-              "format": "boondock-edge-release",
-              "format_version": 1,
-              **build_info,
-              "build_id": os.environ["COMMIT"],
-              "components": {
-                  "dashboard": {
-                      "path": "dashboard",
-                  },
-              },
-          }
-
-          Path("manifest.json").write_text(
-              json.dumps(manifest, indent=2) + "\n",
-              encoding="utf-8",
-          )
           PY
 
       - name: Assemble Dashboard package
@@ -212,14 +196,12 @@ jobs:
           mkdir -p "$PACKAGE_DIR/dashboard"
 
           cp -a build/. "$PACKAGE_DIR/dashboard/"
-          cp manifest.json "$PACKAGE_DIR/"
 
           tar \
             --create \
             --gzip \
             --file "$ARCHIVE" \
             --directory "$PACKAGE_DIR" \
-            manifest.json \
             dashboard
 
           sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
@@ -273,12 +255,14 @@ jobs:
           if gh release view beta >/dev/null 2>&1; then
             gh release edit beta \
               --title "$DISPLAY_NAME" \
+              --latest=false \
               --prerelease
           else
             gh release create beta \
               --verify-tag \
               --title "$DISPLAY_NAME" \
               --generate-notes \
+              --latest=false \
               --prerelease
           fi
 
@@ -378,6 +362,7 @@ jobs:
             else
               gh release edit latest \
                 --title "$DISPLAY_NAME" \
+                --prerelease=false \
                 --latest
             fi
           else

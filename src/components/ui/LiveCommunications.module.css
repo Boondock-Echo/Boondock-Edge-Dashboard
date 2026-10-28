@@ -11,10 +11,8 @@
 .skipLink { position: absolute; left: -9999px; }
 .skipLink:focus { top: var(--space-4); left: var(--space-4); z-index: 60; padding: var(--space-2) var(--space-4); color: var(--ui-button-text); background: var(--ui-accent); border-radius: var(--radius-md); outline: 2px solid var(--ui-focus-ring); }
 .mobileOverlay { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / 50%); }
-.popupOverlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: var(--space-4); background: rgb(0 0 0 / 30%); backdrop-filter: blur(4px); animation: fadeIn 300ms ease-in-out; }
-.popupCard { position: relative; width: min(100%, 56rem); color: var(--ui-text); background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: var(--radius-lg); box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%); }
-.popupBody { padding: var(--space-8); }
-.popupMeta { margin-bottom: var(--space-6); color: var(--ui-muted); font-size: 0.875rem; font-weight: 500; }
+.popupOverlay { z-index: 9999; background: rgb(0 0 0 / 30%); backdrop-filter: blur(4px); animation: fadeIn 300ms ease-in-out; }
+.popupMeta { color: var(--ui-muted); font-size: 0.875rem; font-weight: 500; }
 .popupMessage { margin-bottom: var(--space-8); color: var(--ui-text); font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.45; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @media (max-width: 48rem) {
@@ -23,7 +21,6 @@
   .sidebarRail { transform: translateX(-100%); }
   .sidebarRailOpen { transform: translateX(0); }
   .workspaceWithSidebar { margin-left: 0; }
-  .popupBody { padding: var(--space-6); }
 }
 .keywordHighlight { font-weight: 700; text-decoration: underline; }
 .searchHighlight { background: var(--ui-warning-subtle, color-mix(in srgb, var(--ui-warning) 24%, transparent)); }

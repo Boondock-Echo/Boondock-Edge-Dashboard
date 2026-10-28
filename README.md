@@ -55,6 +55,50 @@ installer:
 
 ## Operating and updating Edge
 
+### Independent software updates
+
+Administrators can use **Settings → Software Versions** (`/settings?tab=version`)
+or `/version` to select `latest`,
+`beta`, or a numbered release independently for the API and dashboard. Installed
+machine versions and display names come from `/api/version/status`. The release
+notes tab at `/settings?tab=release` links to the same controls. Non-administrators cannot use version
+management endpoints.
+
+A dashboard installation or rollback refreshes the browser. An API installation
+or rollback queues its own restart; the dashboard waits three seconds, tolerates
+temporary disconnections, and polls until restart completion and installed
+metadata are confirmed. If restart scheduling fails after files and migrations
+succeed, use **Retry API restart** without reinstalling. Normal web upgrades
+require no shell login. A rollback can restore older administrator credentials
+and require signing in again.
+
+Before API migrations or database restoration, provision the required dependencies
+and arrange a maintenance window that pauses other database writers and external
+jobs. The API patch does not automate these tasks.
+
+### Dashboard installation metadata
+
+The release workflow generates `dashboard/build-info.json`. After a successful
+dashboard installation, the installer copies that information unchanged into
+the `dashboard` entry of `BOONDOCK_DATA_ROOT/manifest.json`. It creates the manifest
+when absent and updates it atomically, preserving the API entry and unrelated
+top-level properties. The installer does not generate build information.
+
+### Dashboard release archives
+
+The release workflow publishes `boondock-edge-dashboard-TAG.tar.gz` and its
+`.tar.gz.sha256` checksum. The archive contains `dashboard/index.html`, assets,
+and `dashboard/build-info.json`. Build metadata includes `component`, `version`,
+`display_name`, `git_tag`, `git_commit`, `built_at`, and `repository`.
+
+Numbered releases are immutable. Publishing a numbered release, including a
+prerelease, moves `latest` and copies the numbered archive byte-for-byte, retaining
+its numbered `git_tag`. Rolling beta builds have a machine version separate from
+their display name and never advance `latest`. The repair workflow also copies
+an existing numbered build instead of rebuilding or inventing installation
+metadata. A browser web-app manifest inside dashboard assets is unrelated to the
+Edge installation manifest and may remain.
+
 ### Viewing the dashboard
 
 On the local machine:

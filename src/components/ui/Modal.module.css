@@ -1,17 +1,9 @@
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.title { margin: 0; font-size: 1.125rem; font-weight: 600; }
-.actions { display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); }
-
-.dialog {
+/* Shared modal layout for native <dialog> elements and custom overlays. */
+.dialog,
+.panel {
   width: min(100%, 28rem);
-  max-height: 80dvh;
+  max-height: calc(100dvh - 2 * var(--space-4));
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   color: var(--ui-text);
@@ -21,62 +13,124 @@
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 30%);
 }
 
-.dialog::backdrop {
+.dialog::backdrop { background: rgb(0 0 0 / 50%); }
+.wide { width: min(56rem, calc(100% - 2 * var(--space-4))); }
+
+.dialog[open],
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-modal, 1000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgb(0 0 0 / 50%);
 }
 
-.wide {
-  width: min(56rem, calc(100% - (2 * var(--space-4))));
-}
+.panel { position: relative; }
 
-.dialog .header {
-  padding: var(--space-4);
-  margin-bottom: 0;
-  border-bottom: 1px solid var(--ui-border);
-}
-
-.subtitle {
-  margin: var(--space-1) 0 0;
-  color: var(--ui-muted);
-  font-size: 0.75rem;
-}
-
-.body {
-  max-height: 60dvh;
-  padding: var(--space-4);
-  overflow-y: auto;
-}
-
-.actionsBetween {
+.header {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.title { margin: 0; font-size: 1.125rem; font-weight: 600; }
+.subtitle { margin: var(--space-1) 0 0; color: var(--ui-muted); font-size: 0.75rem; }
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
   padding-top: var(--space-4);
+}
+
+.actionsBetween .actions { padding-top: 0; }
+
+.footer,
+.actionsBetween {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
   border-top: 1px solid var(--ui-border);
 }
 
-.actionsBetween .actions {
-  padding-top: 0;
+.footer { justify-content: flex-end; }
+.actionsBetween { justify-content: space-between; }
+
+/* Preserve the header and actions when a form wraps the modal contents. */
+.dialog[open] > .actions { padding: var(--space-4); border-top: 1px solid var(--ui-border); }
+.dialog[open] > form:not(.body) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
+.dialog[open] > form > .body { flex: 1 1 auto; min-height: 0; }
+.dialog[open] > form.body { flex: 1 1 auto; min-height: 0; }
+
+/* Legacy dialogs which still put their close control inside the scrolling body. */
+.dialog[open] > .body > :global(.rowBetween):first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-panel);
+}
+.dialog[open] > .body > .actions:last-child,
+.dialog[open] > form.body > .actions:last-child,
+.dialog[open] > form.body > .actionsBetween:last-child {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: var(--space-3) 0;
+  background: var(--ui-panel);
+}
+
+/* Channel settings has a form with a scrolling body and independent footer. */
+.scrollLayout > form { gap: 0; }
 
 @media (max-width: 40rem) {
-  .actionsBetween {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .actionsBetween .actions {
-    width: 100%;
-  }
-
-  .actionsBetween .actions > * {
-    flex: 1 1 0;
-  }
+  .actionsBetween { align-items: stretch; flex-wrap: wrap; }
+  .actionsBetween .actions { width: 100%; }
+  .actionsBetween .actions > * { flex: 1 1 0; }
 }
 
-.dialog .actionsBetween {
-  padding: var(--space-4);
+@media (max-height: 30rem) {
+  .overlay { align-items: flex-start; }
+}
+
+.errorMessage {
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 /* Modal with a fixed header/footer and scrollable content */

@@ -1,6 +1,6 @@
-import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
 import buttonStyles from '../ui/Button.module.css';
+import modalStyles from '../ui/Modal.module.css';
 import { apiFetch } from '../../utils/apiClient';
 import { useState } from 'react';
 import {
@@ -115,10 +115,10 @@ const ChannelCreateModal = ({
   };
 
   return (
-    <div className="screenCenter">
-      <div className={cardStyles.card}>
+    <div className={modalStyles.overlay}>
+      <div className={`${modalStyles.panel} ${modalStyles.wide}`}>
         {/* Modal Header */}
-        <div className="rowBetween">
+        <div className={modalStyles.header}>
           <div className="row">
             <RadioTower  />
             <h3 className="pageTitle">
@@ -128,13 +128,14 @@ const ChannelCreateModal = ({
           <button
             onClick={onClose}
             className={`${buttonStyles.button} ${buttonStyles.secondary} ${buttonStyles.icon}`}
+            aria-label="Close"
           >
             <X  />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="stack">
+        <div className={`${modalStyles.body} stack`}>
           <div className="gridTwo">
             {/* Frequency Selection */}
             <div className="stack stackCompact">
@@ -227,7 +228,7 @@ const ChannelCreateModal = ({
         </div>
 
         {/* Modal Footer */}
-        <div >
+        <div className={modalStyles.footer}>
           <button
             onClick={onClose}
             disabled={isSaving}

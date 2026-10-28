@@ -8,6 +8,8 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from "react"
  * Used to jump via URL params: ?tab=…, &systemTab=…
  */
 const SETTINGS_DESTINATIONS = [
+  { section: "release", label: "Release Notes", match: "release notes changelog history" },
+  { section: "version", label: "Software Versions", match: "software versions updates install rollback releases" },
   { section: "summary", label: "Summary", match: "summary overview" },
   { section: "recorders", label: "Recorders", match: "recorders channels devices" },
   {
