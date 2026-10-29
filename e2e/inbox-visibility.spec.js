@@ -191,24 +191,30 @@ test('keyword actions configure email templates and edits do not trigger popups'
   const group = scenario.defaultGroup;
   let keywordId;
   const originalEmail = await json(request, 'get', '/settings/email', scenario.bootstrapToken);
-  expect(originalEmail.configured, 'Run against a development instance without SMTP routing').toBe(false);
   const actionName = `Action ${randomUUID()}`;
   let actionId;
   try {
     await browserLogin(page, scenario.email, scenario.password);
     await page.goto('/settings?tab=keywords-tags');
     await page.getByRole('button', { name: 'Actions', exact: true }).click();
-    await expect(page.getByLabel('Action type', { exact: true }).locator('option')).toHaveText(['Popup']);
+    await expect(page.getByLabel('Action type', { exact: true }).locator('option')).toHaveText(
+      originalEmail.configured ? ['Popup', 'Email'] : ['Popup'],
+    );
     await expect(page.getByLabel('Action group', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('checkbox', { name: 'Action enabled', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Email delivery', exact: true }).click();
-    await page.getByLabel('SMTP host', { exact: true }).fill('localhost');
-    await page.getByLabel('SMTP port', { exact: true }).fill('2525');
+    await expect(page.getByLabel('SMTP host', { exact: true })).toHaveValue(originalEmail.host);
+    await expect(page.getByLabel('SMTP port', { exact: true })).toHaveValue(String(originalEmail.port));
     await expect(page.getByLabel('From email', { exact: true })).toHaveCount(0);
-    await page.getByLabel('Dashboard base URL', { exact: true }).fill('http://localhost:3000');
-    await page.getByRole('button', { name: 'Save email settings', exact: true }).click();
-    await expect(page.getByRole('status')).toHaveText('Email delivery settings saved.');
+    if (!originalEmail.configured) {
+      await page.getByLabel('SMTP host', { exact: true }).fill('localhost');
+      await page.getByLabel('SMTP port', { exact: true }).fill('2525');
+      await page.getByLabel('Dashboard base URL', { exact: true }).fill('http://localhost:3000');
+      await page.getByRole('button', { name: 'Save email settings', exact: true }).click();
+      await expect(page.getByRole('status')).toHaveText('Email delivery settings saved.');
+    }
     await page.getByRole('button', { name: 'Actions', exact: true }).click();
+    await expect(page.getByLabel('Action type', { exact: true }).locator('option')).toHaveText(['Popup', 'Email']);
     await page.getByLabel('Action name', { exact: true }).fill(actionName);
 
     await page.getByRole('checkbox', { name: 'Play recording audio automatically', exact: true }).uncheck();
@@ -281,8 +287,11 @@ test('keyword actions configure email templates and edits do not trigger popups'
     }
     if (actionId) await json(request, 'delete', `/keyword-actions/${actionId}`, scenario.bootstrapToken);
     if (keywordId) await json(request, 'delete', `/keywords/${keywordId}`, scenario.bootstrapToken);
-    const { password_configured, configured, ...restoreEmail } = originalEmail;
-    await json(request, 'patch', '/settings/email', scenario.bootstrapToken, restoreEmail);
+    if (!originalEmail.configured) {
+      const { password_configured, configured, ...restoreEmail } = originalEmail;
+      await json(request, 'patch', '/settings/email', scenario.bootstrapToken, restoreEmail);
+    }
+    expect(await json(request, 'get', '/settings/email', scenario.bootstrapToken)).toEqual(originalEmail);
   }
 });
 
