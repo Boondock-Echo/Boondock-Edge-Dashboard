@@ -12,10 +12,13 @@ const EMPTY_DRAFT = {
   match_type: 'literal',
   case_sensitive: false,
   group_id: '',
+  action_ids: [],
 };
 
 const KeywordsSection = () => {
   const [groups, setGroups] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,7 +27,8 @@ const KeywordsSection = () => {
   const loadGroups = useCallback(async () => {
     try {
       setError('');
-      const { data } = await api.get('/groups');
+      const [{ data }, actionResponse] = await Promise.all([api.get('/groups'), api.get('/keyword-actions')]);
+      setActions(actionResponse.data.actions);
       const nextGroups = Array.isArray(data) ? data : [];
       setGroups(nextGroups);
       setDraft((current) => {
@@ -76,6 +80,7 @@ const KeywordsSection = () => {
             pattern,
             match_type: draft.match_type,
             case_sensitive: draft.case_sensitive,
+            action_ids: draft.action_ids,
           },
         ],
       });
@@ -87,6 +92,27 @@ const KeywordsSection = () => {
       setSaving(false);
     }
   };
+
+  const saveActions = async () => {
+    setSaving(true); setError('');
+    try {
+      await api.put(`/keywords/${editing.id}/actions`, { action_ids: editing.action_ids });
+      setEditing(null); await loadGroups();
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Failed to save keyword actions.');
+    } finally { setSaving(false); }
+  };
+
+  const actionChoices = (selected, onChange) => (
+    <fieldset className="stack">
+      <legend>Actions for this keyword</legend>
+      {!actions.length && <p className={cardStyles.description}>Create an action on the Actions screen, then select it here.</p>}
+      {actions.map((action) => <label className="row" key={action.id}>
+        <input type="checkbox" checked={selected.includes(action.id)} onChange={(event) => onChange(event.target.checked ? [...selected, action.id] : selected.filter((id) => id !== action.id))} />
+        {action.name} ({action.kind})
+      </label>)}
+    </fieldset>
+  );
 
   const removeKeyword = async (keyword) => {
     if (!window.confirm(`Delete keyword "${keyword.pattern}" from all groups?`)) return;
@@ -118,7 +144,7 @@ const KeywordsSection = () => {
       <div className={`${cardStyles.card} stack stackLarge`}>
         <div className="gridTwo">
           <div className={formStyles.field}>
-            <label className={formStyles.label}>Pattern</label>
+            <label htmlFor="keyword-pattern" className={formStyles.label}>Pattern</label>
             <input
               className={formStyles.input}
               value={draft.pattern}
@@ -129,14 +155,16 @@ const KeywordsSection = () => {
                   addKeyword();
                 }
               }}
+              id="keyword-pattern"
               placeholder="Keyword or regular expression"
             />
           </div>
 
           <div className={formStyles.field}>
-            <label className={formStyles.label}>Group</label>
+            <label htmlFor="keyword-group" className={formStyles.label}>Group</label>
             <select
               className={formStyles.select}
+              id="keyword-group"
               value={draft.group_id}
               onChange={(event) => setDraft((current) => ({ ...current, group_id: event.target.value }))}
             >
@@ -147,6 +175,7 @@ const KeywordsSection = () => {
           </div>
         </div>
 
+        {actionChoices(draft.action_ids, (ids) => setDraft((current) => ({ ...current, action_ids: ids })))}
         <div className="rowWrap">
           <select
             className={`${formStyles.select} ${formStyles.selectInline}`}
@@ -187,7 +216,8 @@ const KeywordsSection = () => {
         ) : (
           <div className="stackCompact">
             {keywords.map((keyword) => (
-              <div key={keyword.id} className="rowBetween">
+              <div key={keyword.id} className="stack">
+                <div className="rowBetween">
                 <div>
                   <div className="rowWrap">
                     <strong>{keyword.pattern}</strong>
@@ -198,6 +228,8 @@ const KeywordsSection = () => {
                     Groups: {keyword.group_names.join(', ') || 'none'}
                   </p>
                 </div>
+                <div className="row">
+                <Button size="small" disabled={saving} onClick={() => setEditing({ id: keyword.id, action_ids: [...(keyword.action_ids || [])] })}>Edit actions for {keyword.pattern}</Button>
                 <Button
                   type="button"
                   size="small"
@@ -206,6 +238,13 @@ const KeywordsSection = () => {
                 >
                   Delete
                 </Button>
+                </div>
+                </div>
+                <p className={cardStyles.description}>Actions: {actions.filter((action) => (keyword.action_ids || []).includes(action.id)).map((action) => action.name).join(', ') || 'None'}</p>
+                {editing?.id === keyword.id && <>
+                  {actionChoices(editing.action_ids, (ids) => setEditing((current) => ({ ...current, action_ids: ids })))}
+                  <div className="row"><Button disabled={saving} onClick={saveActions}>Save keyword actions</Button><Button disabled={saving} onClick={() => setEditing(null)}>Cancel</Button></div>
+                </>}
               </div>
             ))}
           </div>

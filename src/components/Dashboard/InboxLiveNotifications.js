@@ -30,7 +30,7 @@ const cursorGreater = (a, b) => {
 };
 
 const InboxLiveNotifications = () => {
-  const { messageList } = useInboxMessages();
+  const { messageList, initialLoading, initialError } = useInboxMessages();
   const { channels } = useInboxChannels();
   const { isVolumeOn } = useInboxLive();
   const { timeFormat } = useInboxPreferences();
@@ -41,6 +41,7 @@ const InboxLiveNotifications = () => {
   const previousIdsRef = useRef(new Set());
   const cursorRef = useRef(null);
   const initializedRef = useRef(false);
+  const seenKeywordActionsRef = useRef(new Set());
 
   const formatTime = useCallback((timestamp) => {
     const date = parseUtcTimestamp(timestamp);
@@ -60,68 +61,71 @@ const InboxLiveNotifications = () => {
 
   useEffect(() => {
     if (!isVolumeOn) {
-      setQueue([]);
-      closePopup();
+      setQueue((previous) => previous.filter((item) => item.trigger === 'keyword'));
+      if (popup?.trigger === 'live') closePopup();
     }
-  }, [closePopup, isVolumeOn]);
+  }, [closePopup, isVolumeOn, popup?.trigger]);
 
   useEffect(() => {
-    if (!isVolumeOn) {
-      previousIdsRef.current = new Set(messageList.map((message) => String(message.id)));
-      return;
-    }
-
+    if (initialLoading || initialError) return;
     if (!initializedRef.current) {
       initializedRef.current = true;
       previousIdsRef.current = new Set(messageList.map((message) => String(message.id)));
-      const newest = messageList[0];
-      cursorRef.current = cursorFor(newest);
+      for (const message of messageList) {
+        for (const action of message.keyword_actions || []) seenKeywordActionsRef.current.add(String(action.id));
+        const cursor = cursorFor(message);
+        if (cursorGreater(cursor, cursorRef.current)) cursorRef.current = cursor;
+      }
       return;
     }
 
     const previousIds = previousIdsRef.current;
-    const incoming = messageList.filter((message) => !previousIds.has(String(message.id)) && message.url);
+    const popupItems = [];
+    for (const message of messageList) {
+      const wasLoaded = previousIds.has(String(message.id));
+      const isNewer = cursorGreater(cursorFor(message), cursorRef.current);
+      const newActions = (message.keyword_actions || []).filter(
+        (action) => !seenKeywordActionsRef.current.has(String(action.id))
+      );
+      for (const action of message.keyword_actions || []) seenKeywordActionsRef.current.add(String(action.id));
+      const keywordTrigger = newActions.length > 0 && (wasLoaded || isNewer);
+      const liveTrigger = isVolumeOn && !wasLoaded && isNewer && message.url;
+      if (!keywordTrigger && !liveTrigger) continue;
+      popupItems.push({
+        id: message.id, message: message.message,
+        channel: channels[String(message.channel)]?.name || `Channel ${message.channel}`,
+        time: formatTime(message.time), url: message.url,
+        trigger: keywordTrigger ? 'keyword' : 'live',
+        actionNames: newActions.map((action) => action.name).join(', '),
+        autoplay: keywordTrigger ? newActions.some((action) => action.autoplay) : true,
+      });
+    }
     previousIdsRef.current = new Set(messageList.map((message) => String(message.id)));
-
-    if (!incoming.length) return;
-
-    const trulyNew = incoming
-      .filter((message) => cursorGreater(cursorFor(message), cursorRef.current))
-      .slice()
-      .sort((a, b) => String(a.time).localeCompare(String(b.time)));
-
-    if (!trulyNew.length) return;
-
-    const popupItems = trulyNew.map((message) => ({
-      id: message.id,
-      message: message.message,
-      channel: channels[String(message.channel)]?.name || `Channel ${message.channel}`,
-      time: formatTime(message.time),
-      url: message.url,
-    }));
-
-    const newest = trulyNew[trulyNew.length - 1];
-    cursorRef.current = cursorFor(newest);
-
+    for (const message of messageList) {
+      const cursor = cursorFor(message);
+      if (cursorGreater(cursor, cursorRef.current)) cursorRef.current = cursor;
+    }
+    if (!popupItems.length) return;
+    popupItems.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    const currentUpdate = popupItems.find((item) => String(item.id) === String(popup?.id));
+    if (currentUpdate) setPopup((previous) => previous ? { ...previous, ...currentUpdate } : previous);
     setQueue((previous) => {
-      const existing = new Set(previous.map((item) => String(item.id)));
-      if (popup?.id != null) existing.add(String(popup.id));
       const next = [...previous];
       for (const item of popupItems) {
-        if (!existing.has(String(item.id))) {
-          next.push(item);
-          existing.add(String(item.id));
-        }
+        if (String(item.id) === String(popup?.id)) continue;
+        const index = next.findIndex((queued) => String(queued.id) === String(item.id));
+        if (index >= 0) next[index] = item;
+        else next.push(item);
       }
       return next.slice(-LIVE_POPUP_QUEUE_LIMIT);
     });
-  }, [channels, formatTime, isVolumeOn, messageList, popup?.id]);
+  }, [channels, formatTime, initialError, initialLoading, isVolumeOn, messageList, popup?.id]);
 
   useEffect(() => {
-    if (!isVolumeOn || popup || !queue.length) return;
+    if (popup || !queue.length) return;
     const [next, ...rest] = queue;
     setQueue(rest);
-    setPopup(next);
+    if (next.trigger === 'keyword' || isVolumeOn) setPopup(next);
   }, [isVolumeOn, popup, queue]);
 
   useEffect(() => {
@@ -142,9 +146,10 @@ const InboxLiveNotifications = () => {
 
   return (
     <div className={`${modalStyles.overlay} ${styles.popupOverlay}`} onClick={closePopup}>
-      <div className={`${modalStyles.panel} ${modalStyles.wide}`} onClick={(event) => event.stopPropagation()}>
+      <div role="dialog" aria-label={popup.trigger === 'keyword' ? 'Keyword alert' : 'New recording'} className={`${modalStyles.panel} ${modalStyles.wide}`} onClick={(event) => event.stopPropagation()}>
         <div className={modalStyles.header}>
           <div className={styles.popupMeta}>
+            {popup.trigger === 'keyword' && <strong>{popup.actionNames} · </strong>}
             <strong>{popup.channel}</strong>
             <span> • </span>
             <span>{popup.time}</span>
@@ -166,7 +171,7 @@ const InboxLiveNotifications = () => {
             <InlineAudioPlayer
               ownerId={`popup:${popup.id}`}
               src={popup.url}
-              autoPlay
+              autoPlay={popup.autoplay}
               showWaveform
               onEnded={() => setPopup(null)}
             />

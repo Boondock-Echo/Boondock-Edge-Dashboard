@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import KeywordsSection from './KeywordsSection';
 import SimpleTagManager from './MasterTagKeyManagement';
+import KeywordActionsSection, { EmailSettingsSection } from './KeywordActionsSection';
 import { Siren, Tag } from 'lucide-react';
 import { SettingsSubnav, SettingsSubnavTab } from './SettingsSubnav';
 import cardStyles from '../ui/Card.module.css';
@@ -23,13 +24,22 @@ const KeywordsAndTagsSection = () => {
             <Siren className="iconMedium" />
             Keywords
           </SettingsSubnavTab>
+          <SettingsSubnavTab active={activeTab === 'actions'} onClick={() => setActiveTab('actions')}>
+            Actions
+          </SettingsSubnavTab>
+          <SettingsSubnavTab active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
+            Email delivery
+          </SettingsSubnavTab>
           <SettingsSubnavTab active={activeTab === 'tags'} onClick={() => setActiveTab('tags')}>
             <Tag className="iconMedium" />
             Tags
           </SettingsSubnavTab>
         </SettingsSubnav>
 
-        {activeTab === 'keywords' ? <KeywordsSection /> : <SimpleTagManager />}
+        {activeTab === 'keywords' && <KeywordsSection />}
+        {activeTab === 'actions' && <KeywordActionsSection />}
+        {activeTab === 'email' && <EmailSettingsSection />}
+        {activeTab === 'tags' && <SimpleTagManager />}
       </div>
     </SettingsSectionWidth>
   );

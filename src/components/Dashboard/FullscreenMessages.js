@@ -27,7 +27,6 @@ import {
   useInboxLayout,
   useInboxSelection,
 } from "../InboxContext";
-import { keywordMatchRanges } from "../../utils/inboxKeywords";
 import liveStyles from "../ui/LiveCommunications.module.css";
 
 /** Longer transcripts collapse to one line until the user clicks More. */
@@ -50,7 +49,7 @@ const FullscreenMessages = () => {
     removeMessages,
   } = useInboxMessages();
   const { channels } = useInboxChannels();
-  const { keywords, searchQuery } = useInboxKeywords();
+  const { searchQuery } = useInboxKeywords();
   const {
     principal,
     showTime,
@@ -132,14 +131,14 @@ const FullscreenMessages = () => {
     });
   }, [formatTime, showFullTimestamps, timeFormat]);
 
-  const highlightText = useCallback((text, query) => {
+  const highlightText = useCallback((text, query, matchedKeywords = []) => {
     const value = String(text ?? '');
     if (!value) return value;
 
     const keywordFlags = Array(value.length).fill(false);
     const searchFlags = Array(value.length).fill(false);
 
-    for (const range of keywordMatchRanges(value, keywords)) {
+    for (const range of matchedKeywords.flatMap((keyword) => keyword.ranges || [])) {
       for (let i = range.start; i < range.end && i < value.length; i += 1) keywordFlags[i] = true;
     }
 
@@ -179,7 +178,7 @@ const FullscreenMessages = () => {
     }
 
     return output;
-  }, [keywords]);
+  }, []);
 
   // Permission checks
   const canPlayAudio = principal?.role === 'admin' || hasPermission('play_audio');
@@ -1254,7 +1253,7 @@ const FullscreenMessages = () => {
                     }}
                   >
                     {item.message !== "No transcription available" ? (
-                      highlightText(filteredMessage, searchQuery)
+                      highlightText(filteredMessage, searchQuery, item.matched_keywords)
                     ) : item.status === "queued" ? (
                       <span
                         className="pill pillWarning"
@@ -1469,7 +1468,7 @@ const FullscreenMessages = () => {
                   {item.message &&
                   item.message !== "No transcription available" &&
                   item.message !== "...." ? (
-                    highlightText(filteredMessage, searchQuery)
+                    highlightText(filteredMessage, searchQuery, item.matched_keywords)
                   ) : item.message === "...." ? (
                     <span
                       className="pill pillDanger"

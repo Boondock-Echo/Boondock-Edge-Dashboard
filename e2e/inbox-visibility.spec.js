@@ -51,13 +51,24 @@ function wav() {
 }
 
 const test = base.extend({
-  scenario: async ({ request }, use) => {
+  bootstrap: async ({ request }, use) => {
     const bootstrap = await login(request, EMAIL, PASSWORD);
     expect(bootstrap.user.role, 'E2E_EMAIL must be a test administrator').toBe('admin');
     const backup = await json(request, 'get', '/settings/backup', bootstrap.token);
     expect(backup.s3_enabled, 'Use a test instance with S3 uploads disabled').toBe(false);
     const transcription = await json(request, 'get', '/settings/transcription', bootstrap.token);
-    expect(transcription.queue_enabled, 'Stop the transcription queue on the test instance before running').toBe(false);
+    try {
+      if (transcription.queue_enabled) {
+        await json(request, 'patch', '/settings/transcription', bootstrap.token, { queue_enabled: false });
+      }
+      await use(bootstrap);
+    } finally {
+      await json(request, 'patch', '/settings/transcription', bootstrap.token, {
+        queue_enabled: transcription.queue_enabled,
+      });
+    }
+  },
+  scenario: async ({ request, bootstrap }, use) => {
     const groups = await json(request, 'get', '/groups', bootstrap.token);
     const defaultGroup = groups.find((group) => group.is_default);
     expect(defaultGroup, 'A default channel ownership group must exist').toBeTruthy();
@@ -112,7 +123,7 @@ const test = base.extend({
       };
       try {
         await use({
-          email, password, user, channelName, marker, upload, saveTranscript,
+          email, password, user, group, defaultGroup, channelName, marker, upload, saveTranscript,
           bootstrapToken: bootstrap.token, token: session.token,
         });
       } finally {
@@ -131,6 +142,157 @@ const test = base.extend({
       expect(failures, 'Test resource cleanup').toEqual([]);
     }
   },
+});
+
+test('transcription matches arrive after login and drive sidebar highlights and filtering', async ({ page, request, scenario }) => {
+  test.setTimeout(90_000);
+  const matching = await scenario.upload(wav());
+  const other = await scenario.upload(wav());
+  const ordinary = `Ordinary traffic ${randomUUID()}`;
+  await scenario.saveTranscript(other.recording_id, ordinary);
+  await browserLogin(page, scenario.email, scenario.password);
+  await isolateChannel(page, scenario.channelName);
+
+  // Configure a Python regex after login. Stored ranges must highlight the
+  // actual phrase even though it differs from the configured pattern text.
+  const pattern = String.raw`Car\s+\d+`;
+  const group = await json(request, 'patch', `/groups/${scenario.group.id}`, scenario.bootstrapToken, {
+    keywords: [{ pattern, match_type: 'regex', case_sensitive: true }],
+  });
+  const keywordId = group.keyword_details[0].id;
+  try {
+    await scenario.saveTranscript(matching.recording_id, '🚒 Car 42 reports Car 7');
+    const feed = page.locator('#dashboard-feed');
+    const keyword = page.getByRole('button', { name: `${pattern} 2`, exact: true });
+    await expect(keyword).toBeVisible({ timeout: 20_000 });
+    const highlighted = feed.locator('span[class*="keywordHighlight"]:visible');
+    await expect(highlighted).toHaveText(['Car 42', 'Car 7']);
+    await expect(highlighted.first()).toHaveCSS('font-weight', '700');
+    await expect(feed.getByText(ordinary, { exact: true })).toBeVisible();
+    await keyword.click();
+    await expect(feed.getByText(ordinary, { exact: true })).toHaveCount(0);
+
+    // Correcting the transcript clears saved matches and the sidebar filter.
+    const corrected = `Corrected traffic ${randomUUID()}`;
+    await scenario.saveTranscript(matching.recording_id, corrected);
+    await expect(keyword).toHaveCount(0, { timeout: 20_000 });
+    await expect(feed.getByText(corrected, { exact: true })).toBeVisible();
+    await expect(feed.getByText(ordinary, { exact: true })).toBeVisible();
+    await expect(highlighted).toHaveCount(0);
+  } finally {
+    if (keywordId) await json(request, 'delete', `/keywords/${keywordId}`, scenario.bootstrapToken);
+  }
+});
+
+test('keyword actions configure email templates and edits do not trigger popups', async ({ page, request, scenario }) => {
+  test.setTimeout(120_000);
+  const recording = await scenario.upload(wav());
+  const marker = `action-${randomUUID()}`;
+  const group = scenario.defaultGroup;
+  let keywordId;
+  const originalEmail = await json(request, 'get', '/settings/email', scenario.bootstrapToken);
+  const actionName = `Action ${randomUUID()}`;
+  let actionId;
+  try {
+    await browserLogin(page, scenario.email, scenario.password);
+    await page.goto('/settings?tab=keywords-tags');
+    await page.getByRole('button', { name: 'Actions', exact: true }).click();
+    await expect(page.getByLabel('Action type', { exact: true }).locator('option')).toHaveText(
+      originalEmail.configured ? ['Popup', 'Email'] : ['Popup'],
+    );
+    await expect(page.getByLabel('Action group', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: 'Action enabled', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Email delivery', exact: true }).click();
+    await expect(page.getByLabel('SMTP host', { exact: true })).toHaveValue(originalEmail.host);
+    await expect(page.getByLabel('SMTP port', { exact: true })).toHaveValue(String(originalEmail.port));
+    await expect(page.getByLabel('From email', { exact: true })).toHaveCount(0);
+    if (!originalEmail.configured) {
+      await page.getByLabel('SMTP host', { exact: true }).fill('localhost');
+      await page.getByLabel('SMTP port', { exact: true }).fill('2525');
+      await page.getByLabel('Dashboard base URL', { exact: true }).fill('http://localhost:3000');
+      await page.getByRole('button', { name: 'Save email settings', exact: true }).click();
+      await expect(page.getByRole('status')).toHaveText('Email delivery settings saved.');
+    }
+    await page.getByRole('button', { name: 'Actions', exact: true }).click();
+    await expect(page.getByLabel('Action type', { exact: true }).locator('option')).toHaveText(['Popup', 'Email']);
+    await page.getByLabel('Action name', { exact: true }).fill(actionName);
+
+    await page.getByRole('checkbox', { name: 'Play recording audio automatically', exact: true }).uncheck();
+    await page.getByRole('button', { name: 'Save action', exact: true }).click();
+    await expect(page.getByRole('status')).toHaveText('Keyword action saved.');
+    const configured = await json(request, 'get', '/keyword-actions', scenario.bootstrapToken);
+    actionId = configured.actions.find((action) => action.name === actionName).id;
+    await page.getByRole('button', { name: 'Keywords', exact: true }).click();
+    await page.getByLabel('Pattern', { exact: true }).fill(marker);
+    await page.getByLabel('Group', { exact: true }).selectOption(String(group.id));
+    await page.getByRole('checkbox', { name: `${actionName} (popup)`, exact: true }).check();
+    await page.getByRole('button', { name: 'Add keyword', exact: true }).click();
+    await expect(page.getByRole('button', { name: `Edit actions for ${marker}`, exact: true })).toBeVisible();
+    const updatedGroup = await json(request, 'get', `/groups/${group.id}`, scenario.bootstrapToken);
+    keywordId = updatedGroup.keyword_details.find((keyword) => keyword.pattern === marker).id;
+    expect(updatedGroup.keyword_details.find((keyword) => keyword.id === keywordId).action_ids).toEqual([actionId]);
+
+    await page.goto('/');
+    await isolateChannel(page, scenario.channelName);
+    await setCheckbox(page.getByRole('checkbox', { name: 'Toggle live mode', exact: true }), false);
+    await expect(page.locator('#dashboard-feed').getByText('Showing 1-1 of 1', { exact: true })).toBeVisible();
+    await scenario.saveTranscript(recording.recording_id, `Urgent ${marker}`);
+    const popup = page.getByRole('dialog', { name: 'Keyword alert', exact: true });
+    await expect(page.locator('#dashboard-feed').getByText(`Urgent ${marker}`, { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(popup).toHaveCount(0);
+    await scenario.saveTranscript(recording.recording_id, `Updated ${marker}`);
+    await expect(page.locator('#dashboard-feed').getByText(`Updated ${marker}`, { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(popup).toHaveCount(0);
+
+    await page.goto('/settings?tab=keywords-tags');
+    await page.getByRole('button', { name: `Edit actions for ${marker}`, exact: true }).click();
+    await page.getByRole('group', { name: 'Actions for this keyword', exact: true }).last().getByRole('checkbox', { name: `${actionName} (popup)`, exact: true }).uncheck();
+    await page.getByRole('button', { name: 'Save keyword actions', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Save keyword actions', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Actions', exact: true }).click();
+    await page.getByRole('button', { name: `Edit ${actionName}`, exact: true }).click();
+    await page.getByLabel('Action type', { exact: true }).selectOption('email');
+    await page.getByLabel('From email', { exact: true }).fill('sender@example.test');
+    await page.getByLabel('From name', { exact: true }).fill('Keyword test');
+    await page.getByLabel('Reply-To email', { exact: true }).fill('reply@example.test');
+    await page.getByLabel('To recipients', { exact: true }).fill('recipient@example.test');
+    await page.getByLabel('Cc recipients', { exact: true }).fill('copy@example.test');
+    await page.getByLabel('Bcc recipients', { exact: true }).fill('hidden@example.test');
+    await page.getByLabel('Email subject', { exact: true }).fill('Alert: {keywords}');
+    await page.getByLabel('Email template', { exact: true }).fill('Channel {channel}: {transcript}');
+    await page.getByRole('button', { name: 'Preview email template', exact: true }).click();
+    await expect(page.getByLabel('Email template preview')).toContainText('Alert: engine fire, urgent');
+    await expect(page.getByLabel('Email template preview')).toContainText('Channel Race control: Car 42');
+    await page.getByRole('button', { name: 'Save action', exact: true }).click();
+    await expect(page.getByRole('status')).toHaveText('Keyword action saved.');
+    const updated = (await json(request, 'get', '/keyword-actions', scenario.bootstrapToken)).actions.find((action) => action.id === actionId);
+    expect(updated).toMatchObject({ kind: 'email', from_email: 'sender@example.test', reply_to: 'reply@example.test', to: ['recipient@example.test'], cc: ['copy@example.test'], bcc: ['hidden@example.test'] });
+
+    // A link from email opens the exact authorized recording, including after login.
+    await page.goto(`/recording/${recording.recording_id}`);
+    await expect(page.getByRole('heading', { name: `Recording ${recording.recording_id}`, exact: true })).toBeVisible();
+    await expect(page.getByText(`Updated ${marker}`, { exact: true })).toBeVisible();
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(`/recording/${recording.recording_id}`);
+    await expect(page).toHaveURL(/\/login$/);
+    await page.getByLabel('User ID', { exact: true }).fill(scenario.email);
+    await page.getByLabel('Password', { exact: true }).fill(scenario.password);
+    await page.getByRole('button', { name: 'Enter Console', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/recording/${recording.recording_id}$`));
+    await expect(page.getByText(`Updated ${marker}`, { exact: true })).toBeVisible();
+  } finally {
+    if (!actionId) {
+      const configured = await json(request, 'get', '/keyword-actions', scenario.bootstrapToken);
+      actionId = configured.actions.find((action) => action.name === actionName)?.id;
+    }
+    if (actionId) await json(request, 'delete', `/keyword-actions/${actionId}`, scenario.bootstrapToken);
+    if (keywordId) await json(request, 'delete', `/keywords/${keywordId}`, scenario.bootstrapToken);
+    if (!originalEmail.configured) {
+      const { password_configured, configured, ...restoreEmail } = originalEmail;
+      await json(request, 'patch', '/settings/email', scenario.bootstrapToken, restoreEmail);
+    }
+    expect(await json(request, 'get', '/settings/email', scenario.bootstrapToken)).toEqual(originalEmail);
+  }
 });
 
 async function isolateChannel(page, name) {
