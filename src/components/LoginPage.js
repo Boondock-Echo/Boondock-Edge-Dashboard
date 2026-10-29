@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import api from '../utils/apiClient';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Sun, Moon, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import pageStyles from './ui/Page.module.css';
@@ -41,6 +41,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -100,7 +101,10 @@ const LoginPage = () => {
       if (data.show_mfa_reminder) {
         sessionStorage.removeItem('mfa_reminder_dismissed');
       }
-      navigate('/');
+      const from = location.state?.from;
+      navigate(from?.pathname?.startsWith('/') && !from.pathname.startsWith('//') && from.pathname !== '/login'
+        ? { pathname: from.pathname, search: from.search, hash: from.hash }
+        : '/');
     } catch (err) {
       const data = err.response?.data;
       if (data?.mfa_required) {

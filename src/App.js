@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import AdvancedAudioPlayer from "./components/Dashboard/AdvancedAudioPlayer";
 import InboxRoute from "./components/Dashboard/InboxRoute";
+import RecordingLinkPage from "./components/RecordingLinkPage";
 import SettingsPage from "./components/Settings/SettingsPage";
 import UserManagement from "./components/Users/index";
 import LogsPage from "./components/Logs/LogsPage";
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<PrivateRoute />}>
             <Route path="/" element={<InboxRoute />} />
+            <Route path="/recording/:recordingId" element={<RecordingLinkPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/profile" element={<UserProfile />} />

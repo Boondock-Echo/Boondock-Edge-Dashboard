@@ -16,8 +16,6 @@ import {
   getRecordingTimestampFromFilename,
 } from "../utils/inboxViewWindow";
 import {
-  countKeywordMatches,
-  keywordMatches,
   normalizeKeyword,
 } from "../utils/inboxKeywords";
 
@@ -289,15 +287,27 @@ export const InboxProvider = ({ children }) => {
 
   const isMobile = windowWidth < 768;
 
-  const keywords = useMemo(() => {
-    if (!Array.isArray(principal?.keywords)) return [];
-    return principal.keywords.map(normalizeKeyword).filter(Boolean);
-  }, [principal?.keywords]);
+  const messageList = useMemo(
+    () => messages.orderedIds.map((id) => messages.byId[id]).filter(Boolean),
+    [messages],
+  );
 
-  const keywordById = useMemo(() => {
-    const map = new Map();
-    for (const keyword of keywords) map.set(String(keyword.id), keyword);
-    return map;
+  const keywords = useMemo(() => {
+    const byId = new Map();
+    for (const message of messageList) {
+      for (const keyword of message.matched_keywords || []) {
+        byId.set(String(keyword.id), normalizeKeyword(keyword));
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.pattern.localeCompare(b.pattern));
+  }, [messageList]);
+
+  useEffect(() => {
+    const available = new Set(keywords.map((keyword) => String(keyword.id)));
+    setActiveKeywordIds((previous) => {
+      const next = new Set([...previous].filter((id) => available.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
   }, [keywords]);
 
   const inboxViewMode = Number(preferences.records_per_page) === 0
@@ -590,38 +600,28 @@ export const InboxProvider = ({ children }) => {
     setCurrentPage(1);
   }, []);
 
-  const messageList = useMemo(
-    () => messages.orderedIds.map((id) => messages.byId[id]).filter(Boolean),
-    [messages],
-  );
-
   const visibleMessages = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const selectedKeywords = [...activeKeywordIds]
-      .map((id) => keywordById.get(id))
-      .filter(Boolean);
-
     return messageList.filter((message) => {
       const text = String(message.message ?? "");
       if (query && !text.toLowerCase().includes(query)) return false;
-      if (selectedKeywords.length && !selectedKeywords.some((keyword) => keywordMatches(text, keyword))) {
-        return false;
-      }
+      if (activeKeywordIds.size && !(message.matched_keywords || []).some(
+        (keyword) => activeKeywordIds.has(String(keyword.id))
+      )) return false;
       return true;
     });
-  }, [activeKeywordIds, keywordById, messageList, searchQuery]);
+  }, [activeKeywordIds, messageList, searchQuery]);
 
   const keywordCounts = useMemo(() => {
     const counts = {};
-    for (const keyword of keywords) counts[String(keyword.id)] = 0;
-
     for (const message of messageList) {
-      for (const keyword of keywords) {
-        counts[String(keyword.id)] += countKeywordMatches(message.message, keyword);
+      for (const keyword of message.matched_keywords || []) {
+        const id = String(keyword.id);
+        counts[id] = (counts[id] || 0) + keyword.count;
       }
     }
     return counts;
-  }, [keywords, messageList]);
+  }, [messageList]);
 
   const channelMessageCounts = useMemo(() => {
     const counts = {};

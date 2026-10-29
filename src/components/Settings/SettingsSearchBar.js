@@ -15,7 +15,7 @@ const SETTINGS_DESTINATIONS = [
   {
     section: "keywords-tags",
     label: "Keyword tracking",
-    match: "keywords tags tracking alerts",
+    match: "keywords tags tracking alerts actions email smtp templates",
   },
   { section: "user-management", label: "Users", match: "users accounts roles" },
   {

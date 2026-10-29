@@ -51,10 +51,6 @@ const loginThroughDashboard = async (page) => {
   const loginResponse = await loginResponsePromise;
   const responseText = await loginResponse.text();
 
-  console.log(
-    `LOGIN RESPONSE: ${loginResponse.status()} ${responseText}`
-  );
-
   const mfaCode = page.getByLabel('MFA code', { exact: true });
 
   if (await mfaCode.isVisible().catch(() => false)) {
