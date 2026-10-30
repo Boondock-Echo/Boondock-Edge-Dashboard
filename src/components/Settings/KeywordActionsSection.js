@@ -89,6 +89,9 @@ const KeywordActionsSection = () => {
   const [outlets, setOutlets] = useState([]);
   const [kasaDevices, setKasaDevices] = useState([]);
   const [discovered, setDiscovered] = useState(false);
+  const [kasaSettings, setKasaSettings] = useState(null);
+  const [kasaPassword, setKasaPassword] = useState('');
+  const [clearKasaPassword, setClearKasaPassword] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [testRecipient, setTestRecipient] = useState('');
   const [deliveries, setDeliveries] = useState([]);
@@ -101,8 +104,8 @@ const KeywordActionsSection = () => {
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
-    const results = await Promise.all([api.get('/keyword-actions'), api.get('/settings/email'), api.get('/keyword-actions/deliveries')]);
-    setActions(results[0].data.actions); setEmailConfigured(results[1].data.configured); setDeliveries(results[2].data); setLoaded(true);
+    const results = await Promise.all([api.get('/keyword-actions'), api.get('/settings/email'), api.get('/keyword-actions/deliveries'), api.get('/settings/kasa')]);
+    setActions(results[0].data.actions); setEmailConfigured(results[1].data.configured); setDeliveries(results[2].data); setKasaSettings(results[3].data); setLoaded(true);
   }, []);
   useEffect(() => { load().catch((requestError) => setError(errorText(requestError))); }, [load]);
   const change = (key, value) => { setDraft((current) => ({ ...current, [key]: value })); setPreview(null); };
@@ -156,6 +159,20 @@ const KeywordActionsSection = () => {
     finally { setBusy(false); }
   };
 
+  const saveKasaSettings = async (event) => {
+    event.preventDefault();
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { data } = await api.patch('/settings/kasa', {
+        username: kasaSettings.username, password: kasaPassword, clear_password: clearKasaPassword,
+      });
+      setKasaSettings(data); setKasaPassword(''); setClearKasaPassword(false);
+      setKasaDevices([]); setDiscovered(false); setOutlets([]);
+      setMessage('Kasa account settings saved. Discover devices again to use these credentials.');
+    } catch (requestError) { setError(errorText(requestError)); }
+    finally { setBusy(false); }
+  };
+
   const discoverKasa = async () => {
     setBusy(true); setError(''); setMessage('');
     try {
@@ -184,6 +201,17 @@ const KeywordActionsSection = () => {
       <SettingsSectionHeader icon={Zap} title="Keyword actions" description="Set up reusable actions, then select them on the Keywords screen." />
       <Message error={error} message={message} />
       <p className={cardStyles.description}>Select an action on a keyword to activate it. Actions run when a transcription arrives, within the keyword’s group access. Editing or manually retranscribing a recording does not trigger actions. Duplicate recordings and hallucinations do not trigger actions. Popups work while the inbox is open, including when live mode is off.</p>
+      {kasaSettings && <form onSubmit={saveKasaSettings} className={`${cardStyles.card} stack stackLarge`}>
+        <h3 className={cardStyles.title}>Kasa account</h3>
+        <p className={cardStyles.description}>Newer devices use your TP-Link/Kasa account email and password for local authentication. Save them before discovering or testing devices. Older devices can work without an account.</p>
+        <div className="gridTwo">
+          <Field label="Kasa account email"><input className={formStyles.input} type="email" autoComplete="username" disabled={busy} value={kasaSettings.username} onChange={(event) => setKasaSettings((current) => ({ ...current, username: event.target.value }))} /></Field>
+          <Field label="Kasa account password"><input className={formStyles.input} type="password" autoComplete="new-password" disabled={busy || clearKasaPassword} value={kasaPassword} onChange={(event) => setKasaPassword(event.target.value)} placeholder={kasaSettings.password_configured ? 'Saved — leave blank to keep' : 'Password'} /></Field>
+        </div>
+        <label className="row"><input type="checkbox" disabled={busy} checked={clearKasaPassword} onChange={(event) => { setClearKasaPassword(event.target.checked); setKasaPassword(''); }} />Clear saved Kasa password</label>
+        <p role="status" className={cardStyles.description}>{kasaSettings.configured ? 'Account credentials saved.' : 'No account credentials configured.'}</p>
+        <Button type="submit" variant="primary" disabled={busy}>Save Kasa account</Button>
+      </form>}
       {loaded && <form onSubmit={save} className={`${cardStyles.card} stack stackLarge`}>
         <h3 className={cardStyles.title}>{editing ? 'Edit action' : 'Add action'}</h3>
         <div className="gridTwo">
