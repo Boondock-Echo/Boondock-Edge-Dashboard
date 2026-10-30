@@ -652,6 +652,8 @@ const handledownloadaudio = async () => {
         const transcribeResponse = await apiFetch('/transcribe', {
           method: 'POST',
           body: formData,
+          // Local model loading and CPU inference can exceed the 30s API default.
+          timeout: 10 * 60 * 1000,
         });
 
         if (!transcribeResponse.ok) {
@@ -689,8 +691,11 @@ const handledownloadaudio = async () => {
         setProcessProgress(80);
       } catch (error) {
         console.error('Transcription error:', error);
-        setTranscriptionText(`Error: Transcription service is currently unavailable - ${error.message}. Please try again later.`);
-        toast.error(`Transcription failed: ${error.message}`);
+        const message = error.name === 'AbortError'
+          ? 'Transcription request timed out. Try a smaller local model or a shorter recording.'
+          : error.message;
+        setTranscriptionText(`Error: ${message}`);
+        toast.error(`Transcription failed: ${message}`);
       } finally {
         setIsProcessing(false);
         setProcessProgress(100);

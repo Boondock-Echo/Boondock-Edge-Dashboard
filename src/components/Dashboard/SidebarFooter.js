@@ -8,11 +8,16 @@ import styles from '../ui/Sidebar.module.css';
 const SidebarFooter = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const principal = user?.user || user;
+  const displayName = principal?.name?.trim()
+    || principal?.username?.trim()
+    || principal?.email?.trim()
+    || "User";
 
   const getInitials = (name) => {
     if (!name) return "U";
     return name
-      .split(" ")
+      .split(/\s+/)
       .map((word) => word[0])
       .join("")
       .slice(0, 2)
@@ -32,15 +37,15 @@ const SidebarFooter = () => {
           title="View profile"
         >
           <div className={styles.avatar}>
-            {user?.avatar ? (
-              <img src={user.avatar} alt="" />
+            {principal?.avatar ? (
+              <img src={principal.avatar} alt="" />
             ) : (
-              getInitials(user?.name || user?.username || "User")
+              getInitials(displayName)
             )}
           </div>
           <div className={styles.profileText}>
             <span className={styles.profileName}>
-              {user?.name || user?.username || "Guest"}
+              {displayName}
             </span>
             <span className={styles.version}>
               {releaseDate ? `${appVersion} | ${releaseDate}` : appVersion}

@@ -12,24 +12,35 @@ const emptyGroup = () => ({
   name: '',
   description: '',
   is_default: false,
-  permissions_text: '',
+  permissions: [],
 });
-
-const normalizePermissions = (text) =>
-  [...new Set(
-    String(text || '')
-      .split(/[\n,]/)
-      .map((value) => value.trim())
-      .filter(Boolean),
-  )];
 
 const GroupModal = ({ group, onClose, onSave }) => {
   const isEdit = Boolean(group?.id);
   const [formData, setFormData] = useState(() => group ? {
     ...group,
-    permissions_text: (group.permissions || []).join('\n'),
+    permissions: [...(group.permissions || [])],
   } : emptyGroup());
+  const [permissions, setPermissions] = useState(null);
+  const [permissionsError, setPermissionsError] = useState('');
   const dialogRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/groups/permissions')
+      .then(({ data }) => { if (active) setPermissions(data); })
+      .catch(() => { if (active) setPermissionsError('Unable to load permissions. Close and reopen this dialog to retry.'); });
+    return () => { active = false; };
+  }, []);
+
+  const togglePermission = (permission, checked) => {
+    setFormData((current) => ({
+      ...current,
+      permissions: checked
+        ? [...new Set([...current.permissions, permission])]
+        : current.permissions.filter((value) => value !== permission),
+    }));
+  };
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -41,10 +52,12 @@ const GroupModal = ({ group, onClose, onSave }) => {
 
   const submit = async (event) => {
     event.preventDefault();
-    await onSave({
-      ...formData,
-      permissions: normalizePermissions(formData.permissions_text),
-    });
+    if (!permissions) return;
+    try {
+      await onSave(formData);
+    } catch {
+      // The save handler displays the error; keep the dialog and selections open.
+    }
   };
 
   return (
@@ -75,16 +88,20 @@ const GroupModal = ({ group, onClose, onSave }) => {
           />
         </div>
 
-        <div className={formStyles.field}>
-          <label className={formStyles.label}>Permissions</label>
-          <textarea
-            className={formStyles.textarea}
-            rows="10"
-            value={formData.permissions_text}
-            onChange={(event) => setFormData((current) => ({ ...current, permissions_text: event.target.value }))}
-            placeholder="One permission per line"
-          />
-          <p className="tinyText mutedText">One permission key per line. Existing keys are preserved exactly.</p>
+        <div className={formStyles.field} role="group" aria-labelledby="group-permissions-label">
+          <span id="group-permissions-label" className={formStyles.label}>Permissions</span>
+          {permissionsError && <p role="alert">{permissionsError}</p>}
+          {!permissions && !permissionsError && <p role="status">Loading permissions…</p>}
+          {permissions?.map((permission) => (
+            <label key={permission} className={formStyles.checkbox}>
+              <input
+                type="checkbox"
+                checked={formData.permissions.includes(permission)}
+                onChange={(event) => togglePermission(permission, event.target.checked)}
+              />
+              {permission}
+            </label>
+          ))}
         </div>
 
         <label className="row">
@@ -98,7 +115,7 @@ const GroupModal = ({ group, onClose, onSave }) => {
 
         <div className={modalStyles.actions}>
           <Button type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary"><Save size={18} /> Save group</Button>
+          <Button type="submit" variant="primary" disabled={!permissions}><Save size={18} /> Save group</Button>
         </div>
       </form>
     </dialog>
