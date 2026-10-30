@@ -8,6 +8,7 @@ import formStyles from '../ui/Form.module.css';
 import noticeStyles from '../ui/Notice.module.css';
 
 const DEFAULT_ACTION = {
+  device_host: '', outlet_id: '', command: 'turn_on',
   name: '', kind: 'popup', from_email: '', from_name: 'Boondock', reply_to: '',
   autoplay: true, to: '', cc: '', bcc: '', body_format: 'text',
   subject: 'Keyword alert: {keywords} — {channel}',
@@ -85,6 +86,9 @@ export const EmailSettingsSection = () => {
 
 const KeywordActionsSection = () => {
   const [actions, setActions] = useState([]);
+  const [outlets, setOutlets] = useState([]);
+  const [kasaDevices, setKasaDevices] = useState([]);
+  const [discovered, setDiscovered] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [testRecipient, setTestRecipient] = useState('');
   const [deliveries, setDeliveries] = useState([]);
@@ -102,7 +106,7 @@ const KeywordActionsSection = () => {
   }, []);
   useEffect(() => { load().catch((requestError) => setError(errorText(requestError))); }, [load]);
   const change = (key, value) => { setDraft((current) => ({ ...current, [key]: value })); setPreview(null); };
-  const reset = () => { setDraft(DEFAULT_ACTION); setEditing(null); setPreview(null); };
+  const reset = () => { setOutlets([]); setDraft(DEFAULT_ACTION); setEditing(null); setPreview(null); };
   const save = async (event) => {
     event.preventDefault();
     setBusy(true); setError(''); setMessage('');
@@ -119,11 +123,11 @@ const KeywordActionsSection = () => {
   };
   const edit = (action) => {
     const { id, ...values } = action;
-    setEditing(id); setPreview(null); setMessage('');
+    setOutlets([]); setEditing(id); setPreview(null); setMessage('');
     setDraft({ ...DEFAULT_ACTION, ...values, to: (values.to || []).join(', '), cc: (values.cc || []).join(', '), bcc: (values.bcc || []).join(', ') });
   };
   const remove = async (action) => {
-    if (!window.confirm(`Delete action "${action.name}"? Pending email deliveries will be cancelled.`)) return;
+    if (!window.confirm(`Delete action "${action.name}"? Pending deliveries will be cancelled.`)) return;
     setBusy(true); setError(''); setMessage('');
     try {
       await api.delete(`/keyword-actions/${action.id}`);
@@ -152,6 +156,29 @@ const KeywordActionsSection = () => {
     finally { setBusy(false); }
   };
 
+  const discoverKasa = async () => {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { data } = await api.post('/keyword-actions/kasa/discover', {});
+      setKasaDevices(data.devices); setDiscovered(true);
+      setMessage(`Found ${data.devices.length} device${data.devices.length === 1 ? '' : 's'}.`);
+    } catch (requestError) { setError(errorText(requestError)); }
+    finally { setBusy(false); }
+  };
+
+  const kasaRequest = async (test) => {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const payload = { device_host: draft.device_host.trim() };
+      if (test) Object.assign(payload, { outlet_id: draft.outlet_id, command: draft.command });
+      const { data } = await api.post(`/keyword-actions/kasa/${test ? 'test' : 'outlets'}`, payload);
+      setOutlets(data.outlets);
+      if (!data.outlets.some((outlet) => outlet.id === draft.outlet_id)) change('outlet_id', '');
+      setMessage(test ? data.message : `Connected to ${data.name || data.model}. Select an outlet.`);
+    } catch (requestError) { setError(errorText(requestError)); }
+    finally { setBusy(false); }
+  };
+
   return (
     <section className="stack stackLarge">
       <SettingsSectionHeader icon={Zap} title="Keyword actions" description="Set up reusable actions, then select them on the Keywords screen." />
@@ -162,9 +189,25 @@ const KeywordActionsSection = () => {
         <div className="gridTwo">
           <Field label="Action name"><input className={formStyles.input} required maxLength="100" value={draft.name} onChange={(event) => change('name', event.target.value)} /></Field>
           {draft.kind === 'email' && !emailConfigured ? <p role="status">Set up email routing to edit this email action.</p> :
-            <Field label="Action type"><select className={formStyles.select} value={draft.kind} onChange={(event) => change('kind', event.target.value)}><option value="popup">Popup</option>{emailConfigured && <option value="email">Email</option>}</select></Field>}
+            <Field label="Action type"><select className={formStyles.select} disabled={busy} value={draft.kind} onChange={(event) => change('kind', event.target.value)}><option value="popup">Popup</option><option value="kasa">Kasa device</option>{emailConfigured && <option value="email">Email</option>}</select></Field>}
         </div>
-        {draft.kind === 'popup' ? <label className="row"><input type="checkbox" checked={draft.autoplay} onChange={(event) => change('autoplay', event.target.checked)} />Play recording audio automatically</label> : <>
+        {draft.kind === 'popup' ? <label className="row"><input type="checkbox" checked={draft.autoplay} onChange={(event) => change('autoplay', event.target.checked)} />Play recording audio automatically</label> : draft.kind === 'kasa' ? <>
+          <p className={cardStyles.description}>Discover Kasa devices on the API host’s local network, or enter an IP address manually. Select an outlet or device to control. Discovery, reading, and saving do not change device states.</p>
+          <Button disabled={busy} onClick={discoverKasa}>{busy ? 'Please wait…' : 'Discover Kasa devices'}</Button>
+          {discovered && !kasaDevices.length && <p role="status">No devices found. Check that the API host and devices share a network with UDP broadcast access, or enter the device IP address manually.</p>}
+          {kasaDevices.length > 0 && <Field label="Discovered device"><select className={formStyles.select} disabled={busy} value={kasaDevices.some((device) => device.device_host === draft.device_host) ? draft.device_host : ''} onChange={(event) => {
+            const device = kasaDevices.find((item) => item.device_host === event.target.value);
+            if (!device) return;
+            change('device_host', device.device_host); setOutlets(device.outlets);
+            change('outlet_id', device.outlets.length === 1 ? device.outlets[0].id : '');
+          }}><option value="">Select a discovered device</option>{kasaDevices.map((device) => <option key={device.device_host} value={device.device_host} disabled={!device.supported}>{device.name || device.model} · {device.model} · {device.device_host}{device.supported ? '' : ` — ${device.reason}`}</option>)}</select></Field>}
+          <Field label="Device IP address"><input className={formStyles.input} required disabled={busy} placeholder="192.168.1.50" value={draft.device_host} onChange={(event) => { change('device_host', event.target.value); change('outlet_id', ''); setOutlets([]); }} /></Field>
+          <Button disabled={busy || !draft.device_host.trim()} onClick={() => kasaRequest(false)}>Read outlets</Button>
+          <Field label="Outlet"><select className={formStyles.select} required disabled={busy} value={draft.outlet_id} onChange={(event) => change('outlet_id', event.target.value)}><option value="">Select an outlet</option>{draft.outlet_id && !outlets.some((outlet) => outlet.id === draft.outlet_id) && <option value={draft.outlet_id}>Saved outlet — read outlets to see its name</option>}{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name} ({outlet.is_on ? 'on' : 'off'})</option>)}</select></Field>
+          <Field label="Device command"><select className={formStyles.select} disabled={busy} value={draft.command} onChange={(event) => change('command', event.target.value)}><option value="turn_on">Turn on</option><option value="turn_off">Turn off</option></select></Field>
+          <p className={cardStyles.description}>Test action immediately {draft.command === 'turn_on' ? 'turns on' : 'turns off'} the selected outlet.</p>
+          <Button disabled={busy || !draft.outlet_id || !draft.device_host.trim()} onClick={() => kasaRequest(true)}>Test action</Button>
+        </> : <>
           <p className={cardStyles.description}>Enter recipient addresses separated by commas. Sender and recipients apply to this action only.</p>
           <div className="gridTwo">
             <Field label="From email"><input className={formStyles.input} type="email" required value={draft.from_email} onChange={(event) => change('from_email', event.target.value)} /></Field>
