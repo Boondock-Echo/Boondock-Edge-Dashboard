@@ -341,7 +341,7 @@ fi
 
 echo -e "${GREEN}Installation configuration${NC}"
 prompt_if_unset INSTALL_ROOT "Installation root directory" "/opt/boondock/edge"
-prompt_if_unset BOONDOCK_DATA_ROOT "Data root directory" "$INSTALL_ROOT"
+BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-$INSTALL_ROOT}"
 export BOONDOCK_DATA_ROOT
 
 # An existing code root or an existing data-root db directory means this may be
