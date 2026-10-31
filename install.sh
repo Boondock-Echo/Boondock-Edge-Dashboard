@@ -847,60 +847,62 @@ EOF
     fi
 fi
 
-if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-    echo -e "${GREEN}Reloading systemd...${NC}"
-    systemctl daemon-reload
-fi
-
-if _is_truthy "$INSTALL_API"; then
-    echo "Configuring web API restart support..."
-    (cd "$API_DIR" && bash deploy/systemd/install-api-restart.sh "${SERVICE_FILE##*/}")
-fi
-
 if _is_truthy "$ENABLE_SERVICES"; then
+    if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
+        echo -e "${GREEN}Reloading systemd...${NC}"
+        systemctl daemon-reload
+    fi
+
     if _is_truthy "$INSTALL_API"; then
-        systemctl enable "boondock-edge-api.service"
+        echo "Configuring web API restart support..."
+        (cd "$API_DIR" && bash deploy/systemd/install-api-restart.sh "${SERVICE_FILE##*/}")
+    fi
+
+    if _is_truthy "$ENABLE_SERVICES"; then
+        if _is_truthy "$INSTALL_API"; then
+            systemctl enable "boondock-edge-api.service"
+        fi
+
+        # if _is_truthy "$INSTALL_UDP"; then
+        #     systemctl enable "boondock-edge-udp.service"
+        # fi
+    else
+        echo -e "${YELLOW}Installed services will not be enabled at boot.${NC}"
+    fi
+
+    if _is_truthy "$INSTALL_API"; then
+        systemctl start "boondock-edge-api.service"
     fi
 
     # if _is_truthy "$INSTALL_UDP"; then
-    #     systemctl enable "boondock-edge-udp.service"
+    #     systemctl start "boondock-edge-udp.service"
     # fi
-else
-    echo -e "${YELLOW}Installed services will not be enabled at boot.${NC}"
-fi
 
-if _is_truthy "$INSTALL_API"; then
-    systemctl start "boondock-edge-api.service"
-fi
-
-# if _is_truthy "$INSTALL_UDP"; then
-#     systemctl start "boondock-edge-udp.service"
-# fi
-
-if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-    sleep 3
-fi
-
-if _is_truthy "$INSTALL_API"; then
-    if systemctl is-active --quiet "boondock-edge-api.service"; then
-        echo -e "${GREEN}✓ API service is running successfully${NC}"
-    else
-        echo -e "${RED}✗ API service failed to start${NC}"
-        echo "Checking service status..."
-        systemctl status "boondock-edge-api.service" --no-pager -l
-        exit 1
+    if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
+        sleep 3
     fi
-fi
 
-# if _is_truthy "$INSTALL_UDP"; then
-#     if systemctl is-active --quiet "boondock-edge-udp.service"; then
-#         echo -e "${GREEN}✓ UDP service is running successfully${NC}"
-#     else
-#         echo -e "${RED}✗ UDP service failed to start${NC}"
-#         echo "Checking UDP service status..."
-#         systemctl status "boondock-edge-udp.service" --no-pager -l
-#     fi
-# fi
+    if _is_truthy "$INSTALL_API"; then
+        if systemctl is-active --quiet "boondock-edge-api.service"; then
+            echo -e "${GREEN}✓ API service is running successfully${NC}"
+        else
+            echo -e "${RED}✗ API service failed to start${NC}"
+            echo "Checking service status..."
+            systemctl status "boondock-edge-api.service" --no-pager -l
+            exit 1
+        fi
+    fi
+
+    # if _is_truthy "$INSTALL_UDP"; then
+    #     if systemctl is-active --quiet "boondock-edge-udp.service"; then
+    #         echo -e "${GREEN}✓ UDP service is running successfully${NC}"
+    #     else
+    #         echo -e "${RED}✗ UDP service failed to start${NC}"
+    #         echo "Checking UDP service status..."
+    #         systemctl status "boondock-edge-udp.service" --no-pager -l
+    #     fi
+    # fi
+fi
 
 if _is_truthy "$INSTALL_DASHBOARD"; then
     update_dashboard_manifest
