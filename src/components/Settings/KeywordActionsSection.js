@@ -89,6 +89,7 @@ const KeywordActionsSection = () => {
   const [outlets, setOutlets] = useState([]);
   const [kasaDevices, setKasaDevices] = useState([]);
   const [discovered, setDiscovered] = useState(false);
+  const [kasaDiagnostic, setKasaDiagnostic] = useState(null);
   const [kasaSettings, setKasaSettings] = useState(null);
   const [kasaPassword, setKasaPassword] = useState('');
   const [clearKasaPassword, setClearKasaPassword] = useState(false);
@@ -108,8 +109,8 @@ const KeywordActionsSection = () => {
     setActions(results[0].data.actions); setEmailConfigured(results[1].data.configured); setDeliveries(results[2].data); setKasaSettings(results[3].data); setLoaded(true);
   }, []);
   useEffect(() => { load().catch((requestError) => setError(errorText(requestError))); }, [load]);
-  const change = (key, value) => { setDraft((current) => ({ ...current, [key]: value })); setPreview(null); };
-  const reset = () => { setOutlets([]); setDraft(DEFAULT_ACTION); setEditing(null); setPreview(null); };
+  const change = (key, value) => { setKasaDiagnostic(null); setDraft((current) => ({ ...current, [key]: value })); setPreview(null); };
+  const reset = () => { setKasaDiagnostic(null); setOutlets([]); setDraft(DEFAULT_ACTION); setEditing(null); setPreview(null); };
   const save = async (event) => {
     event.preventDefault();
     setBusy(true); setError(''); setMessage('');
@@ -126,7 +127,7 @@ const KeywordActionsSection = () => {
   };
   const edit = (action) => {
     const { id, ...values } = action;
-    setOutlets([]); setEditing(id); setPreview(null); setMessage('');
+    setKasaDiagnostic(null); setOutlets([]); setEditing(id); setPreview(null); setMessage('');
     setDraft({ ...DEFAULT_ACTION, ...values, to: (values.to || []).join(', '), cc: (values.cc || []).join(', '), bcc: (values.bcc || []).join(', ') });
   };
   const remove = async (action) => {
@@ -166,7 +167,7 @@ const KeywordActionsSection = () => {
       const { data } = await api.patch('/settings/kasa', {
         username: kasaSettings.username, password: kasaPassword, clear_password: clearKasaPassword,
       });
-      setKasaSettings(data); setKasaPassword(''); setClearKasaPassword(false);
+      setKasaDiagnostic(null); setKasaSettings(data); setKasaPassword(''); setClearKasaPassword(false);
       setKasaDevices([]); setDiscovered(false); setOutlets([]);
       setMessage('Kasa account settings saved. Discover devices again to use these credentials.');
     } catch (requestError) { setError(errorText(requestError)); }
@@ -179,6 +180,15 @@ const KeywordActionsSection = () => {
       const { data } = await api.post('/keyword-actions/kasa/discover', {});
       setKasaDevices(data.devices); setDiscovered(true);
       setMessage(`Found ${data.devices.length} device${data.devices.length === 1 ? '' : 's'}.`);
+    } catch (requestError) { setError(errorText(requestError)); }
+    finally { setBusy(false); }
+  };
+
+  const diagnoseKasa = async () => {
+    setBusy(true); setError(''); setMessage(''); setKasaDiagnostic(null);
+    try {
+      const { data } = await api.post('/keyword-actions/kasa/diagnose', { device_host: draft.device_host.trim() });
+      setKasaDiagnostic(data);
     } catch (requestError) { setError(errorText(requestError)); }
     finally { setBusy(false); }
   };
@@ -226,11 +236,18 @@ const KeywordActionsSection = () => {
           {kasaDevices.length > 0 && <Field label="Discovered device"><select className={formStyles.select} disabled={busy} value={kasaDevices.some((device) => device.device_host === draft.device_host) ? draft.device_host : ''} onChange={(event) => {
             const device = kasaDevices.find((item) => item.device_host === event.target.value);
             if (!device) return;
-            change('device_host', device.device_host); setOutlets(device.outlets);
+            change('device_host', device.device_host); setOutlets(device.outlets); setError(device.reason || '');
             change('outlet_id', device.outlets.length === 1 ? device.outlets[0].id : '');
-          }}><option value="">Select a discovered device</option>{kasaDevices.map((device) => <option key={device.device_host} value={device.device_host} disabled={!device.supported}>{device.name || device.model} · {device.model} · {device.device_host}{device.supported ? '' : ` — ${device.reason}`}</option>)}</select></Field>}
+          }}><option value="">Select a discovered device</option>{kasaDevices.map((device) => <option key={device.device_host} value={device.device_host}>{device.name || device.model} · {device.model} · {device.device_host}{device.supported ? '' : ` — ${device.reason}`}</option>)}</select></Field>}
           <Field label="Device IP address"><input className={formStyles.input} required disabled={busy} placeholder="192.168.1.50" value={draft.device_host} onChange={(event) => { change('device_host', event.target.value); change('outlet_id', ''); setOutlets([]); }} /></Field>
-          <Button disabled={busy || !draft.device_host.trim()} onClick={() => kasaRequest(false)}>Read outlets</Button>
+          <div className="rowWrap">
+            <Button disabled={busy || !draft.device_host.trim()} onClick={() => kasaRequest(false)}>Read outlets</Button>
+            <Button disabled={busy || !draft.device_host.trim()} onClick={diagnoseKasa}>Diagnose connection</Button>
+          </div>
+          {kasaDiagnostic && <div className="stack" aria-label="Kasa connection diagnostic">
+            <p className={cardStyles.description}>This report contains device and connection results, without account credentials. Diagnosis reads the device without switching outlets or changing firmware.</p>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(kasaDiagnostic, null, 2)}</pre>
+          </div>}
           <Field label="Outlet"><select className={formStyles.select} required disabled={busy} value={draft.outlet_id} onChange={(event) => change('outlet_id', event.target.value)}><option value="">Select an outlet</option>{draft.outlet_id && !outlets.some((outlet) => outlet.id === draft.outlet_id) && <option value={draft.outlet_id}>Saved outlet — read outlets to see its name</option>}{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name} ({outlet.is_on ? 'on' : 'off'})</option>)}</select></Field>
           <Field label="Device command"><select className={formStyles.select} disabled={busy} value={draft.command} onChange={(event) => change('command', event.target.value)}><option value="turn_on">Turn on</option><option value="turn_off">Turn off</option></select></Field>
           <p className={cardStyles.description}>Test action immediately {draft.command === 'turn_on' ? 'turns on' : 'turns off'} the selected outlet.</p>

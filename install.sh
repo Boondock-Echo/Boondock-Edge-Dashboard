@@ -1,249 +1,135 @@
 #!/bin/bash
-# install.sh - Installation script for Boondock Edge
-# This script sets up selected Boondock Edge components in /opt/boondock/edge
+# Standalone Boondock Edge installer. Optional settings: ./install.conf.
+set -euo pipefail
 
-set -e  # Exit on any error
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-SOURCE_DIR=$(pwd)
-INSTALL_CONF="$SOURCE_DIR/install.conf"
-
-# Preserve root values supplied by the calling environment before loading
-# install.conf. Environment values take precedence over install.conf values.
-ENV_INSTALL_ROOT="${INSTALL_ROOT:-}"
-ENV_BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-}"
-
-# Clear only the root variables while loading install.conf so environment and
-# configuration-file values remain distinguishable.
-unset INSTALL_ROOT BOONDOCK_DATA_ROOT
-
-INSTALL_CHANNEL="latest"
-if [ -f "$INSTALL_CONF" ]; then
-    echo "Loading installation configuration from $INSTALL_CONF"
-    set -a
-    source "$INSTALL_CONF"
-    set +a
-fi
-
-CONF_INSTALL_ROOT="${INSTALL_ROOT:-}"
-CONF_BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-}"
-unset INSTALL_ROOT BOONDOCK_DATA_ROOT
-
-# Root precedence is resolved independently so code and persistent data may be
-# stored in different locations:
-#   1. calling environment
-#   2. install.conf
-#   3. interactive prompt/default
-if [ -n "$ENV_INSTALL_ROOT" ]; then
-    INSTALL_ROOT="$ENV_INSTALL_ROOT"
-elif [ -n "$CONF_INSTALL_ROOT" ]; then
-    INSTALL_ROOT="$CONF_INSTALL_ROOT"
-fi
-
-if [ -n "$ENV_BOONDOCK_DATA_ROOT" ]; then
-    BOONDOCK_DATA_ROOT="$ENV_BOONDOCK_DATA_ROOT"
-elif [ -n "$CONF_BOONDOCK_DATA_ROOT" ]; then
-    BOONDOCK_DATA_ROOT="$CONF_BOONDOCK_DATA_ROOT"
-fi
-
-case "${1:-}" in
-    "") ;;
-    beta)
-        INSTALL_CHANNEL="beta"
-        ;;
-    -h|--help)
-        echo "Usage: $0 [beta]"
-        echo "  beta  Install the beta tags of the dashboard and API."
-        exit 0
-        ;;
-    *)
-        echo -e "${RED}Error: Unknown installation channel '$1'.${NC}" >&2
-        echo "Usage: $0 [beta]" >&2
-        exit 2
-        ;;
-esac
-
-if [ "$#" -gt 1 ]; then
-    echo -e "${RED}Error: Too many arguments.${NC}" >&2
-    echo "Usage: $0 [beta]" >&2
-    exit 2
-fi
+fail() { echo "Error: $*" >&2; exit 1; }
+_is_truthy() { [[ "${1,,}" =~ ^(1|true|yes|y|on)$ ]]; }
 
 prompt_if_unset() {
-    local var_name="$1"
-    local prompt_text="$2"
-    local default_value="$3"
-    local value
-
-    if [ -n "${!var_name:-}" ]; then
-        return 0
+    local name="$1" label="$2" default="${3:-}" value
+    [ -z "${!name:-}" ] || return 0
+    [ -t 0 ] || fail "Set $name in install.conf or the environment."
+    if [ "$name" = ADMIN_PASSWORD ] || [ "$name" = WIFI_PASSWORD ]; then
+        read -rs -p "$label [$default]: " value
+        echo
+    else
+        read -r -p "$label [$default]: " value
     fi
-
-    if [ ! -t 0 ]; then
-        echo -e "${RED}Error: $var_name is not set and no interactive terminal is available.${NC}" >&2
-        echo "Set $var_name in the environment or run this script interactively." >&2
-        exit 1
-    fi
-
-    read -r -p "$prompt_text [$default_value]: " value || {
-        echo -e "${RED}Error: Unable to read $var_name.${NC}" >&2
-        exit 1
-    }
-
-    printf -v "$var_name" '%s' "${value:-$default_value}"
+    printf -v "$name" '%s' "${value:-$default}"
 }
 
-_is_truthy() {
-    case "${1,,}" in
-        1|true|yes|y|on) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-validate_boolean() {
-    local var_name="$1"
-    local value="${!var_name}"
-
-    case "${value,,}" in
-        1|true|yes|y|on|0|false|no|n|off) ;;
-        *)
-            echo -e "${RED}Error: $var_name must be yes/no, true/false, on/off, or 1/0.${NC}"
-            exit 1
-            ;;
-    esac
-}
-
-require_env() {
-    local var_name="$1"
-
-    if [ -z "${!var_name:-}" ]; then
-        echo -e "${RED}Error: $var_name must be set in the environment.${NC}" >&2
-        exit 1
+configure() {
+    local environment_root="${INSTALL_ROOT:-}" environment_data="${BOONDOCK_DATA_ROOT:-}"
+    [ ! -f ./install.conf ] || source ./install.conf
+    INSTALL_ROOT="${environment_root:-${INSTALL_ROOT:-}}"
+    prompt_if_unset INSTALL_ROOT 'Installation directory' /opt/boondock/edge
+    BOONDOCK_DATA_ROOT="${environment_data:-${BOONDOCK_DATA_ROOT:-$INSTALL_ROOT}}"
+    export BOONDOCK_DATA_ROOT
+    [[ "$INSTALL_ROOT" = /* && "$INSTALL_ROOT" != / ]] || fail 'INSTALL_ROOT must be an absolute directory other than /.'
+    [[ "$BOONDOCK_DATA_ROOT" = /* && "$BOONDOCK_DATA_ROOT" != / ]] || fail 'BOONDOCK_DATA_ROOT must be an absolute directory other than /.'
+    if [ -e "$INSTALL_ROOT" ] || [ -d "$BOONDOCK_DATA_ROOT/db" ]; then
+        prompt_if_unset INSTALL_MODE 'Install or upgrade?' upgrade
+    else
+        INSTALL_MODE=install
     fi
+    case "$INSTALL_MODE" in install|upgrade) ;; *) fail 'INSTALL_MODE must be install or upgrade.' ;; esac
+    prompt_if_unset INSTALL_USER 'Service account' boondock
+    prompt_if_unset INSTALL_DASHBOARD 'Install dashboard?' yes
+    prompt_if_unset INSTALL_API 'Install API?' yes
+    prompt_if_unset UPDATE_HOSTNAME 'Set hostname to boondock-edge?' no
+    prompt_if_unset ENABLE_SERVICES 'Enable API at boot?' yes
+    local name
+    for name in INSTALL_API INSTALL_DASHBOARD UPDATE_HOSTNAME ENABLE_SERVICES; do
+        case "${!name,,}" in
+            1|true|yes|y|on|0|false|no|n|off) ;;
+            *) fail "$name must be yes or no." ;;
+        esac
+    done
+    GITHUB_WEB_URL="${GITHUB_WEB_URL:-https://github.com}"
+    GITHUB_OWNER="${GITHUB_OWNER:-Boondock-Echo}"
+    GITHUB_API_REPO="${GITHUB_API_REPO:-Boondock-Edge-API}"
+    GITHUB_DASHBOARD_REPO="${GITHUB_DASHBOARD_REPO:-Boondock-Edge-Dashboard}"
+    GITHUB_FIRMWARE_REPO="${GITHUB_FIRMWARE_REPO:-Echo-Tango}"
+    # Reserved for the disabled UDP integration below.
+    INSTALL_UDP="${INSTALL_UDP:-no}"
+    GITHUB_UDP_REPO="${GITHUB_UDP_REPO:-Boondock-Edge-Streaming}"
+    UDP_REF="${UDP_REF:-${GITHUB_REF:-latest}}"
+    UDP_DIR="$INSTALL_ROOT/streaming"
+    API_REF="${API_REF:-${GITHUB_REF:-latest}}"
+    DASHBOARD_REF="${DASHBOARD_REF:-${GITHUB_REF:-latest}}"
+    if [ "${1:-}" = beta ]; then API_REF=beta; DASHBOARD_REF=beta; fi
+    API_DIR="$INSTALL_ROOT/api"
+    DASHBOARD_DIR="$INSTALL_ROOT/dashboard"
+    SERVICE_FILE=/etc/systemd/system/boondock-edge-api.service
+}
+
+prepare_host() {
+    local packages=(python3 curl) account_group
+    if _is_truthy "$INSTALL_API"; then packages+=(python3-venv ffmpeg sudo); fi
+    apt-get update
+    apt-get install -y "${packages[@]}"
+    if ! id "$INSTALL_USER" >/dev/null 2>&1; then
+        useradd --system --user-group --shell /bin/bash --home-dir "$INSTALL_ROOT" "$INSTALL_USER"
+    fi
+    [ "$(id -u "$INSTALL_USER")" -ne 0 ] || fail 'Use an unprivileged service account.'
+    account_group=$(id -gn "$INSTALL_USER")
+    INSTALL_GROUP="$account_group"
+    if getent group dialout >/dev/null; then usermod -aG dialout "$INSTALL_USER"; fi
+    mkdir -p "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
+    if _is_truthy "$UPDATE_HOSTNAME"; then hostnamectl set-hostname boondock-edge; fi
 }
 
 download_github() {
-    local url="$1"
-    local output="$2"
-    local curl_headers=(
-        --header "Accept: application/vnd.github+json"
-        --header "X-GitHub-Api-Version: 2022-11-28"
-    )
-    local wget_headers=(
-        --header="Accept: application/vnd.github+json"
-        --header="X-GitHub-Api-Version: 2022-11-28"
-    )
-
-    if command -v curl &> /dev/null; then
-        echo "curl: $url"
-        curl \
-            --fail \
-            --location \
-            --silent \
-            --show-error \
-            --retry 3 \
-            --retry-delay 2 \
-            "${curl_headers[@]}" \
-            "$url" \
-            --output "$output"
-    elif command -v wget &> /dev/null; then
-        wget \
-            --quiet \
-            "${wget_headers[@]}" \
-            --output-document="$output" \
-            "$url"
-    else
-        echo -e "${RED}Error: Neither curl nor wget is available.${NC}"
-        return 1
-    fi
+    curl --fail --location --silent --show-error --retry 3 --output "$2" "$1"
 }
 
-download_github_archive() {
-    local repository="$1"
-    local ref="$2"
-    local output="$3"
-
-    download_github \
-        "${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${repository}/tarball/${ref}" \
-        "$output"
-}
-
-install_dashboard_release() {
-    local tag="$1"
-    local destination="$2"
-
-    local archive_name="boondock-edge-dashboard-${tag}.tar.gz"
-    local checksum_name="${archive_name}.sha256"
-    local release_url="${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${GITHUB_DASHBOARD_REPO}/releases/download/${tag}"
-
-    local archive_path
-    local checksum_path
-    local staging
-    local expected_checksum
-    local actual_checksum
-
-    archive_path=$(mktemp --suffix=.tar.gz)
-    checksum_path=$(mktemp --suffix=.sha256)
+# Stage and verify before changing installed files. The subshell owns cleanup.
+install_component_release() (
+    set -e
+    local component="$1" tag="$2" destination="$3" repository="$4" staging archive url
     staging=$(mktemp -d)
-
-    echo "Downloading Dashboard release ${tag} from ${GITHUB_OWNER}/${GITHUB_DASHBOARD_REPO}..."
-
-    if ! download_github \
-        "${release_url}/${archive_name}" \
-        "$archive_path"; then
-        rm -f -- "$archive_path" "$checksum_path"
-        rm -rf -- "$staging"
-        echo -e "${RED}Error: Failed to download Dashboard release ${tag}.${NC}" >&2
-        return 1
+    trap 'rm -rf -- "$staging"' EXIT
+    archive="boondock-edge-${component}-${tag}.tar.gz"
+    url="${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${repository}/releases/download/${tag}/${archive}"
+    echo "Downloading $component $tag..."
+    download_github "$url" "$staging/release.tar.gz"
+    download_github "$url.sha256" "$staging/release.sha256"
+    python3 - "$staging" "$component" <<'PACKAGE_PY'
+import hashlib, json, sys, tarfile
+from pathlib import Path, PurePosixPath
+root, component = Path(sys.argv[1]), sys.argv[2]
+expected = (root / "release.sha256").read_text().split()[0]
+if hashlib.sha256((root / "release.tar.gz").read_bytes()).hexdigest() != expected:
+    sys.exit("Release checksum verification failed")
+with tarfile.open(root / "release.tar.gz") as archive:
+    for member in archive.getmembers():
+        path = PurePosixPath(member.name)
+        if (path.is_absolute() or ".." in path.parts or not path.parts
+                or path.parts[0] != component or not (member.isfile() or member.isdir())):
+            sys.exit("Unsafe archive: expected only the selected component directory and regular files")
+    archive.extractall(root / "unpacked")
+source = root / "unpacked" / component
+if not (source / "build-info.json").is_file():
+    sys.exit(f"Release is missing {component}/build-info.json")
+info = json.loads((source / "build-info.json").read_text())
+if not isinstance(info, dict) or info.get("component") != component or not info.get("version"):
+    sys.exit("Invalid component build information")
+if component == "api":
+    for name in ("install-api-restart.sh", "boondock-edge-api-restart",
+                 "boondock-edge-api-restart.service.in"):
+        if not (source / "deploy/systemd" / name).is_file():
+            sys.exit(f"API release is missing deploy/systemd/{name}")
+PACKAGE_PY
+    # Retain the previous files alongside the database snapshot for recovery.
+    if [ -e "$destination" ]; then
+        mkdir -p "$BACKUP_DIR"
+        mv -- "$destination" "$BACKUP_DIR/$component"
     fi
-
-    if ! download_github \
-        "${release_url}/${checksum_name}" \
-        "$checksum_path"; then
-        rm -f -- "$archive_path" "$checksum_path"
-        rm -rf -- "$staging"
-        echo -e "${RED}Error: Failed to download Dashboard checksum.${NC}" >&2
-        return 1
+    if ! mv -- "$staging/unpacked/$component" "$destination"; then
+        [ ! -e "$BACKUP_DIR/$component" ] || mv -- "$BACKUP_DIR/$component" "$destination"
+        exit 1
     fi
-
-    expected_checksum=$(awk '{print $1}' "$checksum_path")
-    actual_checksum=$(sha256sum "$archive_path" | awk '{print $1}')
-
-    if [ "$expected_checksum" != "$actual_checksum" ]; then
-        rm -f -- "$archive_path" "$checksum_path"
-        rm -rf -- "$staging"
-        echo -e "${RED}Error: Dashboard release checksum verification failed.${NC}" >&2
-        return 1
-    fi
-
-    echo "✓ Dashboard release checksum verified"
-
-    if ! tar -xzf "$archive_path" -C "$staging"; then
-        rm -f -- "$archive_path" "$checksum_path"
-        rm -rf -- "$staging"
-        echo -e "${RED}Error: Failed to extract Dashboard release.${NC}" >&2
-        return 1
-    fi
-
-    if [ ! -d "$staging/dashboard" ]; then
-        rm -f -- "$archive_path" "$checksum_path"
-        rm -rf -- "$staging"
-        echo -e "${RED}Error: Dashboard release does not contain dashboard/.${NC}" >&2
-        return 1
-    fi
-
-    rm -rf -- "$destination"
-    mv "$staging/dashboard" "$destination"
-
-    rm -f -- "$archive_path" "$checksum_path"
-    rm -rf -- "$staging"
-
-    echo "✓ Dashboard release ${tag} installed to $destination"
-}
+)
 
 update_dashboard_manifest() {
     python3 - "$DASHBOARD_DIR/build-info.json" "$BOONDOCK_DATA_ROOT/manifest.json" "$INSTALL_USER" <<'MANIFEST_PY'
@@ -278,26 +164,200 @@ with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
 MANIFEST_PY
 }
 
-install_firmware_release() {
-    local tag="$1"
-    local destination="$2"
-    local staging asset_name asset_url
-    staging=$(mktemp -d)
-
-    echo "Downloading firmware release $tag from ${GITHUB_OWNER}/${GITHUB_FIRMWARE_REPO}..."
-    for asset_name in bootloader.bin firmware.bin partitions.bin; do
-        asset_url="${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${GITHUB_FIRMWARE_REPO}/releases/download/${tag}/${asset_name}"
-
-        if ! download_github "$asset_url" "$staging/$asset_name"; then
-            rm -rf -- "$staging"
-            echo -e "${RED}Error: Failed to download $asset_name from release $tag.${NC}" >&2
-            return 1
-        fi
+install_firmware() {
+    local device asset folder timestamp
+    mkdir -p "$BOONDOCK_DATA_ROOT/firmware"
+    timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+    for device in echo tango; do
+        folder="$WORK_DIR/latest_$device"
+        mkdir -p "$folder"
+        for asset in bootloader.bin firmware.bin partitions.bin; do
+            download_github "${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${GITHUB_FIRMWARE_REPO}/releases/download/latest-$device/$asset" "$folder/$asset"
+        done
+        rm -rf -- "$BOONDOCK_DATA_ROOT/firmware/latest_$device"
+        mv "$folder" "$BOONDOCK_DATA_ROOT/firmware/"
     done
+    cat > "$BOONDOCK_DATA_ROOT/firmware/firmware.json" <<EOF
+{
+  "latest_echo": {"name": "Latest Echo", "description": "", "folder": "latest_echo", "created_at": "$timestamp"},
+  "latest_tango": {"name": "Latest Tango", "description": "", "folder": "latest_tango", "created_at": "$timestamp"}
+}
+EOF
+}
 
-    rm -rf -- "$destination"
-    mv "$staging" "$destination"
-    echo "✓ Firmware release $tag installed to $destination"
+collect_setup() {
+    prompt_if_unset ADMIN_EMAIL 'Administrator email'
+    [[ "$ADMIN_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || fail 'Invalid administrator email.'
+    prompt_if_unset ADMIN_PASSWORD 'Administrator password'
+    [ "${#ADMIN_PASSWORD}" -gt 8 ] || fail 'Administrator password must have more than 8 characters.'
+    prompt_if_unset CONFIGURE_RECORDERS 'Configure recorders?' yes
+    case "${CONFIGURE_RECORDERS,,}" in
+        1|true|yes|y|on|0|false|no|n|off) ;; *) fail 'CONFIGURE_RECORDERS must be yes or no.' ;;
+    esac
+    prompt_if_unset INBOX_VIEW 'Inbox view (continuous/paged)' continuous
+    prompt_if_unset MESSAGE_SORTING 'Message sorting (newest/oldest)' newest
+    case "$INBOX_VIEW" in continuous|paged) ;; *) fail 'Invalid inbox view.' ;; esac
+    case "$MESSAGE_SORTING" in newest|oldest) ;; *) fail 'Invalid message sorting.' ;; esac
+    WIFI_SSID= WIFI_IP_ADDRESS=
+    if command -v nmcli >/dev/null; then
+        local device connection stored_psk derived_psk configured_password="${WIFI_PASSWORD:-}"
+        device=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE device status | awk -F: '$2=="wifi" && $3=="connected" {print $1; exit}')
+        if [ -n "$device" ]; then
+            connection=$(nmcli --escape no -g GENERAL.CONNECTION device show "$device")
+            WIFI_SSID=$(nmcli --escape no -g 802-11-wireless.ssid connection show "$connection")
+            WIFI_PASSWORD=$(nmcli --escape no --show-secrets -g 802-11-wireless-security.psk connection show "$connection")
+            WIFI_IP_ADDRESS=$(nmcli --escape no -g IP4.ADDRESS device show "$device" | head -n 1)
+            WIFI_IP_ADDRESS="${WIFI_IP_ADDRESS%%/*}"
+            if [[ "$WIFI_PASSWORD" =~ ^[0-9A-Fa-f]{64}$ ]]; then
+                stored_psk="${WIFI_PASSWORD,,}"
+                WIFI_PASSWORD="$configured_password"
+                prompt_if_unset WIFI_PASSWORD "WiFi passphrase for $WIFI_SSID"
+                derived_psk=$(WIFI_VERIFY_PASSWORD="$WIFI_PASSWORD" WIFI_VERIFY_SSID="$WIFI_SSID" python3 -c \
+                    'import hashlib,os; print(hashlib.pbkdf2_hmac("sha1",os.environ["WIFI_VERIFY_PASSWORD"].encode(),os.environ["WIFI_VERIFY_SSID"].encode(),4096,32).hex())')
+                [ "$derived_psk" = "$stored_psk" ] || fail 'WiFi passphrase does not match the stored key.'
+            fi
+        fi
+    fi
+}
+
+initialize_components() {
+    if _is_truthy "$INSTALL_API"; then
+        local args=(upgrade)
+        if [ "$INSTALL_MODE" = install ]; then
+            SETUP_FILE="$WORK_DIR/setup.json"
+            export ADMIN_EMAIL ADMIN_PASSWORD CONFIGURE_RECORDERS INBOX_VIEW MESSAGE_SORTING WIFI_SSID WIFI_PASSWORD WIFI_IP_ADDRESS
+            python3 - "$SETUP_FILE" <<'SETUP_PY'
+import json, os, sys
+v = os.environ
+wifi = {key: v.get("WIFI_" + key.upper(), "") for key in ("ssid", "password", "ip_address")}
+config = {
+    "admin": {"email": v["ADMIN_EMAIL"], "password": v["ADMIN_PASSWORD"]},
+    "selected_devices": ["boondock_edge"] if v["CONFIGURE_RECORDERS"].lower() in ("1", "true", "yes", "y", "on") else [],
+    "wifi": wifi if wifi["ssid"] else None,
+    "preferences": {"inbox_view": v["INBOX_VIEW"], "message_sorting": v["MESSAGE_SORTING"]},
+}
+with open(sys.argv[1], "w") as stream:
+    json.dump(config, stream)
+SETUP_PY
+            chown "$INSTALL_USER" "$SETUP_FILE"
+            chmod 600 "$SETUP_FILE"
+            args=(setup --config "$SETUP_FILE")
+        fi
+        # The API CLI records its own metadata after setup/migrations succeed.
+        runuser -u "$INSTALL_USER" -- env "BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT" \
+            "$INSTALL_ROOT/venv/bin/python" "$API_DIR/manage.py" "${args[@]}"
+        if [ -n "${SETUP_FILE:-}" ]; then rm -f -- "$SETUP_FILE"; fi
+        unset ADMIN_PASSWORD WIFI_PASSWORD
+    fi
+    if _is_truthy "$INSTALL_DASHBOARD"; then update_dashboard_manifest; fi
+    echo "Installed metadata: $BOONDOCK_DATA_ROOT/manifest.json"
+}
+
+configure_api_service() {
+    cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=Boondock Edge Application Server
+After=network.target
+
+[Service]
+Type=simple
+User=$INSTALL_USER
+WorkingDirectory=$API_DIR
+Environment="BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT"
+Environment="PATH=$INSTALL_ROOT/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="FLASK_PORT=4000"
+ExecStart="$INSTALL_ROOT/venv/bin/python" "$API_DIR/run.py"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    (cd "$API_DIR" && bash deploy/systemd/install-api-restart.sh "${SERVICE_FILE##*/}")
+}
+
+finish_services() {
+    if _is_truthy "$INSTALL_API"; then
+        configure_api_service
+        if _is_truthy "$ENABLE_SERVICES"; then systemctl enable "${SERVICE_FILE##*/}"; fi
+    fi
+    if _is_truthy "$INSTALL_API" || [ "$API_WAS_RUNNING" = yes ]; then
+        systemctl start "${SERVICE_FILE##*/}"
+        sleep 3
+        systemctl is-active --quiet "${SERVICE_FILE##*/}" || fail 'API failed to start; check its systemd journal.'
+    fi
+}
+
+main() {
+    case "${1:-}" in
+        -h|--help) echo "Usage: $0 [beta] (settings in ./install.conf)"; return ;;
+        ''|beta) ;; *) fail "Usage: $0 [beta]" ;;
+    esac
+    [ "$#" -le 1 ] || fail "Usage: $0 [beta]"
+    [ "$EUID" -eq 0 ] || fail 'Run this installer as root.'
+    configure "${1:-}"
+    if ! _is_truthy "$INSTALL_API" && ! _is_truthy "$INSTALL_DASHBOARD"; then echo 'No components selected.'; return; fi
+    prepare_host
+    if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = install ]; then collect_setup; fi
+    WORK_DIR=$(mktemp -d)
+    # setup.json is private but must be reachable by the API service account.
+    chown "$INSTALL_USER" "$WORK_DIR"
+    trap 'rm -rf -- "$WORK_DIR"' EXIT
+    BACKUP_DIR="$BOONDOCK_DATA_ROOT/backups/installer-$(date -u +%Y%m%dT%H%M%S)-$$"
+    # Download and provision dependencies before the maintenance window.
+    if _is_truthy "$INSTALL_DASHBOARD"; then
+        install_component_release dashboard "$DASHBOARD_REF" "$WORK_DIR/dashboard" "$GITHUB_DASHBOARD_REPO"
+    fi
+    if _is_truthy "$INSTALL_API"; then
+        install_component_release api "$API_REF" "$WORK_DIR/api" "$GITHUB_API_REPO"
+        python3 -m venv "$INSTALL_ROOT/venv"
+        "$INSTALL_ROOT/venv/bin/python" -m pip install --upgrade -r "$WORK_DIR/api/requirements.txt"
+    fi
+    API_WAS_RUNNING=no
+    if systemctl is-active --quiet "${SERVICE_FILE##*/}"; then API_WAS_RUNNING=yes; fi
+    # Stop the API before replacing either component or migrating data.
+    if systemctl cat "${SERVICE_FILE##*/}" >/dev/null 2>&1; then systemctl stop "${SERVICE_FILE##*/}"; fi
+    mkdir -p "$BACKUP_DIR"
+    chmod 700 "$BACKUP_DIR"
+    local item
+    for item in db device_settings manifest.json; do
+        [ ! -e "$BOONDOCK_DATA_ROOT/$item" ] || cp -a "$BOONDOCK_DATA_ROOT/$item" "$BACKUP_DIR/"
+    done
+    for item in api dashboard; do
+        [ -d "$WORK_DIR/$item" ] || continue
+        [ ! -e "$INSTALL_ROOT/$item" ] || mv "$INSTALL_ROOT/$item" "$BACKUP_DIR/$item"
+        mv "$WORK_DIR/$item" "$INSTALL_ROOT/$item"
+    done
+    if _is_truthy "$INSTALL_API"; then
+        mkdir -p "$BOONDOCK_DATA_ROOT"/{db/reports,db/recorder_configs,device_settings,logs,recordings,uploads}
+        install_firmware
+    fi
+    # Preserve file modes; do not make databases, credentials, and every asset executable.
+    chown "$INSTALL_USER:$INSTALL_GROUP" "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
+    for item in api dashboard venv; do
+        [ ! -e "$INSTALL_ROOT/$item" ] || chown -R "$INSTALL_USER:$INSTALL_GROUP" "$INSTALL_ROOT/$item"
+    done
+    for item in db device_settings logs recordings uploads firmware; do
+        [ ! -e "$BOONDOCK_DATA_ROOT/$item" ] || chown -R "$INSTALL_USER:$INSTALL_GROUP" "$BOONDOCK_DATA_ROOT/$item"
+    done
+    initialize_components
+    finish_services
+    echo "Installation complete. Data: $BOONDOCK_DATA_ROOT"
+    echo "Backup: $BACKUP_DIR"
+    echo "Dashboard: http://$(hostname).local:4000"
+}
+
+# UDP is reserved for later enablement. Keep its source download and service
+# scaffolding here; the active installer selects only API and dashboard.
+download_github_archive() {
+    local repository="$1"
+    local ref="$2"
+    local output="$3"
+
+    download_github \
+        "${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${repository}/tarball/${ref}" \
+        "$output"
 }
 
 install_component_archive() {
@@ -315,13 +375,13 @@ install_component_archive() {
     echo "Downloading $component_name from GitHub repository ${GITHUB_OWNER}/${repository} at ref ${ref}..."
     if ! download_github_archive "$repository" "$ref" "$archive_path"; then
         rm -f -- "$archive_path"
-        echo -e "${RED}Error: Failed to download $component_name from GitHub.${NC}" >&2
+        echo "Error: Failed to download $component_name from GitHub." >&2 >&2
         return 1
     fi
 
     if ! tar -xzf "$archive_path" -C "$destination" --strip-components=1; then
         rm -f -- "$archive_path"
-        echo -e "${RED}Error: Failed to extract $component_name archive.${NC}" >&2
+        echo "Error: Failed to extract $component_name archive." >&2 >&2
         return 1
     fi
 
@@ -329,439 +389,13 @@ install_component_archive() {
     echo "✓ $component_name installed to $destination"
 }
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Boondock Edge Installation Script${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Error: This script must be run as root (use sudo)${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}Installation configuration${NC}"
-prompt_if_unset INSTALL_ROOT "Installation root directory" "/opt/boondock/edge"
-BOONDOCK_DATA_ROOT="${BOONDOCK_DATA_ROOT:-$INSTALL_ROOT}"
-export BOONDOCK_DATA_ROOT
-
-# An existing code root or an existing data-root db directory means this may be
-# an upgrade. This is especially important when BOONDOCK_DATA_ROOT points to a
-# persistent location separate from INSTALL_ROOT.
-if [ -e "$INSTALL_ROOT" ] || [ -d "$BOONDOCK_DATA_ROOT/db" ]; then
-    prompt_if_unset INSTALL_MODE "Do you want to upgrade or do an install?" "upgrade"
-else
-    INSTALL_MODE="install"
-fi
-
-case "${INSTALL_MODE,,}" in
-    upgrade)
-        INSTALL_MODE="upgrade"
-        ;;
-    install)
-        INSTALL_MODE="install"
-        ;;
-    *)
-        echo -e "${RED}Error: INSTALL_MODE must be upgrade or install.${NC}" >&2
-        exit 1
-        ;;
-esac
-prompt_if_unset INSTALL_USER "Linux user that should own and run Boondock Edge" "boondock"
-prompt_if_unset INSTALL_DASHBOARD "Install Boondock Edge Dashboard? (yes/no)" "yes"
-prompt_if_unset INSTALL_API "Install Boondock Edge API? (yes/no)" "yes"
-#prompt_if_unset INSTALL_UDP "Install Boondock Edge UDP? (yes/no)" "no"
-prompt_if_unset UPDATE_HOSTNAME "Update the system hostname to boondock-edge? (yes/no)" "no"
-prompt_if_unset ENABLE_SERVICES "Enable installed systemd services at boot? (yes/no)" "yes"
-
-if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = "install" ]; then
-    if [ -z "${ADMIN_EMAIL:-}" ]; then
-        if [ ! -t 0 ]; then
-            echo -e "${RED}Error: ADMIN_EMAIL is not set and no interactive terminal is available.${NC}" >&2
-            exit 1
-        fi
-        read -r -p "Admin Email: " ADMIN_EMAIL
-    fi
-
-    if [[ ! "$ADMIN_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
-        echo -e "${RED}Error: ADMIN_EMAIL is not a valid email address.${NC}"
-        exit 1
-    fi
-
-    if [ -z "${ADMIN_PASSWORD:-}" ]; then
-        if [ ! -t 0 ]; then
-            echo -e "${RED}Error: ADMIN_PASSWORD is not set and no interactive terminal is available.${NC}" >&2
-            exit 1
-        fi
-        read -r -p "Admin Password: " ADMIN_PASSWORD
-        echo ""
-    fi
-
-    if [ "${#ADMIN_PASSWORD}" -le 8 ]; then
-        echo -e "${RED}Error: ADMIN_PASSWORD must be more than 8 characters.${NC}"
-        exit 1
-    fi
-
-    case "$ADMIN_PASSWORD" in
-        *'['*|*']'*|*'('*|*')'*|*'\'*|*'/'*|*'<'*|*'>'*|*"'"*|*'"'*|*'`'*)
-            echo -e "${RED}Error: ADMIN_PASSWORD contains a forbidden character.${NC}"
-            exit 1
-            ;;
-    esac
-
-    if [[ "$ADMIN_PASSWORD" =~ [[:cntrl:]] ]]; then
-        echo -e "${RED}Error: ADMIN_PASSWORD cannot contain tabs or other control characters.${NC}"
-        exit 1
-    fi
-
-    prompt_if_unset CONFIGURE_RECORDERS "Configure Boondock Edge recorders? (yes/no)" "yes"
-    prompt_if_unset INBOX_VIEW "Inbox view (continuous/paged)" "continuous"
-    prompt_if_unset MESSAGE_SORTING "Message sorting (newest/oldest)" "newest"
-
-    WIFI_SSID=""
-    WIFI_CONFIG_PASSWORD="${WIFI_PASSWORD:-}"
-    WIFI_PASSWORD=""
-    WIFI_SETUP=null
-    if command -v nmcli &> /dev/null; then
-        WIFI_DEVICE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE device status | \
-            awk -F: '$2 == "wifi" && $3 == "connected" { print $1; exit }')
-        if [ -n "$WIFI_DEVICE" ]; then
-            WIFI_CONNECTION=$(LC_ALL=C nmcli --escape no -g GENERAL.CONNECTION \
-                device show "$WIFI_DEVICE")
-            WIFI_SSID=$(LC_ALL=C nmcli --escape no -g 802-11-wireless.ssid \
-                connection show "$WIFI_CONNECTION")
-            WIFI_PASSWORD=$(LC_ALL=C nmcli --escape no --show-secrets \
-                -g 802-11-wireless-security.psk \
-                connection show "$WIFI_CONNECTION")
-            WIFI_IP_ADDRESS=$(LC_ALL=C nmcli --escape no -g IP4.ADDRESS \
-                device show "$WIFI_DEVICE" | head -n 1)
-            WIFI_IP_ADDRESS="${WIFI_IP_ADDRESS%%/*}"
-
-            # A 64-character hex PSK is the derived WPA key, not the original passphrase.
-            # Ask for the passphrase (or use WIFI_PASSWORD from install.conf/environment)
-            # and verify it by deriving the WPA PSK from the SSID.
-            if [ "${#WIFI_PASSWORD}" -eq 64 ] && [[ "$WIFI_PASSWORD" =~ ^[0-9A-Fa-f]{64}$ ]]; then
-                WIFI_STORED_PSK="${WIFI_PASSWORD,,}"
-
-                if [ -n "$WIFI_CONFIG_PASSWORD" ]; then
-                    WIFI_PASSWORD="$WIFI_CONFIG_PASSWORD"
-                elif [ -t 0 ]; then
-                    read -r -p "WiFi Password for $WIFI_SSID: " WIFI_PASSWORD
-                    echo ""
-                else
-                    echo -e "${RED}Error: WiFi password is stored as a derived PSK. Set WIFI_PASSWORD for a non-interactive install.${NC}" >&2
-                    exit 1
-                fi
-
-                if [ -z "$WIFI_PASSWORD" ]; then
-                    echo -e "${RED}Error: WiFi password cannot be empty.${NC}" >&2
-                    exit 1
-                fi
-
-                if [ "${#WIFI_PASSWORD}" -eq 64 ] && [[ "$WIFI_PASSWORD" =~ ^[0-9A-Fa-f]{64}$ ]]; then
-                    WIFI_DERIVED_PSK="${WIFI_PASSWORD,,}"
-                else
-                    WIFI_DERIVED_PSK=$(WIFI_VERIFY_SSID="$WIFI_SSID" WIFI_VERIFY_PASSWORD="$WIFI_PASSWORD" \
-                        python3 -c 'import hashlib, os; print(hashlib.pbkdf2_hmac("sha1", os.environ["WIFI_VERIFY_PASSWORD"].encode(), os.environ["WIFI_VERIFY_SSID"].encode(), 4096, 32).hex())')
-                fi
-
-                if [ "$WIFI_DERIVED_PSK" != "$WIFI_STORED_PSK" ]; then
-                    echo -e "${RED}Error: WiFi password does not match the stored WPA key.${NC}" >&2
-                    exit 1
-                fi
-
-                echo "✓ WiFi password verified"
-                unset WIFI_STORED_PSK WIFI_DERIVED_PSK WIFI_CONFIG_PASSWORD
-            fi
-        fi
-        WIFI_SETUP=$(printf '{"ssid":"%s","password":"%s","ip_address":"%s"}' \
-            "$WIFI_SSID" \
-            "$WIFI_PASSWORD" \
-            "$WIFI_IP_ADDRESS")
-
-    fi
-
-
-fi
-echo ""
-
-validate_boolean INSTALL_DASHBOARD
-validate_boolean INSTALL_API
-#validate_boolean INSTALL_UDP
-validate_boolean UPDATE_HOSTNAME
-validate_boolean ENABLE_SERVICES
-if _is_truthy "$INSTALL_API" && [ "$INSTALL_MODE" = "install" ]; then
-    validate_boolean CONFIGURE_RECORDERS
-    case "$INBOX_VIEW" in
-        continuous|paged) ;;
-        *) echo -e "${RED}Error: INBOX_VIEW must be continuous or paged.${NC}"; exit 1 ;;
-    esac
-    case "$MESSAGE_SORTING" in
-        newest|oldest) ;;
-        *) echo -e "${RED}Error: MESSAGE_SORTING must be newest or oldest.${NC}"; exit 1 ;;
-    esac
-fi
-
-if _is_truthy "$UPDATE_HOSTNAME"; then
-    echo -e "${GREEN}Updating system hostname...${NC}"
-    hostnamectl set-hostname "boondock-edge"
-    echo "✓ System hostname updated to boondock-edge"
-fi
-
-if ! _is_truthy "$INSTALL_DASHBOARD" && ! _is_truthy "$INSTALL_API" && ! _is_truthy "$INSTALL_UDP"; then
-    echo -e "${YELLOW}No Boondock Edge components selected. Nothing to install.${NC}"
-    exit 0
-fi
-
-if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-    # Debian/Ubuntu package Python's venv/ensurepip support separately.
-    # Install python3-venv explicitly so `python3 -m venv` can create a usable environment.
-    if ! command -v python3 &> /dev/null; then
-        echo -e "${YELLOW}Python 3 not found. Installing Python 3 and venv support...${NC}"
-        apt-get update
-        apt-get install -y python3 python3-venv
-    fi
-
-    if ! command -v ffmpeg &> /dev/null; then
-        echo -e "${YELLOW}ffmpeg not found. Installing ffmpeg...${NC}"
-        apt-get update
-        apt-get install -y ffmpeg
-        echo "✓ ffmpeg installed"
-    else
-        echo "✓ ffmpeg is already installed"
-    fi
-fi
-
-if ! command -v tar &> /dev/null; then
-    echo -e "${YELLOW}tar not found. Installing tar...${NC}"
-    apt-get update
-    apt-get install -y tar
-fi
-
-if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
-    echo -e "${YELLOW}Neither curl nor wget found. Installing curl...${NC}"
-    apt-get update
-    apt-get install -y curl
-fi
-
-echo -e "${GREEN}Stopping Boondock Edge services before installing files...${NC}"
-if systemctl list-unit-files "boondock-edge-api.service" --no-legend 2>/dev/null | grep -q '^boondock-edge-api.service'; then
-    systemctl stop "boondock-edge-api.service"
-    echo "✓ API service stopped"
-else
-    echo "✓ API service is not installed"
-fi
-
-echo -e "${GREEN}[1/8] Creating installation and data directories...${NC}"
-if [ "$INSTALL_MODE" = "install" ]; then
-    if [ "$INSTALL_ROOT" = "$BOONDOCK_DATA_ROOT" ]; then
-        if [ -e "$INSTALL_ROOT" ]; then
-            echo "Removing existing installation/data directory: $INSTALL_ROOT"
-            rm -rf -- "$INSTALL_ROOT"
-        fi
-    else
-        if [ -e "$INSTALL_ROOT" ]; then
-            echo "Removing existing installation directory: $INSTALL_ROOT"
-            rm -rf -- "$INSTALL_ROOT"
-        fi
-        if [ -e "$BOONDOCK_DATA_ROOT" ]; then
-            echo "Removing existing data directory: $BOONDOCK_DATA_ROOT"
-            rm -rf -- "$BOONDOCK_DATA_ROOT"
-        fi
-    fi
-fi
-mkdir -p "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
-echo "✓ Installation directory ready: $INSTALL_ROOT"
-echo "✓ Data directory ready: $BOONDOCK_DATA_ROOT"
-
-if ! id "$INSTALL_USER" &>/dev/null; then
-    echo -e "${YELLOW}User '$INSTALL_USER' not found. Creating user...${NC}"
-    useradd -r -s /bin/bash -d "$INSTALL_ROOT" "$INSTALL_USER" || {
-        echo -e "${YELLOW}Note: User '$INSTALL_USER' may already exist or creation failed. Continuing...${NC}"
-    }
-    # Add install user to dialout group for serial device access
-    if getent group dialout &>/dev/null; then
-        usermod -aG dialout "$INSTALL_USER"
-        echo "✓ Added $INSTALL_USER to dialout group"
-    else
-        echo -e "${YELLOW}Warning: dialout group does not exist on this system.${NC}"
-    fi
-fi
-
-GITHUB_WEB_URL="${GITHUB_WEB_URL:-https://github.com}"
-GITHUB_OWNER="${GITHUB_OWNER:-Boondock-Echo}"
-GITHUB_REF="${GITHUB_REF:-latest}"
-GITHUB_DASHBOARD_REPO="${GITHUB_DASHBOARD_REPO:-Boondock-Edge-Dashboard}"
-GITHUB_API_REPO="${GITHUB_API_REPO:-Boondock-Edge-API}"
-GITHUB_UDP_REPO="${GITHUB_UDP_REPO:-Boondock-Edge-Streaming}"
-GITHUB_FIRMWARE_REPO="${GITHUB_FIRMWARE_REPO:-Echo-Tango}"
-DASHBOARD_REF="${DASHBOARD_REF:-$GITHUB_REF}"
-API_REF="${API_REF:-$GITHUB_REF}"
-UDP_REF="${UDP_REF:-$GITHUB_REF}"
-
-# The beta channel applies only to the dashboard and API. Firmware and any
-# future optional components continue to use their independently configured refs.
-if [ "$INSTALL_CHANNEL" = "beta" ]; then
-    DASHBOARD_REF="beta"
-    API_REF="beta"
-    echo -e "${YELLOW}Beta channel selected: dashboard and API will use the beta tags.${NC}"
-fi
-
-DASHBOARD_DIR="$INSTALL_ROOT/dashboard"
-API_DIR="$INSTALL_ROOT/api"
-UDP_DIR="$INSTALL_ROOT/streaming"
-
-echo -e "${GREEN}[2/8] Dashboard...${NC}"
-if _is_truthy "$INSTALL_DASHBOARD"; then
-    install_dashboard_release "$DASHBOARD_REF" "$DASHBOARD_DIR"
-else
-    echo -e "${YELLOW}Skipping Boondock Edge Dashboard.${NC}"
-fi
-
-echo -e "${GREEN}[3/8] API...${NC}"
-if _is_truthy "$INSTALL_API"; then
-    install_component_archive "$GITHUB_API_REPO" "$API_REF" "$API_DIR" "API"
-else
-    echo -e "${YELLOW}Skipping Boondock Edge API.${NC}"
-fi
-
-#echo -e "${GREEN}[4/8] UDP...${NC}"
-#if _is_truthy "$INSTALL_UDP"; then
-#    install_component_archive "$GITHUB_UDP_REPO" "$UDP_REF" "$UDP_DIR" "UDP"
-#else
-#    echo -e "${YELLOW}Skipping Boondock Edge UDP.${NC}"
-#fi
-
-echo -e "${GREEN}[5/8] Creating application directories...${NC}"
-mkdir -p "$BOONDOCK_DATA_ROOT/db"
-mkdir -p "$BOONDOCK_DATA_ROOT/db/reports"
-mkdir -p "$BOONDOCK_DATA_ROOT/db/recorder_configs"
-mkdir -p "$BOONDOCK_DATA_ROOT/device_settings"
-mkdir -p "$BOONDOCK_DATA_ROOT/logs"
-mkdir -p "$BOONDOCK_DATA_ROOT/recordings"
-mkdir -p "$BOONDOCK_DATA_ROOT/uploads"
-mkdir -p "$BOONDOCK_DATA_ROOT/firmware"
-echo "✓ Directories created"
-
-echo -e "${GREEN}[6/8] Installing Echo and Tango firmware...${NC}"
-install_firmware_release "latest-echo" "$BOONDOCK_DATA_ROOT/firmware/latest_echo"
-ECHO_FIRMWARE_CREATED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-install_firmware_release "latest-tango" "$BOONDOCK_DATA_ROOT/firmware/latest_tango"
-TANGO_FIRMWARE_CREATED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-cat > "$BOONDOCK_DATA_ROOT/firmware/firmware.json" <<EOF
-{
-  "latest_echo": {
-    "name": "Latest Echo",
-    "description": "",
-    "folder": "latest_echo",
-    "created_at": "$ECHO_FIRMWARE_CREATED_AT"
-  },
-  "latest_tango": {
-    "name": "Latest Tango",
-    "description": "",
-    "folder": "latest_tango",
-    "created_at": "$TANGO_FIRMWARE_CREATED_AT"
-  }
-}
-EOF
-echo "✓ Firmware catalog written to $BOONDOCK_DATA_ROOT/firmware/firmware.json"
-
-echo -e "${GREEN}[7/8] Python virtual environment...${NC}"
-if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-    cd "$INSTALL_ROOT"
-
-    if [ "$INSTALL_MODE" = "install" ] && [ -d "venv" ]; then
-        echo -e "${YELLOW}Warning: Virtual environment already exists. Removing old one...${NC}"
-        rm -rf "venv"
-    fi
-
-    if [ ! -x "venv/bin/python" ] || [ ! -f "venv/bin/activate" ]; then
-        if ! python3 -m venv "venv" &> /dev/null; then
-            echo -e "${YELLOW}Python venv support is incomplete. Installing python3-venv...${NC}"
-
-            rm -rf "venv"
-
-            apt-get update
-            apt-get install -y python3-venv
-
-            if ! python3 -m venv "venv"; then
-                echo -e "${RED}Error: Unable to create a Python virtual environment.${NC}"
-                exit 1
-            fi
-        fi
-    fi
-
-    if [ "$INSTALL_MODE" = "upgrade" ]; then
-        echo "✓ Existing shared virtual environment retained: venv"
-    else
-        echo "✓ Shared virtual environment created: venv"
-    fi
-
-    echo -e "${GREEN}[8/8] Installing Python dependencies...${NC}"
-    source "$INSTALL_ROOT/venv/bin/activate"
-    pip install --upgrade pip --quiet
-
-    if [ -f "$API_DIR/requirements.txt" ]; then
-        if [ "$INSTALL_MODE" = "upgrade" ]; then
-            pip install --upgrade -r "$API_DIR/requirements.txt"
-        else
-            pip install -r "$API_DIR/requirements.txt"
-        fi
-        echo "✓ Dependencies installed from $API_DIR/requirements.txt"
-    elif [ -f "$UDP_DIR/requirements.txt" ]; then
-        echo -e "${YELLOW}API requirements.txt not available. Using UDP requirements instead.${NC}"
-        if [ "$INSTALL_MODE" = "upgrade" ]; then
-            pip install --upgrade -r "$UDP_DIR/requirements.txt"
-        else
-            pip install -r "$UDP_DIR/requirements.txt"
-        fi
-        echo "✓ Dependencies installed from $UDP_DIR/requirements.txt"
-    else
-        deactivate
-        echo -e "${RED}Error: No requirements.txt found for the selected API/UDP components.${NC}"
-        exit 1
-    fi
-
-    deactivate
-    echo "✓ Shared virtual environment setup complete"
-else
-    echo -e "${YELLOW}API and UDP are both disabled. No Python virtual environment is required.${NC}"
-    echo -e "${GREEN}[8/8] Python dependencies... skipped${NC}"
-fi
-
-SERVICE_FILE="/etc/systemd/system/boondock-edge-api.service"
-if _is_truthy "$INSTALL_API"; then
-    if [ "$(id -u "$INSTALL_USER")" -eq 0 ]; then
-        echo "Error: The API service must run as an unprivileged account." >&2
-        exit 1
-    fi
-    echo -e "${GREEN}Creating systemd service for API...${NC}"
-
-    cat > "$SERVICE_FILE" << EOF
-[Unit]
-Description=Boondock Edge Application Server
-After=network.target
-
-[Service]
-Type=simple
-User=$INSTALL_USER
-SupplementaryGroups=dialout
-WorkingDirectory=$INSTALL_ROOT/api
-Environment="PATH=$INSTALL_ROOT/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT"
-Environment="FLASK_PORT=4000"
-ExecStart=$INSTALL_ROOT/venv/bin/python $INSTALL_ROOT/api/run.py
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    echo "✓ Service file created: $SERVICE_FILE"
-fi
-
+# prompt_if_unset INSTALL_UDP "Install Boondock Edge UDP? (yes/no)" "no"
+# if _is_truthy "$INSTALL_UDP"; then
+#     install_component_archive "$GITHUB_UDP_REPO" "$UDP_REF" "$UDP_DIR" "UDP"
+# fi
 #UDP_SERVICE_FILE="/etc/systemd/system/boondock-edge-udp.service"
 #if _is_truthy "$INSTALL_UDP"; then
-#    echo -e "${GREEN}Creating systemd service for UDP...${NC}"
+#    echo "Creating systemd service for UDP..."
 #    cat > "$UDP_SERVICE_FILE" << EOF
 # [Unit]
 # Description=Boondock Edge UDP Service
@@ -771,9 +405,9 @@ fi
 # Type=simple
 # User=$INSTALL_USER
 # SupplementaryGroups=dialout
-# WorkingDirectory=$INSTALL_ROOT/udp
+# WorkingDirectory=$UDP_DIR
 # Environment="PATH=$INSTALL_ROOT/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-# ExecStart=$INSTALL_ROOT/venv/bin/python $INSTALL_ROOT/udp/run.py
+# ExecStart=$INSTALL_ROOT/venv/bin/python $UDP_DIR/run.py
 # Restart=always
 # RestartSec=10
 # StandardOutput=journal
@@ -786,179 +420,8 @@ fi
 #     echo "✓ UDP service file created: $UDP_SERVICE_FILE"
 # fi
 
-echo -e "${GREEN}Setting final ownership and permissions for $INSTALL_USER:$INSTALL_USER...${NC}"
-chown -R "$INSTALL_USER:$INSTALL_USER" "$INSTALL_ROOT"
-chmod -R 755 "$INSTALL_ROOT"
-if [ "$BOONDOCK_DATA_ROOT" != "$INSTALL_ROOT" ]; then
-    chown -R "$INSTALL_USER:$INSTALL_USER" "$BOONDOCK_DATA_ROOT"
-    chmod -R 755 "$BOONDOCK_DATA_ROOT"
-fi
-# if _is_truthy "$INSTALL_API" && [ -f "$SETUP_FILE" ]; then
-#     chmod 600 "$SETUP_FILE"
-# fi
-echo "✓ Ownership set to $INSTALL_USER:$INSTALL_USER with 755 permissions"
+# systemctl enable boondock-edge-udp.service
+# systemctl start boondock-edge-udp.service
 
-if _is_truthy "$INSTALL_API"; then
-    if [ "$INSTALL_MODE" = "upgrade" ]; then
-        echo -e "${GREEN}Updating application data...${NC}"
-        runuser -u "$INSTALL_USER" -- \
-            env "BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT" \
-            "$INSTALL_ROOT/venv/bin/python" \
-            "$API_DIR/manage.py" upgrade
-        echo "✓ Application code updated"
-    else
-        SETUP_FILE="$BOONDOCK_DATA_ROOT/db/setup.json"
-        echo -e "${GREEN}Writing setup configuration...${NC}"
-        SELECTED_DEVICES="[]"
-        if _is_truthy "$CONFIGURE_RECORDERS"; then
-            SELECTED_DEVICES='["boondock_edge"]'
-        fi
-        cat > "$SETUP_FILE" <<EOF
-{
-  "admin": {
-    "email": "$ADMIN_EMAIL",
-    "password": "$ADMIN_PASSWORD"
-  },
-  "selected_devices": $SELECTED_DEVICES,
-  "wifi": $WIFI_SETUP,
-  "preferences": {
-    "inbox_view": "$INBOX_VIEW",
-    "message_sorting": "$MESSAGE_SORTING"
-  }
-}
-EOF
-
-        chown "$INSTALL_USER:$INSTALL_USER" "$SETUP_FILE"
-        chmod 600 "$SETUP_FILE"
-        trap 'rm -f -- "$SETUP_FILE"' EXIT
-        echo "✓ Setup configuration written to $SETUP_FILE"
-
-        echo -e "${GREEN}Initializing application data...${NC}"
-        runuser -u "$INSTALL_USER" -- \
-            env "BOONDOCK_DATA_ROOT=$BOONDOCK_DATA_ROOT" \
-            "$INSTALL_ROOT/venv/bin/python" \
-            "$API_DIR/manage.py" setup --config "$SETUP_FILE"
-        rm -f -- "$SETUP_FILE"
-        trap - EXIT
-        # Credentials are no longer needed in this installer process.
-        unset ADMIN_PASSWORD
-
-        echo "✓ Application data initialized"
-    fi
-fi
-
-if _is_truthy "$ENABLE_SERVICES"; then
-    if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-        echo -e "${GREEN}Reloading systemd...${NC}"
-        systemctl daemon-reload
-    fi
-
-    if _is_truthy "$INSTALL_API"; then
-        echo "Configuring web API restart support..."
-        (cd "$API_DIR" && bash deploy/systemd/install-api-restart.sh "${SERVICE_FILE##*/}")
-    fi
-
-    if _is_truthy "$ENABLE_SERVICES"; then
-        if _is_truthy "$INSTALL_API"; then
-            systemctl enable "boondock-edge-api.service"
-        fi
-
-        # if _is_truthy "$INSTALL_UDP"; then
-        #     systemctl enable "boondock-edge-udp.service"
-        # fi
-    else
-        echo -e "${YELLOW}Installed services will not be enabled at boot.${NC}"
-    fi
-
-    if _is_truthy "$INSTALL_API"; then
-        systemctl start "boondock-edge-api.service"
-    fi
-
-    # if _is_truthy "$INSTALL_UDP"; then
-    #     systemctl start "boondock-edge-udp.service"
-    # fi
-
-    if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-        sleep 3
-    fi
-
-    if _is_truthy "$INSTALL_API"; then
-        if systemctl is-active --quiet "boondock-edge-api.service"; then
-            echo -e "${GREEN}✓ API service is running successfully${NC}"
-        else
-            echo -e "${RED}✗ API service failed to start${NC}"
-            echo "Checking service status..."
-            systemctl status "boondock-edge-api.service" --no-pager -l
-            exit 1
-        fi
-    fi
-
-    # if _is_truthy "$INSTALL_UDP"; then
-    #     if systemctl is-active --quiet "boondock-edge-udp.service"; then
-    #         echo -e "${GREEN}✓ UDP service is running successfully${NC}"
-    #     else
-    #         echo -e "${RED}✗ UDP service failed to start${NC}"
-    #         echo "Checking UDP service status..."
-    #         systemctl status "boondock-edge-udp.service" --no-pager -l
-    #     fi
-    # fi
-fi
-
-if _is_truthy "$INSTALL_DASHBOARD"; then
-    update_dashboard_manifest
-fi
-
-echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Installation Complete!${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo "Installation directory: $INSTALL_ROOT"
-echo "Data directory: $BOONDOCK_DATA_ROOT"
-
-if _is_truthy "$INSTALL_DASHBOARD"; then
-    echo "Dashboard: installed in $DASHBOARD_DIR"
-else
-    echo "Dashboard: not installed"
-fi
-
-if _is_truthy "$INSTALL_API"; then
-    echo "API: installed in $API_DIR"
-    SYSTEM_HOSTNAME=$(hostname)
-    SYSTEM_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    SYSTEM_IP="${SYSTEM_IP:-unavailable}"
-    echo "Hostname: $SYSTEM_HOSTNAME"
-    echo "IP address: $SYSTEM_IP"
-    echo "HTTP port: 4000"
-    echo "URL: http://$SYSTEM_IP:4000 or http://$SYSTEM_HOSTNAME.local:4000"
-    echo "API service: boondock-edge-api.service"
-else
-    echo "API: not installed"
-fi
-
-# if _is_truthy "$INSTALL_UDP"; then
-#     echo "UDP: installed in $UDP_DIR"
-#     echo "UDP service: boondock-edge-udp.service"
-# else
-#     echo "UDP: not installed"
-# fi
-
-echo ""
-
-if _is_truthy "$INSTALL_API" || _is_truthy "$INSTALL_UDP"; then
-    echo "Useful commands:"
-
-    if _is_truthy "$INSTALL_API"; then
-        echo "  sudo systemctl status boondock-edge-api.service"
-        echo "  sudo systemctl restart boondock-edge-api.service"
-        echo "  sudo journalctl -u boondock-edge-api.service -f"
-    fi
-
-    # if _is_truthy "$INSTALL_UDP"; then
-    #     echo "  sudo systemctl status boondock-edge-udp.service"
-    #     echo "  sudo systemctl restart boondock-edge-udp.service"
-    #     echo "  sudo journalctl -u boondock-edge-udp.service -f"
-    # fi
-fi
-
-echo ""
+# Allow isolated function tests without running the appliance installation.
+if [[ "${BASH_SOURCE[0]}" = "$0" ]]; then main "$@"; fi
