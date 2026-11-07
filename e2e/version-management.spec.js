@@ -35,7 +35,12 @@ async function setup(page, handler, role = 'admin', path = '/version') {
     if (await handler?.(route, url, request)) return;
     if (url.pathname.endsWith('/releases')) {
       const component = url.searchParams.get('component');
-      return json(route, { releases: [{ tag: component === 'api' ? 'v2.0.0' : 'v4.0.0' }] });
+      const title = component === 'api' ? 'Edge API' : 'Edge Dashboard';
+      return json(route, { releases: [
+        { tag: 'latest', display_name: title + ' Latest' },
+        { tag: 'beta', display_name: title + ' Beta' },
+        { tag: component === 'api' ? 'v2.0.0' : 'v4.0.0', display_name: title + ' Release' },
+      ] });
     }
     return json(route, state());
   });
@@ -95,6 +100,9 @@ test('independent selections send only component and tag with administrator auth
   });
   await expect(page.getByText('api build 1.0.0')).toBeVisible();
   await expect(page.getByText('dashboard build 3.0.0')).toBeVisible();
+  await expect(page.getByLabel('Dashboard release', { exact: true }).locator('option[value="beta"]')).toHaveText('Edge Dashboard Beta (beta)');
+  await expect(page.getByLabel('Dashboard release', { exact: true }).locator('option[value="v4.0.0"]')).toHaveText('Edge Dashboard Release (v4.0.0)');
+  await expect(page.getByLabel('API release', { exact: true }).locator('option[value="latest"]')).toHaveText('Edge API Latest (latest)');
   await page.getByLabel('API release', { exact: true }).selectOption('v2.0.0');
   await page.getByLabel('Dashboard release', { exact: true }).selectOption('beta');
   await expect(page.getByLabel('API release', { exact: true })).toHaveValue('v2.0.0');

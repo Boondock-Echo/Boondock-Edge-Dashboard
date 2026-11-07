@@ -95,7 +95,7 @@ install_component_release() (
     download_github "$url" "$staging/release.tar.gz"
     download_github "$url.sha256" "$staging/release.sha256"
     python3 - "$staging" "$component" <<'PACKAGE_PY'
-import hashlib, json, sys, tarfile
+import hashlib, json, re, sys, tarfile
 from pathlib import Path, PurePosixPath
 root, component = Path(sys.argv[1]), sys.argv[2]
 expected = (root / "release.sha256").read_text().split()[0]
@@ -112,23 +112,23 @@ source = root / "unpacked" / component
 if not (source / "build-info.json").is_file():
     sys.exit(f"Release is missing {component}/build-info.json")
 info = json.loads((source / "build-info.json").read_text())
-if not isinstance(info, dict) or info.get("component") != component or not info.get("version"):
+if not isinstance(info, dict) or info.get("component") != component:
     sys.exit("Invalid component build information")
+for key in ("version", "display_name", "git_tag", "git_commit", "built_at", "repository"):
+    if not isinstance(info.get(key), str) or not info[key].strip():
+        sys.exit(f"Missing or invalid build information: {key}")
+version_pattern = (r"v?\d+\.\d+\.\d+(?:-[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)*)?" if component == "api"
+                   else r"v?\d+\.\d+\.\d+(?:-[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)?(?:\+[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)?")
+if not re.fullmatch(version_pattern, info["version"]):
+    sys.exit("Invalid build information: version")
 if component == "api":
     for name in ("install-api-restart.sh", "boondock-edge-api-restart",
                  "boondock-edge-api-restart.service.in"):
         if not (source / "deploy/systemd" / name).is_file():
             sys.exit(f"API release is missing deploy/systemd/{name}")
 PACKAGE_PY
-    # Retain the previous files alongside the database snapshot for recovery.
-    if [ -e "$destination" ]; then
-        mkdir -p "$BACKUP_DIR"
-        mv -- "$destination" "$BACKUP_DIR/$component"
-    fi
-    if ! mv -- "$staging/unpacked/$component" "$destination"; then
-        [ ! -e "$BACKUP_DIR/$component" ] || mv -- "$BACKUP_DIR/$component" "$destination"
-        exit 1
-    fi
+    rm -rf -- "$destination"
+    mv -- "$staging/unpacked/$component" "$destination"
 )
 
 update_dashboard_manifest() {
@@ -164,25 +164,35 @@ with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
 MANIFEST_PY
 }
 
-install_firmware() {
-    local device asset folder timestamp
-    mkdir -p "$BOONDOCK_DATA_ROOT/firmware"
+download_firmware() {
+    local device asset folder timestamp version echo_version tango_version
+    mkdir -p "$WORK_DIR/firmware"
     timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
     for device in echo tango; do
-        folder="$WORK_DIR/latest_$device"
+        folder="$WORK_DIR/firmware/latest_$device"
         mkdir -p "$folder"
         for asset in bootloader.bin firmware.bin partitions.bin; do
             download_github "${GITHUB_WEB_URL%/}/${GITHUB_OWNER}/${GITHUB_FIRMWARE_REPO}/releases/download/latest-$device/$asset" "$folder/$asset"
         done
-        rm -rf -- "$BOONDOCK_DATA_ROOT/firmware/latest_$device"
-        mv "$folder" "$BOONDOCK_DATA_ROOT/firmware/"
+        version=$(LC_ALL=C grep -aoE "${device^^}-v[0-9]+\.[0-9]+\.[0-9]+(-[[:alnum:].-]+)?" "$folder/firmware.bin" | sort -u) || fail "Cannot read $device firmware version."
+        [[ "$version" != *$'\n'* ]] || fail "Multiple versions found in $device firmware."
+        printf -v "${device}_version" '%s' "${version#${device^^}-v}"
     done
-    cat > "$BOONDOCK_DATA_ROOT/firmware/firmware.json" <<EOF
+    cat > "$WORK_DIR/firmware/firmware.json" <<EOF
 {
-  "latest_echo": {"name": "Latest Echo", "description": "", "folder": "latest_echo", "created_at": "$timestamp"},
-  "latest_tango": {"name": "Latest Tango", "description": "", "folder": "latest_tango", "created_at": "$timestamp"}
+  "latest_echo": {"type": "echo", "version": "$echo_version", "name": "Latest Echo", "description": "", "folder": "latest_echo", "created_at": "$timestamp"},
+  "latest_tango": {"type": "tango", "version": "$tango_version", "name": "Latest Tango", "description": "", "folder": "latest_tango", "created_at": "$timestamp"}
 }
 EOF
+}
+
+install_firmware() {
+    mkdir -p "$BOONDOCK_DATA_ROOT/firmware"
+    local item
+    for item in latest_echo latest_tango firmware.json; do
+        rm -rf -- "$BOONDOCK_DATA_ROOT/firmware/$item"
+        mv "$WORK_DIR/firmware/$item" "$BOONDOCK_DATA_ROOT/firmware/$item"
+    done
 }
 
 collect_setup() {
@@ -194,9 +204,9 @@ collect_setup() {
     case "${CONFIGURE_RECORDERS,,}" in
         1|true|yes|y|on|0|false|no|n|off) ;; *) fail 'CONFIGURE_RECORDERS must be yes or no.' ;;
     esac
-    prompt_if_unset INBOX_VIEW 'Inbox view (continuous/paged)' continuous
+    prompt_if_unset INBOX_VIEW 'Inbox view (continuous/pagination)' continuous
     prompt_if_unset MESSAGE_SORTING 'Message sorting (newest/oldest)' newest
-    case "$INBOX_VIEW" in continuous|paged) ;; *) fail 'Invalid inbox view.' ;; esac
+    case "$INBOX_VIEW" in paged) INBOX_VIEW=pagination ;; continuous|pagination) ;; *) fail 'Invalid inbox view.' ;; esac
     case "$MESSAGE_SORTING" in newest|oldest) ;; *) fail 'Invalid message sorting.' ;; esac
     WIFI_SSID= WIFI_IP_ADDRESS=
     if command -v nmcli >/dev/null; then
@@ -282,7 +292,7 @@ finish_services() {
         configure_api_service
         if _is_truthy "$ENABLE_SERVICES"; then systemctl enable "${SERVICE_FILE##*/}"; fi
     fi
-    if _is_truthy "$INSTALL_API" || [ "$API_WAS_RUNNING" = yes ]; then
+    if _is_truthy "$INSTALL_API" || { [ "$INSTALL_MODE" = upgrade ] && [ "$API_WAS_RUNNING" = yes ]; }; then
         systemctl start "${SERVICE_FILE##*/}"
         sleep 3
         systemctl is-active --quiet "${SERVICE_FILE##*/}" || fail 'API failed to start; check its systemd journal.'
@@ -304,47 +314,56 @@ main() {
     # setup.json is private but must be reachable by the API service account.
     chown "$INSTALL_USER" "$WORK_DIR"
     trap 'rm -rf -- "$WORK_DIR"' EXIT
-    BACKUP_DIR="$BOONDOCK_DATA_ROOT/backups/installer-$(date -u +%Y%m%dT%H%M%S)-$$"
-    # Download and provision dependencies before the maintenance window.
+    # Finish all downloads before stopping the API or changing installed data.
     if _is_truthy "$INSTALL_DASHBOARD"; then
         install_component_release dashboard "$DASHBOARD_REF" "$WORK_DIR/dashboard" "$GITHUB_DASHBOARD_REPO"
     fi
     if _is_truthy "$INSTALL_API"; then
         install_component_release api "$API_REF" "$WORK_DIR/api" "$GITHUB_API_REPO"
-        python3 -m venv "$INSTALL_ROOT/venv"
-        "$INSTALL_ROOT/venv/bin/python" -m pip install --upgrade -r "$WORK_DIR/api/requirements.txt"
+        download_firmware
     fi
     API_WAS_RUNNING=no
     if systemctl is-active --quiet "${SERVICE_FILE##*/}"; then API_WAS_RUNNING=yes; fi
     # Stop the API before replacing either component or migrating data.
     if systemctl cat "${SERVICE_FILE##*/}" >/dev/null 2>&1; then systemctl stop "${SERVICE_FILE##*/}"; fi
-    mkdir -p "$BACKUP_DIR"
-    chmod 700 "$BACKUP_DIR"
-    local item
-    for item in db device_settings manifest.json; do
-        [ ! -e "$BOONDOCK_DATA_ROOT/$item" ] || cp -a "$BOONDOCK_DATA_ROOT/$item" "$BACKUP_DIR/"
-    done
-    for item in api dashboard; do
-        [ -d "$WORK_DIR/$item" ] || continue
-        [ ! -e "$INSTALL_ROOT/$item" ] || mv "$INSTALL_ROOT/$item" "$BACKUP_DIR/$item"
-        mv "$WORK_DIR/$item" "$INSTALL_ROOT/$item"
-    done
+    if [ "$INSTALL_MODE" = install ]; then
+        rm -rf -- "$BOONDOCK_DATA_ROOT"
+    fi
+    mkdir -p "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
+    # The shared environment can be changed only while the API is stopped.
+    if _is_truthy "$INSTALL_API"; then
+        python3 -m venv "$INSTALL_ROOT/venv"
+        "$INSTALL_ROOT/venv/bin/python" -m pip install --upgrade -r "$WORK_DIR/api/requirements.txt"
+        rm -rf -- "$API_DIR"
+        mv "$WORK_DIR/api" "$API_DIR"
+   fi
+    if _is_truthy "$INSTALL_DASHBOARD"; then
+        rm -rf -- "$DASHBOARD_DIR"
+        mv "$WORK_DIR/dashboard" "$DASHBOARD_DIR"
+    fi
     if _is_truthy "$INSTALL_API"; then
         mkdir -p "$BOONDOCK_DATA_ROOT"/{db/reports,db/recorder_configs,device_settings,logs,recordings,uploads}
         install_firmware
     fi
     # Preserve file modes; do not make databases, credentials, and every asset executable.
     chown "$INSTALL_USER:$INSTALL_GROUP" "$INSTALL_ROOT" "$BOONDOCK_DATA_ROOT"
+    local item
     for item in api dashboard venv; do
         [ ! -e "$INSTALL_ROOT/$item" ] || chown -R "$INSTALL_USER:$INSTALL_GROUP" "$INSTALL_ROOT/$item"
     done
     for item in db device_settings logs recordings uploads firmware; do
         [ ! -e "$BOONDOCK_DATA_ROOT/$item" ] || chown -R "$INSTALL_USER:$INSTALL_GROUP" "$BOONDOCK_DATA_ROOT/$item"
     done
+    # Keep the existing lock inode; the API must be able to open it for writing.
+    touch "$BOONDOCK_DATA_ROOT/.manifest.lock"
+    chown "$INSTALL_USER:$INSTALL_GROUP" "$BOONDOCK_DATA_ROOT/.manifest.lock"
+    chmod 600 "$BOONDOCK_DATA_ROOT/.manifest.lock"
+    if [ -e "$BOONDOCK_DATA_ROOT/manifest.json" ]; then
+        chown "$INSTALL_USER:$INSTALL_GROUP" "$BOONDOCK_DATA_ROOT/manifest.json"
+    fi
     initialize_components
     finish_services
     echo "Installation complete. Data: $BOONDOCK_DATA_ROOT"
-    echo "Backup: $BACKUP_DIR"
     echo "Dashboard: http://$(hostname).local:4000"
 }
 

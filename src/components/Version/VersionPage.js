@@ -248,7 +248,12 @@ const VersionPage = ({ embedded = false }) => {
         {COMPONENTS.map((component) => {
           const installed = status?.installed?.[component];
           const title = component === 'api' ? 'API' : 'Dashboard';
-          const available = [...new Set(['latest', 'beta', ...releases[component].map(releaseTag).filter(Boolean)])];
+          const available = new Map([['latest', 'latest'], ['beta', 'beta']]);
+          releases[component].forEach((release) => {
+            const tag = releaseTag(release);
+            const name = release.display_name || release.title || release.name;
+            if (tag) available.set(tag, name && name !== tag ? `${name} (${tag})` : tag);
+          });
           return (
             <section key={component} className={`${cardStyles.card} stack`} aria-label={title}>
               <h2 className={cardStyles.title}>{title}</h2>
@@ -258,7 +263,7 @@ const VersionPage = ({ embedded = false }) => {
               <label className={formStyles.label} htmlFor={component + '-release'}>{title} release</label>
               <select id={component + '-release'} className={formStyles.select} disabled={disabled || retryRestart}
                 value={tags[component]} onChange={(event) => setTags({ ...tags, [component]: event.target.value })}>
-                {available.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+                {[...available].map(([tag, label]) => <option key={tag} value={tag}>{label}</option>)}
               </select>
               <Button variant="primary" disabled={disabled || retryRestart}
                 onClick={() => submit('/version/apply', { component, tag: tags[component] }, component, tags[component])}>
