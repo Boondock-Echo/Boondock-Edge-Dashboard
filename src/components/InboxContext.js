@@ -927,6 +927,30 @@ export const InboxProvider = ({ children }) => {
 
   const totalPages = Math.max(1, Math.ceil(displayTotal / recordsPerPage));
 
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    // Deletion can exhaust the loaded window while older recordings still
+    // exist. Polling only returns changes, so explicitly refill that window.
+    const needed = inboxViewMode === "continuous"
+      ? 1
+      : Math.min(currentPage * recordsPerPage, RETENTION_LIMIT);
+    if (
+      !principal ||
+      initialLoading || initialError || olderLoading || olderError ||
+      !hasMore ||
+      messageList.length >= needed
+    ) return;
+
+    void loadOlder();
+  }, [
+    currentPage, hasMore, inboxViewMode,
+    initialError, initialLoading, loadOlder, messageList.length,
+    olderError, olderLoading, principal, recordsPerPage,
+  ]);
+
   const goToPage = useCallback(async (requestedPage) => {
     const target = Math.max(1, Number(requestedPage) || 1);
     const needed = target * recordsPerPage;

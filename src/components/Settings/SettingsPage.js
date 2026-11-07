@@ -40,7 +40,7 @@ const SETTINGS_SECTIONS = [
   { id: 'transcription-engine', label: 'Transcriptions' },
   { id: 'Logs', label: 'Logs' },
   // { id: 'release', label: 'Release Notes' },
-  // { id: 'version', label: 'Software Update', adminOnly: true },
+  { id: 'version', label: 'Software Update', adminOnly: true },
 ];
 
 const LEGACY_TAB_MAP = {

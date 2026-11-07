@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { LogOut } from "lucide-react";
@@ -13,6 +13,26 @@ const SidebarFooter = () => {
     || principal?.username?.trim()
     || principal?.email?.trim()
     || "User";
+  const [buildInfo, setBuildInfo] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${process.env.PUBLIC_URL || ''}/build-info.json`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Unable to load dashboard build information');
+        return response.json();
+      })
+      .then((info) => {
+        if (info.component === 'dashboard' && typeof info.version === 'string') {
+          setBuildInfo(info);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   const getInitials = (name) => {
     if (!name) return "U";
@@ -24,8 +44,8 @@ const SidebarFooter = () => {
       .toUpperCase();
   };
 
-  const appVersion = process.env.REACT_APP_VERSION || "v1.0.0";
-  const releaseDate = process.env.REACT_APP_BUILD_DATE;
+  const appVersion = buildInfo?.version || 'Version unavailable';
+  const releaseDate = buildInfo?.built_at?.split('T')[0];
 
   return (
     <div className={styles.footer}>
