@@ -9,13 +9,14 @@ import noticeStyles from '../ui/Notice.module.css';
 
 const DEFAULT_ACTION = {
   device_host: '', outlet_id: '', command: 'turn_on',
-  name: '', kind: 'popup', from_email: '', from_name: 'Boondock', reply_to: '',
+  name: '', kind: 'popup', delivery: 'smtp', from_email: '', from_name: 'Boondock', reply_to: '',
   autoplay: true, to: '', cc: '', bcc: '', body_format: 'text',
   subject: 'Keyword alert: {keywords} — {channel}',
   body: 'Keyword: {keywords}\nChannel: {channel}\nTime: {timestamp}\n\n{transcript}\n\n{recording_url}',
 };
 const TEMPLATE_FIELDS = ['keyword', 'keywords', 'matched_text', 'transcript', 'recording_id', 'channel', 'timestamp', 'recording_url', 'dashboard_url'];
 const list = (value) => value.split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean);
+const MAX_PORTAL_RECIPIENTS = 5;
 const errorText = (error) => error.response?.data?.error || 'The request failed. Please try again.';
 
 const Field = ({ label, children }) => {
@@ -94,6 +95,7 @@ const KeywordActionsSection = () => {
   const [kasaPassword, setKasaPassword] = useState('');
   const [clearKasaPassword, setClearKasaPassword] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
+  const [portalConnected, setPortalConnected] = useState(false);
   const [testRecipient, setTestRecipient] = useState('');
   const [deliveries, setDeliveries] = useState([]);
   const [draft, setDraft] = useState(DEFAULT_ACTION);
@@ -105,8 +107,13 @@ const KeywordActionsSection = () => {
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
-    const results = await Promise.all([api.get('/keyword-actions'), api.get('/settings/email'), api.get('/keyword-actions/deliveries'), api.get('/settings/kasa')]);
-    setActions(results[0].data.actions); setEmailConfigured(results[1].data.configured); setDeliveries(results[2].data); setKasaSettings(results[3].data); setLoaded(true);
+    const results = await Promise.all([
+      api.get('/keyword-actions'), api.get('/settings/email'), api.get('/keyword-actions/deliveries'), api.get('/settings/kasa'),
+      // Older servers have no Edge Connect; treat any failure as not connected.
+      api.get('/boondock-cloud/status').catch(() => ({ data: { connected: false } })),
+    ]);
+    setActions(results[0].data.actions); setEmailConfigured(results[1].data.configured); setDeliveries(results[2].data); setKasaSettings(results[3].data);
+    setPortalConnected(Boolean(results[4].data.connected)); setLoaded(true);
   }, []);
   useEffect(() => { load().catch((requestError) => setError(errorText(requestError))); }, [load]);
   const change = (key, value) => { setKasaDiagnostic(null); setDraft((current) => ({ ...current, [key]: value })); setPreview(null); };
@@ -115,10 +122,10 @@ const KeywordActionsSection = () => {
     event.preventDefault();
     setBusy(true); setError(''); setMessage('');
     try {
-      const payload = {
-        ...draft,
-        to: list(draft.to), cc: list(draft.cc), bcc: list(draft.bcc),
-      };
+      const payload = draft.kind === 'email' && draft.delivery === 'portal'
+        // The portal sends from a fixed template, so only recipients apply.
+        ? { name: draft.name, kind: 'email', delivery: 'portal', to: list(draft.to) }
+        : { ...draft, to: list(draft.to), cc: list(draft.cc), bcc: list(draft.bcc) };
       if (editing) await api.patch(`/keyword-actions/${editing}`, payload);
       else await api.post('/keyword-actions', payload);
       reset(); await load(); setMessage('Keyword action saved.');
@@ -226,8 +233,8 @@ const KeywordActionsSection = () => {
         <h3 className={cardStyles.title}>{editing ? 'Edit action' : 'Add action'}</h3>
         <div className="gridTwo">
           <Field label="Action name"><input className={formStyles.input} required maxLength="100" value={draft.name} onChange={(event) => change('name', event.target.value)} /></Field>
-          {draft.kind === 'email' && !emailConfigured ? <p role="status">Set up email routing to edit this email action.</p> :
-            <Field label="Action type"><select className={formStyles.select} disabled={busy} value={draft.kind} onChange={(event) => change('kind', event.target.value)}><option value="popup">Popup</option><option value="kasa">Kasa device</option>{emailConfigured && <option value="email">Email</option>}</select></Field>}
+          {draft.kind === 'email' && !emailConfigured && !portalConnected ? <p role="status">Set up email routing or connect to the portal to edit this email action.</p> :
+            <Field label="Action type"><select className={formStyles.select} disabled={busy} value={draft.kind} onChange={(event) => change('kind', event.target.value)}><option value="popup">Popup</option><option value="kasa">Kasa device</option>{(emailConfigured || portalConnected) && <option value="email">Email</option>}</select></Field>}
         </div>
         {draft.kind === 'popup' ? <label className="row"><input type="checkbox" checked={draft.autoplay} onChange={(event) => change('autoplay', event.target.checked)} />Play recording audio automatically</label> : draft.kind === 'kasa' ? <>
           <p className={cardStyles.description}>Discover Kasa devices on the API host’s local network, or enter an IP address manually. Select an outlet or device to control. Discovery, reading, and saving do not change device states.</p>
@@ -253,6 +260,14 @@ const KeywordActionsSection = () => {
           <p className={cardStyles.description}>Test action immediately {draft.command === 'turn_on' ? 'turns on' : 'turns off'} the selected outlet.</p>
           <Button disabled={busy || !draft.outlet_id || !draft.device_host.trim()} onClick={() => kasaRequest(true)}>Test action</Button>
         </> : <>
+          <Field label="Email delivery"><select className={formStyles.select} disabled={busy} value={draft.delivery} onChange={(event) => change('delivery', event.target.value)}>
+            <option value="smtp" disabled={!emailConfigured}>My email server (SMTP){emailConfigured ? '' : ' — not set up'}</option>
+            <option value="portal" disabled={!portalConnected}>Boondock portal (uses Edge Connect){portalConnected ? '' : ' — not connected'}</option>
+          </select></Field>
+          {draft.delivery === 'portal' ? <>
+            <p className={cardStyles.description}>The portal emails the alert using your connected key, with its own sender and template. No email server is needed on this Edge. Up to {MAX_PORTAL_RECIPIENTS} recipients.</p>
+            <Field label="To recipients"><input className={formStyles.input} required value={draft.to} onChange={(event) => change('to', event.target.value)} /></Field>
+          </> : <>
           <p className={cardStyles.description}>Enter recipient addresses separated by commas. Sender and recipients apply to this action only.</p>
           <div className="gridTwo">
             <Field label="From email"><input className={formStyles.input} type="email" required value={draft.from_email} onChange={(event) => change('from_email', event.target.value)} /></Field>
@@ -272,14 +287,15 @@ const KeywordActionsSection = () => {
           <Field label="Test recipient"><input className={formStyles.input} type="email" value={testRecipient} onChange={(event) => setTestRecipient(event.target.value)} /></Field>
           <Button disabled={busy || !emailConfigured || !draft.from_email || !testRecipient.trim()} onClick={sendTest}>Send test email</Button>
           {preview && <div className="stack" aria-label="Email template preview"><strong>{preview.subject}</strong>{preview.body_format === 'html' ? <iframe title="Email template preview" sandbox="" srcDoc={preview.body} style={{ width: '100%', minHeight: '200px', background: 'white' }} /> : <pre style={{ whiteSpace: 'pre-wrap' }}>{preview.body}</pre>}</div>}
+          </>}
         </>}
-        <div className="rowWrap"><Button type="submit" variant="primary" disabled={busy || (draft.kind === 'email' && !emailConfigured)}>Save action</Button>{editing && <Button onClick={reset} disabled={busy}>Cancel edit</Button>}</div>
+        <div className="rowWrap"><Button type="submit" variant="primary" disabled={busy || (draft.kind === 'email' && (draft.delivery === 'portal' ? !portalConnected : !emailConfigured))}>Save action</Button>{editing && <Button onClick={reset} disabled={busy}>Cancel edit</Button>}</div>
       </form>}
       <div className={`${cardStyles.card} stack`}>
         <h3 className={cardStyles.title}>Configured actions</h3>
         {loaded && !actions.length && <p className={cardStyles.description}>No keyword actions configured.</p>}
         {actions.map((action) => <div className="rowBetween" key={action.id}>
-          <div><strong>{action.name}</strong><p className={cardStyles.description}>{action.kind}</p></div>
+          <div><strong>{action.name}</strong><p className={cardStyles.description}>{action.kind === 'email' && action.delivery === 'portal' ? 'email · portal' : action.kind}</p></div>
           <div className="row"><Button size="small" disabled={busy} onClick={() => edit(action)}>Edit {action.name}</Button><Button size="small" variant="danger" disabled={busy} onClick={() => remove(action)}>Delete {action.name}</Button></div>
         </div>)}
       </div>
