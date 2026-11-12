@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Check, KeyRound, Languages, Save } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../utils/apiClient';
 import SettingsSectionHeader from './SettingsSectionHeader';
+import EdgeConnect from './EdgeConnect';
 import Button from '../ui/Button';
 import cardStyles from '../ui/Card.module.css';
 import formStyles from '../ui/Form.module.css';
@@ -50,6 +51,13 @@ const TranscriptionSettings = () => {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Connecting or disconnecting rewrites the method and key, so re-read them.
+  const reloadSettings = useCallback(() => {
+    api.get('/settings/transcription')
+      .then(({ data }) => setSettings(data))
+      .catch(() => {});
   }, []);
 
   const save = async () => {
@@ -107,6 +115,8 @@ const TranscriptionSettings = () => {
           <div className={noticeStyles.body}><p>{error}</p></div>
         </div>
       ) : null}
+
+      <EdgeConnect onChange={reloadSettings} />
 
       <div className="gridTwo">
         <div className={`${cardStyles.card} stack`}>
